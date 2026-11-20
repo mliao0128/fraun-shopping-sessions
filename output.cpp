@@ -27,7 +27,7 @@ auto writer(const fs::path& path, std::vector<Node> fields) {
     auto stream = arrow::io::FileOutputStream::Open(path.string());
     if (!stream.ok()) throw std::runtime_error(stream.status().ToString());
     pq::WriterProperties::Builder props;
-    props.disable_dictionary()->disable_statistics()->compression(pq::Compression::UNCOMPRESSED);
+    props.disable_dictionary()->disable_statistics()->compression(pq::Compression::SNAPPY);
     return pq::ParquetFileWriter::Open(*stream, schema, props.build());
 }
 

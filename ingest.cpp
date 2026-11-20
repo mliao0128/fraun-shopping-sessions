@@ -1,3 +1,4 @@
+#include <sys/mman.h>
 #include "shared.hpp"
 
 #include <algorithm>
@@ -65,46 +66,89 @@ int64_t validIngest(const char* p) {
                                    60 * pairValue(p + 14) + pairValue(p + 17));
 }
 
-std::vector<std::string_view> chunks(const std::vector<std::string_view>& files) {
-    std::vector<std::string_view> result;
+struct InputChunk {
+    std::string_view file;
+    size_t begin, end;
+};
+
+// Boundaries depend only on file sizes. Readers fault in their own chunks
+// and consume every line whose first byte belongs to their range.
+std::vector<InputChunk> chunks(const std::vector<std::string_view>& files) {
+    std::vector<InputChunk> result;
     constexpr size_t bytes = 2u << 20;
-    for (auto file : files) {
-        auto headerEnd = file.find('\n');
-        if (headerEnd == file.npos) continue;
-        file.remove_prefix(headerEnd + 1);
-        while (file.size() > bytes) {
-            auto end = file.find('\n', bytes);
-            if (end == file.npos) break;
-            result.push_back(file.substr(0, end + 1));
-            file.remove_prefix(end + 1);
-        }
-        if (!file.empty()) result.push_back(file);
-    }
+    for (auto file : files)
+        for (size_t begin = 0; begin < file.size(); begin += bytes)
+            result.push_back({file, begin, std::min(file.size(), begin + bytes)});
     return result;
+}
+
+template<class F> void chunkLines(const InputChunk& chunk, F&& visit) {
+    size_t pos = chunk.begin;
+    if (pos == 0 || chunk.file[pos - 1] != '\n') {
+        // At offset zero skip the header. Other readers skip the previous
+        // chunk's last line, searching at most as far as their own boundary.
+        auto prefix = chunk.file.substr(pos, chunk.end - pos);
+        size_t newline = prefix.find('\n');
+        if (newline == prefix.npos) return;
+        pos += newline + 1;
+    }
+    while (pos < chunk.end) {
+        size_t newline = chunk.file.find('\n', pos);
+        size_t end = newline == chunk.file.npos ? chunk.file.size() : newline;
+        visit(chunk.file.substr(pos, end - pos));
+        pos = end + 1;
+    }
 }
 
 // No reallocation/copy of existing rows. Equal IDs route to the same
 // partition, irrespective of which file or raw user supplied the copy.
 constexpr size_t blockSize = 512;
+// A reader allocates blocks for all of its partitions from one arena. The
+// large contiguous extents reduce allocator calls and permit transparent huge
+// pages when the host supplies them. Rows are constructed only when appended.
+template<class T> class Arena {
+    static constexpr size_t rowsPerExtent = ((32u << 20) / sizeof(T) / blockSize) * blockSize;
+    struct Release {
+        void operator()(T* ptr) const { std::allocator<T>{}.deallocate(ptr, rowsPerExtent); }
+    };
+    std::vector<std::unique_ptr<T, Release>> extents;
+    size_t next = rowsPerExtent;
+public:
+    T* takeBlock() {
+        static_assert(std::is_trivially_destructible_v<T>);
+        if (next == rowsPerExtent) {
+            auto p = std::unique_ptr<T, Release>(std::allocator<T>{}.allocate(rowsPerExtent));
+            constexpr uintptr_t page = 2u << 20;
+            auto first = reinterpret_cast<uintptr_t>(p.get());
+            auto begin = (first + page - 1) & ~(page - 1);
+            auto end = (first + sizeof(T) * rowsPerExtent) & ~(page - 1);
+            if (begin < end) madvise(reinterpret_cast<void*>(begin), end - begin, MADV_HUGEPAGE);
+            extents.push_back(std::move(p));
+            next = 0;
+        }
+        T* block = extents.back().get() + next;
+        next += blockSize;
+        return block;
+    }
+};
 template<class T> struct Blocks {
-    std::vector<std::unique_ptr<T[]>> blocks;
+    std::vector<T*> blocks;
     size_t size = 0;
-    void add(const T& row) {
+    void add(Arena<T>& arena, const T& row) {
         const size_t offset = size % blockSize;
-        if (!offset) blocks.push_back(std::make_unique_for_overwrite<T[]>(blockSize));
-        blocks.back()[offset] = row;
+        if (!offset) blocks.push_back(arena.takeBlock());
+        std::construct_at(blocks.back() + offset, row);
         ++size;
     }
     template<class F> void each(F&& visit) {
         size_t remaining = size;
-        for (auto& block : blocks) {
+        for (auto* block : blocks) {
             const size_t count = std::min(remaining, blockSize);
             for (size_t i = 0; i < count; ++i) visit(block[i]);
             remaining -= count;
         }
     }
 };
-
 struct EventRow {
     Key id;
     int64_t ingest;
@@ -114,15 +158,14 @@ struct EventRow {
 struct PersonCache {
     struct Entry { Key raw, canonical; };
     std::vector<Entry> entries = std::vector<Entry>(1u << 14);
-    Key lookup(const Context& ctx, std::string_view raw) {
-        const auto key = Key::from(raw);
+    Key lookup(const Context& ctx, const Key& key) {
         auto& entry = entries[key.hash() & (entries.size() - 1)];
         if (!(entry.raw == key)) entry = {key, ctx.person(key)};
         return entry.canonical;
     }
 };
 
-bool parseRow(std::string_view line, const Context& ctx, PersonCache& people, EventRow& row) {
+bool parseRow(std::string_view line, const Context& ctx, EventRow& row) {
     std::array<std::string_view,7> f;
     if (!csv(line, f) || f[0].empty()) return false;
     row.id = Key::from(f[0]);
@@ -142,18 +185,18 @@ bool parseRow(std::string_view line, const Context& ctx, PersonCache& people, Ev
     } else if (f[4] != "view" && f[4] != "cart") {
         return true;
     }
-    row.data = {people.lookup(ctx, f[1]), ts, price, category};
+    row.data = {Key::from(f[1]), ts, price, category};
     return true;
 }
 
-bool parseRow(std::string_view line, const Context& ctx, PersonCache& people, Click& row) {
+bool parseRow(std::string_view line, const Context& ctx, Click& row) {
     std::array<std::string_view,4> f;
     if (!csv(line, f) || f[0].empty() || f[1].empty()) return false;
     const auto ts = timestamp(f[3]);
     if (ts < ctx.start - 7 * dayMs || ts >= ctx.end) return false;
     const auto campaign = ctx.campaign(Key::from(f[2]));
     if (campaign == UINT32_MAX) return false;
-    row = {people.lookup(ctx, f[1]), Key::from(f[0]), ts, campaign};
+    row = {Key::from(f[1]), Key::from(f[0]), ts, campaign};
     return true;
 }
 
@@ -168,24 +211,56 @@ void readLines(const std::vector<std::string_view>& files, unsigned workers, F v
         for (;;) {
             const size_t i = next.fetch_add(1, std::memory_order_relaxed);
             if (i >= spans.size()) break;
-            auto span = spans[i];
-            while (!span.empty()) {
-                const auto end = span.find('\n');
-                const auto line = span.substr(0, end);
-                span.remove_prefix(end == span.npos ? span.size() : end + 1);
-                visit(reader, people, line);
-            }
+            chunkLines(spans[i], [&](std::string_view line) { visit(reader, people, line); });
         }
     });
 }
 
+// Parse ahead so independent identity lookups can overlap their memory requests.
+template<class Row, class Visit>
+void readRows(const Context& ctx, const std::vector<std::string_view>& files,
+              unsigned workers, Visit visit) {
+    constexpr size_t batchSize = 32;
+    struct Batch { std::array<Row, batchSize> rows; size_t used = 0; };
+    std::vector<Batch> batches(workers);
+    auto event = [](Row& row) -> auto& {
+        if constexpr (std::is_same_v<Row, EventRow>) return row.data;
+        else return row;
+    };
+    auto flush = [&](size_t reader, PersonCache& people) {
+        auto& batch = batches[reader];
+        for (size_t i = 0; i < batch.used; ++i) {
+            auto& row = batch.rows[i];
+            auto& item = event(row);
+            if (item.ts != invalidTime) item.person = people.lookup(ctx, item.person);
+            visit(reader, row);
+        }
+        batch.used = 0;
+    };
+    readLines(files, workers, [&](size_t reader, PersonCache& people, std::string_view line) {
+        auto& batch = batches[reader];
+        auto& row = batch.rows[batch.used];
+        if (!parseRow(line, ctx, row)) return;
+        auto& item = event(row);
+        if (item.ts != invalidTime && !ctx.identities.slots.empty()) {
+            uint64_t h = item.person.hash();
+            __builtin_prefetch(&people.entries[h & (people.entries.size() - 1)]);
+            size_t span = ctx.identities.shardSize;
+            __builtin_prefetch(&ctx.identities.slots[Identities::shard(h)*span + (h & (span-1))]);
+        }
+        if (++batch.used == batchSize) flush(reader, people);
+    });
+    PersonCache tail;
+    for (size_t r = 0; r < workers; ++r)
+        if (batches[r].used) flush(r, tail);
+}
+
 void ingestEvents(const Context& ctx, const std::vector<std::string_view>& files,
                   std::vector<Bucket>& out, unsigned workers) {
+    std::vector<Arena<EventRow>> arenas(workers);
     std::vector<std::array<Blocks<EventRow>, partitions>> records(workers);
-    readLines(files, workers, [&](size_t reader, PersonCache& people, std::string_view line) {
-        EventRow row{};
-        if (!parseRow(line, ctx, people, row)) return;
-        records[reader][row.id.hash() & (partitions - 1)].add(row);
+    readRows<EventRow>(ctx, files, workers, [&](size_t reader, const EventRow& row) {
+        records[reader][row.id.hash() & (partitions - 1)].add(arenas[reader], row);
     });
 
     std::vector<std::vector<size_t>> offsets(partitions, std::vector<size_t>(out.size()));
@@ -207,7 +282,7 @@ void ingestEvents(const Context& ctx, const std::vector<std::string_view>& files
                 const size_t base = blocks.size() * blockSize;
                 if (base + blockSize >= UINT32_MAX)
                     throw std::runtime_error("Too many rows in one ID partition");
-                blocks.push_back(block.get());
+                blocks.push_back(block);
                 const size_t n = std::min(rem, blockSize);
                 for (size_t i = 0; i < n; ++i) {
                     EventRow& row = block[i];
@@ -275,12 +350,11 @@ void ingestClicks(const Context& ctx, const std::vector<std::string_view>& files
     // seven-day window together, so they change neither its winning (ts, id)
     // nor the set of campaigns in it. Routing straight to the person's bucket
     // therefore implements both output tables without a global click-ID pass.
+    std::vector<Arena<Click>> arenas(workers);
     std::vector<std::vector<Blocks<Click>>> records(workers);
     for (auto& reader : records) reader.resize(out.size());
-    readLines(files, workers, [&](size_t reader, PersonCache& people, std::string_view line) {
-        Click click{};
-        if (!parseRow(line, ctx, people, click)) return;
-        records[reader][click.person.hash() & (out.size() - 1)].add(click);
+    readRows<Click>(ctx, files, workers, [&](size_t reader, const Click& click) {
+        records[reader][click.person.hash() & (out.size() - 1)].add(arenas[reader], click);
     });
     parallel(out.size(), workers, [&](size_t b) {
         auto& clicks = out[b].clicks;
@@ -292,7 +366,7 @@ void ingestClicks(const Context& ctx, const std::vector<std::string_view>& files
             size_t remaining = input.size;
             for (auto& block : input.blocks) {
                 const size_t n = std::min(remaining, blockSize);
-                clicks.insert(clicks.end(), block.get(), block.get() + n);
+                clicks.insert(clicks.end(), block, block + n);
                 remaining -= n;
             }
             input.blocks.clear();

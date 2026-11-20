@@ -26,8 +26,30 @@ struct alignas(8) Key {
     static Key from(std::string_view value) {
         Key key;
         if (value.size() <= 15) {
-            if (!value.empty()) std::memcpy(key.data.data(), value.data(), value.size());
-            key.data[15] = static_cast<unsigned char>(value.size());
+            size_t n = value.size();
+            const char* p = value.data();
+            uint64_t head = 0, tail = uint64_t(n) << 56;
+            if (n >= 8) {
+                uint64_t end;
+                std::memcpy(&head, p, 8);
+                std::memcpy(&end, p + n - 8, 8);
+                // The split shift also handles the eight-byte case without shifting by 64.
+                tail |= (end >> (127 - 8*n)) >> 1;
+            } else if (n >= 4) {
+                uint32_t first, last;
+                std::memcpy(&first, p, 4);
+                std::memcpy(&last, p + n - 4, 4);
+                head = uint64_t(first) | (uint64_t(last) << (8*(n-4)));
+            } else if (n) {
+                head = static_cast<unsigned char>(p[0]);
+                if (n >= 2) {
+                    uint16_t last;
+                    std::memcpy(&last, p+n-2, 2);
+                    head |= uint64_t(last) << (8*(n-2));
+                }
+            }
+            std::memcpy(key.data.data(), &head, 8);
+            std::memcpy(key.data.data()+8, &tail, 8);
         } else {
             const char* ptr = value.data();
             const uint64_t taggedSize = value.size() | (uint64_t{1} << 63);
@@ -68,7 +90,7 @@ static_assert(sizeof(Key) == 16 && std::endian::native == std::endian::little);
 
 // Count all quotes, then account for the only two legal positions around each field.
 // SIMD searches for delimiters without treating CR, spaces or non-ASCII bytes specially.
-template<size_t N> bool csv(std::string_view line, std::array<std::string_view, N>& fields) {
+template<size_t N> bool csvGeneric(std::string_view line, std::array<std::string_view, N>& fields) {
     std::array<size_t, N> ends;
     size_t count = 0, quotes = 0;
     const char* bytes = line.data();
@@ -112,6 +134,83 @@ template<size_t N> bool csv(std::string_view line, std::array<std::string_view, 
         begin = end + 1;
     }
     return quotes == legalQuotes;
+}
+
+struct CsvMask {
+    uint32_t comma, quote;
+};
+inline CsvMask classify32(const char* p) {
+    auto bytes = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p));
+    return {static_cast<uint32_t>(_mm256_movemask_epi8(_mm256_cmpeq_epi8(bytes, _mm256_set1_epi8(',')))),
+            static_cast<uint32_t>(_mm256_movemask_epi8(_mm256_cmpeq_epi8(bytes, _mm256_set1_epi8('"'))))};
+}
+
+template<size_t N, bool Long>
+bool csvPacked(std::string_view line, std::array<std::string_view,N>& fields) {
+    const size_t size = line.size();
+    const char* p = line.data();
+    auto first = classify32(p);
+    auto last = classify32(p + size - 32);
+    uint64_t commas, quotes, upperCommas = 0, upperQuotes = 0;
+    if constexpr (Long) {
+        auto middle = classify32(p + 32);
+        commas = first.comma | (uint64_t(middle.comma) << 32);
+        quotes = first.quote | (uint64_t(middle.quote) << 32);
+        upperCommas = last.comma >> (96-size);
+        upperQuotes = last.quote >> (96-size);
+    } else {
+        commas = first.comma | (uint64_t(last.comma) << (size-32));
+        quotes = first.quote | (uint64_t(last.quote) << (size-32));
+    }
+    if (std::popcount(commas) + std::popcount(upperCommas) != N - 1) return false;
+
+    // Compress the quotes at possible field boundaries to one bit per field.
+    // The first empty field can have no closing byte. An open quote with no
+    // distinct matching close, or any quote in the interior, invalidates the row.
+    uint64_t starts = (commas<<1) | 1, ends = (commas>>1);
+    unsigned wrapped, closed;
+    if constexpr (Long) {
+        ends |= upperCommas << 63;
+        uint64_t upperStarts = (upperCommas<<1) | (commas>>63);
+        uint64_t upperEnds = (upperCommas>>1) | (uint64_t{1}<<(size-65));
+        if (upperQuotes & ~(upperStarts ^ upperEnds)) return false;
+        wrapped = _pext_u64(quotes, starts) | (_pext_u64(upperQuotes, upperStarts) << std::popcount(starts));
+        closed = _pext_u64(quotes, ends) | (_pext_u64(upperQuotes, upperEnds) << std::popcount(ends));
+    } else {
+        ends |= uint64_t{1} << (size-1);
+        wrapped = _pext_u64(quotes, starts);
+        closed = _pext_u64(quotes, ends);
+    }
+    closed <<= (commas & 1);
+    // Each quote must occupy exactly one boundary. A single-byte field
+    // containing only a quote is simultaneously a start and an end.
+    if (wrapped != closed || (quotes & ~(starts ^ ends))) return false;
+
+    size_t begin = 0;
+    for (size_t i = 0; i < N; ++i) {
+        size_t end = size;
+        if (i != N-1) {
+            if (Long && !commas) {
+                end = 64 + std::countr_zero(upperCommas);
+                upperCommas &= upperCommas - 1;
+            } else {
+                end = std::countr_zero(commas);
+                commas &= commas - 1;
+            }
+        }
+        size_t trim = (wrapped >> i) & 1;
+        fields[i] = {p + begin + trim, end - begin - 2*trim};
+        begin = end + 1;
+    }
+    return true;
+}
+
+template<size_t N> bool csv(std::string_view line, std::array<std::string_view,N>& fields) {
+    if constexpr (N == 4 || N == 7) {
+        if (line.size() >= 32 && line.size() <= 64) return csvPacked<N,false>(line,fields);
+        if (line.size() > 64 && line.size() <= 96) return csvPacked<N,true>(line,fields);
+    }
+    return csvGeneric(line,fields);
 }
 
 template<class F> void parallel(size_t count, unsigned workers, F&& fn) {

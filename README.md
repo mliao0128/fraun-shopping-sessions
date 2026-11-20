@@ -41,7 +41,9 @@ python3 "$SOLUTION/tools/benchmark.py" "$IMAGE" practice measured-practice --clo
 python3 "$SOLUTION/tools/benchmark.py" "$IMAGE" final measured-final --clock ./time-exec --runs 5
 ```
 
-The optional Linux x86-64 timer measures the full child process with `CLOCK_MONOTONIC_RAW` and records peak resident memory. The report also saves the container engine's start-to-exit timestamps and the elapsed client command time. Omitting `--clock` uses the engine timestamps.
+The optional Linux x86-64 timer measures the full child process with both `CLOCK_MONOTONIC_RAW` and `CLOCK_MONOTONIC` and records peak resident memory. The report also saves the container engine's start-to-exit timestamps and the elapsed client command time. Omitting `--clock` uses the engine timestamps.
+
+For a cold-input storage test, add `--evict-input`. The runner checks that every input page was evicted from the local Linux page cache before starting each container. To limit reads as well, pass `--device-read-bps DEVICE:RATE` with the dataset's backing block device and a byte-per-second rate. For example, use `/dev/sdd:125000000` when the dataset resides on `/dev/sdd`.
 
 To check a generated seed with an independent implementation, install DuckDB 2.0.1 and run the command below. The checker builds its own expected tables in the new scratch directory and compares every output row in both directions. Allow additional disk space for its intermediate SQL tables.
 
@@ -52,11 +54,11 @@ To check a generated seed with an independent implementation, install DuckDB 2.0
 
 ## How the pipeline works
 
-- CSV files are memory-mapped. Parallel readers split large files at line boundaries. AVX2 delimiter scans validate quote placement and retain field bytes exactly, including spaces and carriage returns.
+- CSV files are memory-mapped. Each reader scans a byte range and consumes the lines that start in it. AVX2 delimiter scans and BMI2 bit extraction check quoting and locate fields, preserving spaces and carriage returns. Long records use the general parser.
 - A union-find over valid link edges computes connected components. A read-only hash table maps aliases to the bytewise smallest ID in each component, including IDs appearing only in link files.
-- Events are partitioned by event ID. Exact comparisons select the earliest ingestion timestamp even when that record is invalid or names a different person. Workers route surviving events to the canonical person's bucket.
+- Workers resolve identities in batches of 32, prefetching independent lookups while they parse the next rows. They allocate temporary records from per-reader blocks and partition events by event ID. Exact comparisons select the earliest ingestion timestamp even when that record is invalid or names a different person.
 - Each person’s events and valid clicks are sorted by time. Event gaps determine session boundaries. A moving seven-day window tracks the last eligible click and the distinct campaigns present. Identical click copies enter and expire together, so the winner and the set of assists are invariant to their multiplicity.
-- Workers aggregate user rows and campaign totals in memory. Apache Parquet writes user files in parallel and emits the final campaign table. Every run derives its time window, identities, product categories and campaign metadata from the mounted data.
+- Workers aggregate user rows and campaign totals in memory. Apache Parquet writes Snappy-compressed user files in parallel and emits the final campaign table. Every run derives its time window, identities, product categories and campaign metadata from the mounted data.
 
 ## Dependencies and license
 

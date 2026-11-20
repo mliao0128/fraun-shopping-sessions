@@ -7,9 +7,9 @@
 #include <time.h>
 #include <unistd.h>
 
-static long long clock_ns(void) {
+static long long clock_ns(clockid_t clock_id) {
     struct timespec ts;
-    if (clock_gettime(CLOCK_MONOTONIC_RAW, &ts) != 0) {
+    if (clock_gettime(clock_id, &ts) != 0) {
         perror("clock_gettime");
         _exit(125);
     }
@@ -18,7 +18,8 @@ static long long clock_ns(void) {
 
 int main(int argc, char **argv) {
     if (argc < 2) return 125;
-    long long start = clock_ns();
+    long long start = clock_ns(CLOCK_MONOTONIC_RAW);
+    long long monotonic_start = clock_ns(CLOCK_MONOTONIC);
     pid_t child = fork();
     if (child < 0) { perror("fork"); return 125; }
     if (child == 0) {
@@ -33,8 +34,9 @@ int main(int argc, char **argv) {
         perror("wait4");
         return 125;
     }
-    long long elapsed = clock_ns() - start;
-    fprintf(stderr, "SHOPPING_TIMER {\"process_ns\":%lld,\"peak_rss_kib\":%ld}\n",
-            elapsed, usage.ru_maxrss);
+    long long elapsed = clock_ns(CLOCK_MONOTONIC_RAW) - start;
+    long long monotonic_elapsed = clock_ns(CLOCK_MONOTONIC) - monotonic_start;
+    fprintf(stderr, "SHOPPING_TIMER {\"process_ns\":%lld,\"monotonic_ns\":%lld,\"peak_rss_kib\":%ld}\n",
+            elapsed, monotonic_elapsed, usage.ru_maxrss);
     return WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status);
 }
