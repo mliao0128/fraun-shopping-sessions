@@ -1,0 +1,432 @@
+{
+  "date": "2026-11-20",
+  "system": "AMD Ryzen 9 9950X, Ubuntu 24.04 / WSL2, ext4, linux/amd64 Podman",
+  "logical_cpus": "0-7 (4 physical cores, 2 threads per core)",
+  "limit_gib": 24,
+  "swap_gib": 0,
+  "network": "none",
+  "uid": 1000,
+  "release_image_id": "sha256:4e5aea7daa87d8fbac548534d30356cf24f793ccfb2d9b61e14b4e959b8ff423",
+  "binary_sha256": "ea1fff0a1355c7234943d93f3f5cf388c4cbc0ae652462fde74807a36da32105",
+  "generator_inputs": {
+    "practice": {
+      "seed": 42,
+      "events": 20000000,
+      "clicks": 5000000
+    },
+    "final": {
+      "seed": 73,
+      "events": 60000000,
+      "clicks": 15000000
+    }
+  },
+  "clocks": {
+    "process_s": "CLOCK_MONOTONIC_RAW immediately before fork/exec through wait4 of the submission",
+    "oci_s": "OCI recorded start to exit",
+    "cli_s": "podman start -a command; excludes container creation/removal, includes client and runtime overhead"
+  },
+  "memory": {
+    "rss_gib": "peak child RSS from wait4, includes resident mapped input",
+    "cgroup_gib": "memory.peak from the fresh parent slice, warm shared input pages may be charged outside it"
+  },
+  "cold_check": {
+    "total_linux_input_pages": 1368651,
+    "resident_immediately_before_launch": 0,
+    "windows_and_storage_caches": "uncontrolled"
+  },
+  "measurements": {
+    "practice": {
+      "initial": {
+        "samples": [
+          {
+            "process_s": 2.018755207,
+            "oci_s": 2.158365965,
+            "cli_s": 5.083516563,
+            "rss_gib": 3.3885955810546875,
+            "cgroup_gib": 1.8237991333007812,
+            "output_mib": 93.57936573028564
+          },
+          {
+            "process_s": 2.329056195,
+            "oci_s": 2.559251072,
+            "cli_s": 5.509314988,
+            "rss_gib": 3.3856964111328125,
+            "cgroup_gib": 1.8217582702636719,
+            "output_mib": 93.57874488830566
+          },
+          {
+            "process_s": 2.223689274,
+            "oci_s": 2.373474736,
+            "cli_s": 5.282490708,
+            "rss_gib": 3.388263702392578,
+            "cgroup_gib": 1.8242378234863281,
+            "output_mib": 93.5793399810791
+          }
+        ],
+        "median_process_s": 2.223689274,
+        "median_oci_s": 2.373474736
+      },
+      "tuned": {
+        "samples": [
+          {
+            "process_s": 1.19237001,
+            "oci_s": 1.273737588,
+            "cli_s": 2.094740167,
+            "rss_gib": 3.610076904296875,
+            "cgroup_gib": 1.9121131896972656,
+            "output_mib": 93.57955265045166
+          },
+          {
+            "process_s": 1.145865811,
+            "oci_s": 1.257221016,
+            "cli_s": 4.218034165,
+            "rss_gib": 3.6126556396484375,
+            "cgroup_gib": 1.9143943786621094,
+            "output_mib": 93.57938480377197
+          },
+          {
+            "process_s": 1.195314783,
+            "oci_s": 1.271155076,
+            "cli_s": 4.222269793,
+            "rss_gib": 3.613780975341797,
+            "cgroup_gib": 1.9158821105957031,
+            "output_mib": 93.57908153533936
+          }
+        ],
+        "median_process_s": 1.19237001,
+        "median_oci_s": 1.271155076
+      },
+      "cold": null
+    },
+    "final": {
+      "initial": {
+        "samples": [
+          {
+            "process_s": 6.979949877,
+            "oci_s": 7.582889981,
+            "cli_s": 10.51235803,
+            "rss_gib": 9.907524108886719,
+            "cgroup_gib": 5.3609466552734375,
+            "output_mib": 271.8928451538086
+          },
+          {
+            "process_s": 7.268753735,
+            "oci_s": 7.851528759,
+            "cli_s": 10.764111797,
+            "rss_gib": 9.907283782958984,
+            "cgroup_gib": 5.361522674560547,
+            "output_mib": 271.8918790817261
+          },
+          {
+            "process_s": 6.928532085,
+            "oci_s": 7.400226992,
+            "cli_s": 8.049298401,
+            "rss_gib": 9.907470703125,
+            "cgroup_gib": 5.361968994140625,
+            "output_mib": 271.8928909301758
+          }
+        ],
+        "median_process_s": 6.979949877,
+        "median_oci_s": 7.582889981
+      },
+      "tuned": {
+        "samples": [
+          {
+            "process_s": 4.474813708,
+            "oci_s": 4.773928541,
+            "cli_s": 5.48525369,
+            "rss_gib": 10.433258056640625,
+            "cgroup_gib": 5.219230651855469,
+            "output_mib": 271.8924436569214
+          },
+          {
+            "process_s": 4.295679285,
+            "oci_s": 4.593089476,
+            "cli_s": 7.540918212,
+            "rss_gib": 10.433704376220703,
+            "cgroup_gib": 5.219337463378906,
+            "output_mib": 271.8923873901367
+          },
+          {
+            "process_s": 4.27381704,
+            "oci_s": 4.682706842,
+            "cli_s": 7.495040769,
+            "rss_gib": 10.432929992675781,
+            "cgroup_gib": 5.218772888183594,
+            "output_mib": 271.89214420318604
+          },
+          {
+            "process_s": 4.028919126,
+            "oci_s": 4.307128134,
+            "cli_s": 4.816117602,
+            "rss_gib": 10.432109832763672,
+            "cgroup_gib": 5.219596862792969,
+            "output_mib": 271.89231395721436
+          },
+          {
+            "process_s": 5.154692474,
+            "oci_s": 5.513962703,
+            "cli_s": 8.412363126,
+            "rss_gib": 10.433570861816406,
+            "cgroup_gib": 5.219963073730469,
+            "output_mib": 271.89378929138184
+          }
+        ],
+        "median_process_s": 4.295679285,
+        "median_oci_s": 4.682706842
+      },
+      "cold": {
+        "samples": [
+          {
+            "process_s": 5.72186519,
+            "oci_s": 6.179594004,
+            "cli_s": 9.12291551,
+            "rss_gib": 10.432369232177734,
+            "cgroup_gib": 10.451244354248047,
+            "output_mib": 271.89166736602783
+          }
+        ],
+        "median_process_s": 5.72186519,
+        "median_oci_s": 6.179594004
+      }
+    }
+  },
+  "validation": {
+    "official_fixtures_passed": 36,
+    "official_fixtures_total": 36,
+    "public_dev": {
+      "user_daily": 117038,
+      "campaign_daily": 27400,
+      "missing": 0,
+      "extra": 0,
+      "duplicate_keys": 0
+    },
+    "timed_output_comparisons": [
+      {
+        "sample": "steady-initial-practice-1",
+        "rows_and_differences": {
+          "user_daily": [
+            2246306,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "sample": "steady-initial-practice-2",
+        "rows_and_differences": {
+          "user_daily": [
+            2246306,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "sample": "steady-initial-practice-3",
+        "rows_and_differences": {
+          "user_daily": [
+            2246306,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "sample": "steady-tuned-practice-1",
+        "rows_and_differences": {
+          "user_daily": [
+            2246306,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "sample": "steady-tuned-practice-2",
+        "rows_and_differences": {
+          "user_daily": [
+            2246306,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "sample": "steady-tuned-practice-3",
+        "rows_and_differences": {
+          "user_daily": [
+            2246306,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "sample": "steady-cold-final-1",
+        "rows_and_differences": {
+          "user_daily": [
+            6612082,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "sample": "steady-initial-final-1",
+        "rows_and_differences": {
+          "user_daily": [
+            6612082,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "sample": "steady-initial-final-2",
+        "rows_and_differences": {
+          "user_daily": [
+            6612082,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "sample": "steady-initial-final-3",
+        "rows_and_differences": {
+          "user_daily": [
+            6612082,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "sample": "steady-tuned-final-1",
+        "rows_and_differences": {
+          "user_daily": [
+            6612082,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "sample": "steady-tuned-final-2",
+        "rows_and_differences": {
+          "user_daily": [
+            6612082,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "sample": "steady-tuned-final-3",
+        "rows_and_differences": {
+          "user_daily": [
+            6612082,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "sample": "steady-tuned-final-4",
+        "rows_and_differences": {
+          "user_daily": [
+            6612082,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "sample": "steady-tuned-final-5",
+        "rows_and_differences": {
+          "user_daily": [
+            6612082,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      }
+    ]
+  }
+}

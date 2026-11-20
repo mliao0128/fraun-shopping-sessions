@@ -1,0 +1,181 @@
+#include "shared.hpp"
+
+#include <chrono>
+#include <cstdlib>
+#include <fcntl.h>
+#include <iostream>
+#include <memory>
+#include <numeric>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+namespace fs = std::filesystem;
+using SV = std::string_view;
+
+void Index::reserve(size_t needed) {
+    size_t capacity = std::bit_ceil(std::max<size_t>(16, needed + needed / 2 + 1));
+    if (capacity <= slots.size()) return;
+    std::vector<Slot> old;
+    old.swap(slots);
+    slots.resize(capacity);
+    for (const Slot& entry : old)
+        if (entry.value != UINT32_MAX) slots[locate(entry.key)] = entry;
+}
+
+uint32_t Index::insert(Key key, uint32_t value) {
+    if ((occupied + 1) * 3 >= slots.size() * 2) reserve(occupied + 1);
+    Slot& entry = slots[locate(key)];
+    if (entry.value == UINT32_MAX) {
+        entry = {key, value};
+        ++occupied;
+    }
+    return entry.value;
+}
+
+namespace {
+struct Mapping {
+    const char* data = nullptr;
+    size_t size = 0;
+    explicit Mapping(const fs::path& path) {
+        int fd = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
+        if (fd < 0) throw std::runtime_error("Cannot open " + path.string());
+        struct stat info{};
+        if (fstat(fd, &info) < 0 || info.st_size < 0) {
+            close(fd);
+            throw std::runtime_error("Cannot stat " + path.string());
+        }
+        size = static_cast<size_t>(info.st_size);
+        if (size) data = static_cast<const char*>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0));
+        close(fd);
+        if (data == MAP_FAILED) throw std::runtime_error("Cannot map " + path.string());
+    }
+    ~Mapping() { if (size) munmap(const_cast<char*>(data), size); }
+    Mapping(const Mapping&) = delete;
+};
+struct Inputs {
+    std::vector<std::unique_ptr<Mapping>> maps;
+    SV file(const fs::path& path) {
+        auto& m = maps.emplace_back(std::make_unique<Mapping>(path));
+        return m->size ? SV(m->data, m->size) : SV{};
+    }
+    std::vector<SV> folder(const fs::path& path) {
+        std::vector<SV> files;
+        for (auto& entry : fs::directory_iterator(path))
+            if (entry.is_regular_file() && entry.path().extension() == ".csv")
+                files.push_back(file(entry.path()));
+        return files;
+    }
+};
+
+template<class F> void rows(SV file, F&& fn) {
+    size_t pos = file.find('\n');
+    if (pos == SV::npos) return;
+    for (++pos; pos < file.size();) {
+        size_t end = file.find('\n', pos);
+        if (end == SV::npos) end = file.size();
+        fn(file.substr(pos, end - pos));
+        pos = end + 1;
+    }
+}
+int64_t manifestTime(SV text, SV key) {
+    std::string label = "\"" + std::string(key) + "\"";
+    size_t field = text.find(label);
+    if (field != SV::npos) {
+        size_t colon = text.find(':', field + label.size());
+        size_t first = colon == SV::npos ? SV::npos : text.find('"', colon + 1);
+        size_t last = first == SV::npos ? SV::npos : text.find('"', first + 1);
+        if (last != SV::npos) {
+            int64_t t = timestamp(text.substr(first + 1, last - first - 1));
+            if (t != INT64_MIN) return t;
+        }
+    }
+    throw std::runtime_error("Invalid manifest field " + std::string(key));
+}
+void dimensions(const fs::path& data, Inputs& inputs, Context& ctx, unsigned workers) {
+    auto manifest = inputs.file(data / "manifest.json");
+    ctx.start = manifestTime(manifest, "window_start");
+    ctx.end = manifestTime(manifest, "window_end");
+    const Key unknown = Key::from("unknown");
+    ctx.categories.push_back(unknown);
+    SV products = inputs.file(data / "products.csv");
+    Index seen;
+    rows(products, [&](SV line) {
+        std::array<SV,2> f;
+        if (!csv(line,f)) throw std::runtime_error("Invalid product row");
+        Key category = Key::from(f[1]);
+        uint32_t next = static_cast<uint32_t>(ctx.categories.size());
+        if (seen.insert(category, next) == next) ctx.categories.push_back(category);
+    });
+    std::sort(ctx.categories.begin(), ctx.categories.end());
+    Index categoryIds;
+    for (uint32_t i = 0; i < ctx.categories.size(); ++i) categoryIds.insert(ctx.categories[i], i);
+    ctx.unknown = categoryIds.find(unknown);
+    ctx.products.reserve(products.size() / 14);
+    rows(products, [&](SV line) {
+        std::array<SV,2> f;
+        if (!csv(line,f)) throw std::runtime_error("Invalid product row");
+        ctx.products.insert(Key::from(f[0]), categoryIds.find(Key::from(f[1])));
+    });
+    ctx.campaignNames.push_back(Key::from("organic"));
+    ctx.channels.push_back(Key::from("organic"));
+    rows(inputs.file(data / "campaigns.csv"), [&](SV line) {
+        std::array<SV,2> f;
+        if (!csv(line,f)) throw std::runtime_error("Invalid campaign row");
+        uint32_t i = static_cast<uint32_t>(ctx.campaignNames.size());
+        ctx.campaignNames.push_back(Key::from(f[0]));
+        ctx.channels.push_back(Key::from(f[1]));
+        ctx.campaigns.insert(ctx.campaignNames.back(), i);
+    });
+    linkPeople(inputs.folder(data / "links"), ctx, workers);
+}
+const char* env(const char* name, const char* fallback) {
+    const char* value = std::getenv(name);
+    return value && *value ? value : fallback;
+}
+}
+
+int main(int argc, char** argv) try {
+    fs::path data = argc > 1 ? argv[1] : env("DATA_DIR","/data");
+    fs::path output = argc > 2 ? argv[2] : env("OUTPUT_DIR","/output");
+    unsigned workers = static_cast<unsigned>(std::clamp(std::stoi(env("NCPU","8")), 1, 64));
+    bool profiling = std::getenv("SHOP_PROFILE") != nullptr;
+    auto start = std::chrono::steady_clock::now(), previous = start;
+    auto stage = [&](const char* name) {
+        auto now = std::chrono::steady_clock::now();
+        if (profiling) std::cerr << name << " " << std::chrono::duration<double>(now - previous).count() << " s\n";
+        previous = now;
+    };
+    Inputs inputs;
+    Context ctx;
+    dimensions(data, inputs, ctx, workers);
+    auto events = inputs.folder(data / "events");
+    auto clicks = inputs.folder(data / "clicks");
+    size_t bytes = 0;
+    for (auto e : events) bytes += e.size();
+    // More buckets balance large people across workers. Keep small datasets
+    // compact, since each active bucket accumulates its own campaign totals.
+    size_t bucketCount = std::clamp(std::bit_ceil(bytes / (4u << 20)), size_t{1}, size_t{256});
+    std::vector<Bucket> buckets(bucketCount);
+    stage("dimensions");
+    ingest(ctx, events, clicks, buckets, workers);
+    stage("ingest");
+    std::vector<Result> results(bucketCount);
+    std::vector<size_t> order(bucketCount);
+    std::iota(order.begin(), order.end(), 0);
+    std::sort(order.begin(), order.end(), [&](auto a,auto b) {
+        return buckets[a].events.size() > buckets[b].events.size();
+    });
+    parallel(bucketCount, workers, [&](size_t i) {
+        size_t b = order[i];
+        aggregate(buckets[b], results[b], ctx.categories.size(), ctx.campaignNames.size());
+        buckets[b] = {};
+    });
+    stage("aggregate");
+    writeOutputs(output, ctx, results, workers);
+    stage("parquet");
+    return 0;
+} catch (const std::exception& e) {
+    std::cerr << e.what() << '\n';
+    return 1;
+}
