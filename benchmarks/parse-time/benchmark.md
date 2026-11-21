@@ -1,12 +1,12 @@
 # Parser and timestamp benchmark
 
-Compared with the [0.87 s official practice entry](https://github.com/mliao0128/fraun-shopping-sessions/commit/53f036fc19dd1a206824b29ca2711dd0308fe1d8). Both binaries ran in fresh offline containers on a Ryzen 9 9950X with WSL2, eight pinned logical CPUs, 24 GiB RAM and no container swap. Inputs were warm. Each dataset had six paired runs, alternating which build ran first. The primary measurement is container start to exit. Other work on the host can affect individual timings.
+Compared with the [0.87 s official practice entry](https://github.com/mliao0128/fraun-shopping-sessions/commit/53f036fc19dd1a206824b29ca2711dd0308fe1d8). Both binaries ran in fresh offline containers on a Ryzen 9 9950X with WSL2, eight pinned logical CPUs, 24 GiB RAM and no container swap. Inputs were warm. Each dataset had six paired runs, alternating which build ran first. The primary measurement is CLOCK_MONOTONIC from before executable startup until after exit. The WSL container engine reported zero durations for five completed runs across the two comparisons. The raw data preserve the engine values, the monotonic timer and the second monotonic-raw clock. All samples are retained; all comparisons use the same monotonic timer. Other work on the host can affect individual timings.
 
 | Generated input | Baseline median | Candidate median | Time saved | Candidate won |
 |---|---:|---:|---:|---:|
-| 20M events, seed 42 | 0.5691 s | 0.5705 s | -0.3% | 3/6 |
-| 20M events, seed 314159 | 0.5425 s | 0.5658 s | -4.3% | 3/6 |
-| 60M events, seed 73 | 1.7693 s | 1.5884 s | 10.2% | 4/6 |
+| 20M events, seed 42 | 0.5724 s | 0.5734 s | -0.2% | 3/6 |
+| 20M events, seed 314159 | 0.5826 s | 0.5688 s | 2.4% | 4/6 |
+| 60M events, seed 73 | 1.7729 s | 1.5905 s | 10.3% | 4/6 |
 
 ## Stage timings
 
