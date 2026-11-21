@@ -1,0 +1,1740 @@
+{
+  "intel_i5_8500": {
+    "42": [
+      {
+        "round": 0,
+        "build": "official",
+        "process_ns": 736171585,
+        "peak_rss_kib": 2891312
+      },
+      {
+        "round": 0,
+        "build": "compat69:je:one",
+        "process_ns": 502124121,
+        "peak_rss_kib": 2879720
+      },
+      {
+        "round": 0,
+        "build": "w70-palette:je:one",
+        "process_ns": 492918858,
+        "peak_rss_kib": 2879952
+      },
+      {
+        "round": 0,
+        "build": "w70-packed:je:one",
+        "process_ns": 522919547,
+        "peak_rss_kib": 2869628
+      },
+      {
+        "round": 1,
+        "build": "w70-packed:je:one",
+        "process_ns": 492351051,
+        "peak_rss_kib": 2885836
+      },
+      {
+        "round": 1,
+        "build": "w70-palette:je:one",
+        "process_ns": 492416004,
+        "peak_rss_kib": 2888036
+      },
+      {
+        "round": 1,
+        "build": "compat69:je:one",
+        "process_ns": 495416397,
+        "peak_rss_kib": 2888028
+      },
+      {
+        "round": 1,
+        "build": "official",
+        "process_ns": 739021752,
+        "peak_rss_kib": 2887656
+      },
+      {
+        "round": 2,
+        "build": "w70-packed:je:one",
+        "process_ns": 495554106,
+        "peak_rss_kib": 2879848
+      },
+      {
+        "round": 2,
+        "build": "official",
+        "process_ns": 724970364,
+        "peak_rss_kib": 2885800
+      },
+      {
+        "round": 2,
+        "build": "compat69:je:one",
+        "process_ns": 497507108,
+        "peak_rss_kib": 2886172
+      },
+      {
+        "round": 2,
+        "build": "w70-palette:je:one",
+        "process_ns": 490840981,
+        "peak_rss_kib": 2882120
+      },
+      {
+        "round": 3,
+        "build": "w70-palette:je:one",
+        "process_ns": 489052132,
+        "peak_rss_kib": 2881816
+      },
+      {
+        "round": 3,
+        "build": "official",
+        "process_ns": 732067228,
+        "peak_rss_kib": 2889772
+      },
+      {
+        "round": 3,
+        "build": "compat69:je:one",
+        "process_ns": 523007066,
+        "peak_rss_kib": 2877740
+      },
+      {
+        "round": 3,
+        "build": "w70-packed:je:one",
+        "process_ns": 493181606,
+        "peak_rss_kib": 2881928
+      },
+      {
+        "round": 4,
+        "build": "w70-packed:je:one",
+        "process_ns": 490381879,
+        "peak_rss_kib": 2882032
+      },
+      {
+        "round": 4,
+        "build": "compat69:je:one",
+        "process_ns": 492933897,
+        "peak_rss_kib": 2890224
+      },
+      {
+        "round": 4,
+        "build": "official",
+        "process_ns": 732875249,
+        "peak_rss_kib": 2888700
+      },
+      {
+        "round": 4,
+        "build": "w70-palette:je:one",
+        "process_ns": 496140776,
+        "peak_rss_kib": 2884056
+      },
+      {
+        "round": 5,
+        "build": "w70-packed:je:one",
+        "process_ns": 516505336,
+        "peak_rss_kib": 2883808
+      },
+      {
+        "round": 5,
+        "build": "official",
+        "process_ns": 766761694,
+        "peak_rss_kib": 2890228
+      },
+      {
+        "round": 5,
+        "build": "w70-palette:je:one",
+        "process_ns": 544555194,
+        "peak_rss_kib": 2888380
+      },
+      {
+        "round": 5,
+        "build": "compat69:je:one",
+        "process_ns": 498502351,
+        "peak_rss_kib": 2879740
+      },
+      {
+        "round": 6,
+        "build": "w70-packed:je:one",
+        "process_ns": 496835746,
+        "peak_rss_kib": 2886224
+      },
+      {
+        "round": 6,
+        "build": "w70-palette:je:one",
+        "process_ns": 495847493,
+        "peak_rss_kib": 2890184
+      },
+      {
+        "round": 6,
+        "build": "official",
+        "process_ns": 739799572,
+        "peak_rss_kib": 2884612
+      },
+      {
+        "round": 6,
+        "build": "compat69:je:one",
+        "process_ns": 509268897,
+        "peak_rss_kib": 2875796
+      },
+      {
+        "round": 7,
+        "build": "compat69:je:one",
+        "process_ns": 516509258,
+        "peak_rss_kib": 2877712
+      },
+      {
+        "round": 7,
+        "build": "official",
+        "process_ns": 729030910,
+        "peak_rss_kib": 2886188
+      },
+      {
+        "round": 7,
+        "build": "w70-palette:je:one",
+        "process_ns": 527522917,
+        "peak_rss_kib": 2872700
+      },
+      {
+        "round": 7,
+        "build": "w70-packed:je:one",
+        "process_ns": 526318210,
+        "peak_rss_kib": 2875748
+      },
+      {
+        "round": 8,
+        "build": "compat69:je:one",
+        "process_ns": 505815555,
+        "peak_rss_kib": 2881896
+      },
+      {
+        "round": 8,
+        "build": "official",
+        "process_ns": 774002852,
+        "peak_rss_kib": 2890504
+      },
+      {
+        "round": 8,
+        "build": "w70-palette:je:one",
+        "process_ns": 538308871,
+        "peak_rss_kib": 2878072
+      },
+      {
+        "round": 8,
+        "build": "w70-packed:je:one",
+        "process_ns": 498919810,
+        "peak_rss_kib": 2877896
+      }
+    ],
+    "807154": [
+      {
+        "round": 0,
+        "build": "official",
+        "process_ns": 2096466844,
+        "peak_rss_kib": 2830988
+      },
+      {
+        "round": 0,
+        "build": "compat69:je:one",
+        "process_ns": 671981451,
+        "peak_rss_kib": 2839708
+      },
+      {
+        "round": 0,
+        "build": "w70-palette:je:one",
+        "process_ns": 557316946,
+        "peak_rss_kib": 2856192
+      },
+      {
+        "round": 0,
+        "build": "w70-packed:je:one",
+        "process_ns": 499451790,
+        "peak_rss_kib": 2883516
+      },
+      {
+        "round": 1,
+        "build": "w70-packed:je:one",
+        "process_ns": 489819347,
+        "peak_rss_kib": 2872968
+      },
+      {
+        "round": 1,
+        "build": "w70-palette:je:one",
+        "process_ns": 489566093,
+        "peak_rss_kib": 2873376
+      },
+      {
+        "round": 1,
+        "build": "compat69:je:one",
+        "process_ns": 498513854,
+        "peak_rss_kib": 2881072
+      },
+      {
+        "round": 1,
+        "build": "official",
+        "process_ns": 732842441,
+        "peak_rss_kib": 2886100
+      },
+      {
+        "round": 2,
+        "build": "w70-packed:je:one",
+        "process_ns": 491838460,
+        "peak_rss_kib": 2865400
+      },
+      {
+        "round": 2,
+        "build": "official",
+        "process_ns": 726440253,
+        "peak_rss_kib": 2889448
+      },
+      {
+        "round": 2,
+        "build": "compat69:je:one",
+        "process_ns": 497507921,
+        "peak_rss_kib": 2881780
+      },
+      {
+        "round": 2,
+        "build": "w70-palette:je:one",
+        "process_ns": 489258673,
+        "peak_rss_kib": 2887708
+      },
+      {
+        "round": 3,
+        "build": "w70-palette:je:one",
+        "process_ns": 486800655,
+        "peak_rss_kib": 2875428
+      },
+      {
+        "round": 3,
+        "build": "official",
+        "process_ns": 720642723,
+        "peak_rss_kib": 2885188
+      },
+      {
+        "round": 3,
+        "build": "compat69:je:one",
+        "process_ns": 501569224,
+        "peak_rss_kib": 2877576
+      },
+      {
+        "round": 3,
+        "build": "w70-packed:je:one",
+        "process_ns": 493711593,
+        "peak_rss_kib": 2875952
+      },
+      {
+        "round": 4,
+        "build": "w70-packed:je:one",
+        "process_ns": 500985511,
+        "peak_rss_kib": 2873384
+      },
+      {
+        "round": 4,
+        "build": "compat69:je:one",
+        "process_ns": 494723265,
+        "peak_rss_kib": 2879532
+      },
+      {
+        "round": 4,
+        "build": "official",
+        "process_ns": 718020187,
+        "peak_rss_kib": 2885700
+      },
+      {
+        "round": 4,
+        "build": "w70-palette:je:one",
+        "process_ns": 498903044,
+        "peak_rss_kib": 2875216
+      },
+      {
+        "round": 5,
+        "build": "w70-packed:je:one",
+        "process_ns": 493447179,
+        "peak_rss_kib": 2871236
+      },
+      {
+        "round": 5,
+        "build": "official",
+        "process_ns": 730121246,
+        "peak_rss_kib": 2884600
+      },
+      {
+        "round": 5,
+        "build": "w70-palette:je:one",
+        "process_ns": 505036125,
+        "peak_rss_kib": 2870392
+      },
+      {
+        "round": 5,
+        "build": "compat69:je:one",
+        "process_ns": 495398923,
+        "peak_rss_kib": 2887632
+      },
+      {
+        "round": 6,
+        "build": "w70-packed:je:one",
+        "process_ns": 489556889,
+        "peak_rss_kib": 2875416
+      },
+      {
+        "round": 6,
+        "build": "w70-palette:je:one",
+        "process_ns": 488543533,
+        "peak_rss_kib": 2875228
+      },
+      {
+        "round": 6,
+        "build": "official",
+        "process_ns": 717158940,
+        "peak_rss_kib": 2888088
+      },
+      {
+        "round": 6,
+        "build": "compat69:je:one",
+        "process_ns": 501612095,
+        "peak_rss_kib": 2877652
+      },
+      {
+        "round": 7,
+        "build": "compat69:je:one",
+        "process_ns": 501096946,
+        "peak_rss_kib": 2879548
+      },
+      {
+        "round": 7,
+        "build": "official",
+        "process_ns": 714102415,
+        "peak_rss_kib": 2888804
+      },
+      {
+        "round": 7,
+        "build": "w70-palette:je:one",
+        "process_ns": 490191763,
+        "peak_rss_kib": 2865444
+      },
+      {
+        "round": 7,
+        "build": "w70-packed:je:one",
+        "process_ns": 492871324,
+        "peak_rss_kib": 2877452
+      },
+      {
+        "round": 8,
+        "build": "compat69:je:one",
+        "process_ns": 495904045,
+        "peak_rss_kib": 2881540
+      },
+      {
+        "round": 8,
+        "build": "official",
+        "process_ns": 736270850,
+        "peak_rss_kib": 2888780
+      },
+      {
+        "round": 8,
+        "build": "w70-palette:je:one",
+        "process_ns": 497323631,
+        "peak_rss_kib": 2875432
+      },
+      {
+        "round": 8,
+        "build": "w70-packed:je:one",
+        "process_ns": 493509347,
+        "peak_rss_kib": 2879640
+      }
+    ],
+    "1599080644": [
+      {
+        "round": 0,
+        "build": "official",
+        "process_ns": 1456620122,
+        "peak_rss_kib": 2832660
+      },
+      {
+        "round": 0,
+        "build": "compat69:je:one",
+        "process_ns": 683824541,
+        "peak_rss_kib": 2805512
+      },
+      {
+        "round": 0,
+        "build": "w70-palette:je:one",
+        "process_ns": 492575715,
+        "peak_rss_kib": 2847368
+      },
+      {
+        "round": 0,
+        "build": "w70-packed:je:one",
+        "process_ns": 484733702,
+        "peak_rss_kib": 2853464
+      },
+      {
+        "round": 1,
+        "build": "w70-packed:je:one",
+        "process_ns": 482487228,
+        "peak_rss_kib": 2857304
+      },
+      {
+        "round": 1,
+        "build": "w70-palette:je:one",
+        "process_ns": 482290190,
+        "peak_rss_kib": 2851200
+      },
+      {
+        "round": 1,
+        "build": "compat69:je:one",
+        "process_ns": 485405633,
+        "peak_rss_kib": 2843276
+      },
+      {
+        "round": 1,
+        "build": "official",
+        "process_ns": 724540404,
+        "peak_rss_kib": 2865848
+      },
+      {
+        "round": 2,
+        "build": "w70-packed:je:one",
+        "process_ns": 483635302,
+        "peak_rss_kib": 2855568
+      },
+      {
+        "round": 2,
+        "build": "official",
+        "process_ns": 724847365,
+        "peak_rss_kib": 2870344
+      },
+      {
+        "round": 2,
+        "build": "compat69:je:one",
+        "process_ns": 488894801,
+        "peak_rss_kib": 2855208
+      },
+      {
+        "round": 2,
+        "build": "w70-palette:je:one",
+        "process_ns": 484441514,
+        "peak_rss_kib": 2845352
+      },
+      {
+        "round": 3,
+        "build": "w70-palette:je:one",
+        "process_ns": 485381795,
+        "peak_rss_kib": 2863780
+      },
+      {
+        "round": 3,
+        "build": "official",
+        "process_ns": 725759498,
+        "peak_rss_kib": 2867912
+      },
+      {
+        "round": 3,
+        "build": "compat69:je:one",
+        "process_ns": 501289028,
+        "peak_rss_kib": 2849144
+      },
+      {
+        "round": 3,
+        "build": "w70-packed:je:one",
+        "process_ns": 483125609,
+        "peak_rss_kib": 2853576
+      },
+      {
+        "round": 4,
+        "build": "w70-packed:je:one",
+        "process_ns": 484936846,
+        "peak_rss_kib": 2861508
+      },
+      {
+        "round": 4,
+        "build": "compat69:je:one",
+        "process_ns": 495920950,
+        "peak_rss_kib": 2859608
+      },
+      {
+        "round": 4,
+        "build": "official",
+        "process_ns": 718520650,
+        "peak_rss_kib": 2868600
+      },
+      {
+        "round": 4,
+        "build": "w70-palette:je:one",
+        "process_ns": 484998036,
+        "peak_rss_kib": 2851204
+      },
+      {
+        "round": 5,
+        "build": "w70-packed:je:one",
+        "process_ns": 480092370,
+        "peak_rss_kib": 2849412
+      },
+      {
+        "round": 5,
+        "build": "official",
+        "process_ns": 719089411,
+        "peak_rss_kib": 2865040
+      },
+      {
+        "round": 5,
+        "build": "w70-palette:je:one",
+        "process_ns": 488424490,
+        "peak_rss_kib": 2874032
+      },
+      {
+        "round": 5,
+        "build": "compat69:je:one",
+        "process_ns": 491456506,
+        "peak_rss_kib": 2857064
+      },
+      {
+        "round": 6,
+        "build": "w70-packed:je:one",
+        "process_ns": 484515416,
+        "peak_rss_kib": 2855536
+      },
+      {
+        "round": 6,
+        "build": "w70-palette:je:one",
+        "process_ns": 482592432,
+        "peak_rss_kib": 2855564
+      },
+      {
+        "round": 6,
+        "build": "official",
+        "process_ns": 711185585,
+        "peak_rss_kib": 2864756
+      },
+      {
+        "round": 6,
+        "build": "compat69:je:one",
+        "process_ns": 494019151,
+        "peak_rss_kib": 2853480
+      },
+      {
+        "round": 7,
+        "build": "compat69:je:one",
+        "process_ns": 525940862,
+        "peak_rss_kib": 2851248
+      },
+      {
+        "round": 7,
+        "build": "official",
+        "process_ns": 711550650,
+        "peak_rss_kib": 2867764
+      },
+      {
+        "round": 7,
+        "build": "w70-palette:je:one",
+        "process_ns": 495744183,
+        "peak_rss_kib": 2865812
+      },
+      {
+        "round": 7,
+        "build": "w70-packed:je:one",
+        "process_ns": 484951817,
+        "peak_rss_kib": 2853508
+      },
+      {
+        "round": 8,
+        "build": "compat69:je:one",
+        "process_ns": 493537908,
+        "peak_rss_kib": 2859652
+      },
+      {
+        "round": 8,
+        "build": "official",
+        "process_ns": 714129859,
+        "peak_rss_kib": 2863760
+      },
+      {
+        "round": 8,
+        "build": "w70-palette:je:one",
+        "process_ns": 488047201,
+        "peak_rss_kib": 2863800
+      },
+      {
+        "round": 8,
+        "build": "w70-packed:je:one",
+        "process_ns": 480305892,
+        "peak_rss_kib": 2847408
+      }
+    ],
+    "1376142809": [
+      {
+        "round": 0,
+        "build": "official",
+        "process_ns": 762821339,
+        "peak_rss_kib": 2888296
+      },
+      {
+        "round": 0,
+        "build": "compat69:je:one",
+        "process_ns": 538594459,
+        "peak_rss_kib": 2870508
+      },
+      {
+        "round": 0,
+        "build": "w70-palette:je:one",
+        "process_ns": 505503831,
+        "peak_rss_kib": 2886564
+      },
+      {
+        "round": 0,
+        "build": "w70-packed:je:one",
+        "process_ns": 488025846,
+        "peak_rss_kib": 2872632
+      },
+      {
+        "round": 1,
+        "build": "w70-packed:je:one",
+        "process_ns": 490972180,
+        "peak_rss_kib": 2874592
+      },
+      {
+        "round": 1,
+        "build": "w70-palette:je:one",
+        "process_ns": 507462593,
+        "peak_rss_kib": 2874708
+      },
+      {
+        "round": 1,
+        "build": "compat69:je:one",
+        "process_ns": 515343510,
+        "peak_rss_kib": 2903356
+      },
+      {
+        "round": 1,
+        "build": "official",
+        "process_ns": 771959886,
+        "peak_rss_kib": 2886432
+      },
+      {
+        "round": 2,
+        "build": "w70-packed:je:one",
+        "process_ns": 486333816,
+        "peak_rss_kib": 2880784
+      },
+      {
+        "round": 2,
+        "build": "official",
+        "process_ns": 729338692,
+        "peak_rss_kib": 2889332
+      },
+      {
+        "round": 2,
+        "build": "compat69:je:one",
+        "process_ns": 494036671,
+        "peak_rss_kib": 2872676
+      },
+      {
+        "round": 2,
+        "build": "w70-palette:je:one",
+        "process_ns": 493879513,
+        "peak_rss_kib": 2880796
+      },
+      {
+        "round": 3,
+        "build": "w70-palette:je:one",
+        "process_ns": 486375732,
+        "peak_rss_kib": 2880848
+      },
+      {
+        "round": 3,
+        "build": "official",
+        "process_ns": 741731578,
+        "peak_rss_kib": 2887516
+      },
+      {
+        "round": 3,
+        "build": "compat69:je:one",
+        "process_ns": 505017642,
+        "peak_rss_kib": 2868600
+      },
+      {
+        "round": 3,
+        "build": "w70-packed:je:one",
+        "process_ns": 491012638,
+        "peak_rss_kib": 2876764
+      },
+      {
+        "round": 4,
+        "build": "w70-packed:je:one",
+        "process_ns": 496211496,
+        "peak_rss_kib": 2880840
+      },
+      {
+        "round": 4,
+        "build": "compat69:je:one",
+        "process_ns": 506146172,
+        "peak_rss_kib": 2882832
+      },
+      {
+        "round": 4,
+        "build": "official",
+        "process_ns": 735682096,
+        "peak_rss_kib": 2888072
+      },
+      {
+        "round": 4,
+        "build": "w70-palette:je:one",
+        "process_ns": 506651805,
+        "peak_rss_kib": 2876772
+      },
+      {
+        "round": 5,
+        "build": "w70-packed:je:one",
+        "process_ns": 495272720,
+        "peak_rss_kib": 2878796
+      },
+      {
+        "round": 5,
+        "build": "official",
+        "process_ns": 738441539,
+        "peak_rss_kib": 2891300
+      },
+      {
+        "round": 5,
+        "build": "w70-palette:je:one",
+        "process_ns": 489058128,
+        "peak_rss_kib": 2876524
+      },
+      {
+        "round": 5,
+        "build": "compat69:je:one",
+        "process_ns": 491546938,
+        "peak_rss_kib": 2874652
+      },
+      {
+        "round": 6,
+        "build": "w70-packed:je:one",
+        "process_ns": 490002402,
+        "peak_rss_kib": 2879208
+      },
+      {
+        "round": 6,
+        "build": "w70-palette:je:one",
+        "process_ns": 540074981,
+        "peak_rss_kib": 2884680
+      },
+      {
+        "round": 6,
+        "build": "official",
+        "process_ns": 747201790,
+        "peak_rss_kib": 2889984
+      },
+      {
+        "round": 6,
+        "build": "compat69:je:one",
+        "process_ns": 499837015,
+        "peak_rss_kib": 2874468
+      },
+      {
+        "round": 7,
+        "build": "compat69:je:one",
+        "process_ns": 519810766,
+        "peak_rss_kib": 2866556
+      },
+      {
+        "round": 7,
+        "build": "official",
+        "process_ns": 793790923,
+        "peak_rss_kib": 2890228
+      },
+      {
+        "round": 7,
+        "build": "w70-palette:je:one",
+        "process_ns": 558303710,
+        "peak_rss_kib": 2890824
+      },
+      {
+        "round": 7,
+        "build": "w70-packed:je:one",
+        "process_ns": 492799138,
+        "peak_rss_kib": 2870592
+      },
+      {
+        "round": 8,
+        "build": "compat69:je:one",
+        "process_ns": 499795672,
+        "peak_rss_kib": 2874724
+      },
+      {
+        "round": 8,
+        "build": "official",
+        "process_ns": 737636907,
+        "peak_rss_kib": 2885132
+      },
+      {
+        "round": 8,
+        "build": "w70-palette:je:one",
+        "process_ns": 497576462,
+        "peak_rss_kib": 2874512
+      },
+      {
+        "round": 8,
+        "build": "w70-packed:je:one",
+        "process_ns": 495441648,
+        "peak_rss_kib": 2886960
+      }
+    ],
+    "1896044346": [
+      {
+        "round": 0,
+        "build": "official",
+        "process_ns": 710687615,
+        "peak_rss_kib": 2890728
+      },
+      {
+        "round": 0,
+        "build": "compat69:je:one",
+        "process_ns": 492381709,
+        "peak_rss_kib": 2875256
+      },
+      {
+        "round": 0,
+        "build": "w70-palette:je:one",
+        "process_ns": 488442951,
+        "peak_rss_kib": 2889588
+      },
+      {
+        "round": 0,
+        "build": "w70-packed:je:one",
+        "process_ns": 524153061,
+        "peak_rss_kib": 2889288
+      },
+      {
+        "round": 1,
+        "build": "w70-packed:je:one",
+        "process_ns": 498350832,
+        "peak_rss_kib": 2879144
+      },
+      {
+        "round": 1,
+        "build": "w70-palette:je:one",
+        "process_ns": 490047894,
+        "peak_rss_kib": 2889568
+      },
+      {
+        "round": 1,
+        "build": "compat69:je:one",
+        "process_ns": 496271865,
+        "peak_rss_kib": 2891584
+      },
+      {
+        "round": 1,
+        "build": "official",
+        "process_ns": 713385107,
+        "peak_rss_kib": 2888676
+      },
+      {
+        "round": 2,
+        "build": "w70-packed:je:one",
+        "process_ns": 573781639,
+        "peak_rss_kib": 2893488
+      },
+      {
+        "round": 2,
+        "build": "official",
+        "process_ns": 709045618,
+        "peak_rss_kib": 2892312
+      },
+      {
+        "round": 2,
+        "build": "compat69:je:one",
+        "process_ns": 495334898,
+        "peak_rss_kib": 2887556
+      },
+      {
+        "round": 2,
+        "build": "w70-palette:je:one",
+        "process_ns": 486957587,
+        "peak_rss_kib": 2881228
+      },
+      {
+        "round": 3,
+        "build": "w70-palette:je:one",
+        "process_ns": 486799284,
+        "peak_rss_kib": 2885544
+      },
+      {
+        "round": 3,
+        "build": "official",
+        "process_ns": 717877352,
+        "peak_rss_kib": 2890328
+      },
+      {
+        "round": 3,
+        "build": "compat69:je:one",
+        "process_ns": 502399587,
+        "peak_rss_kib": 2891636
+      },
+      {
+        "round": 3,
+        "build": "w70-packed:je:one",
+        "process_ns": 488039923,
+        "peak_rss_kib": 2887460
+      },
+      {
+        "round": 4,
+        "build": "w70-packed:je:one",
+        "process_ns": 492428204,
+        "peak_rss_kib": 2889268
+      },
+      {
+        "round": 4,
+        "build": "compat69:je:one",
+        "process_ns": 506610315,
+        "peak_rss_kib": 2893752
+      },
+      {
+        "round": 4,
+        "build": "official",
+        "process_ns": 714590412,
+        "peak_rss_kib": 2888652
+      },
+      {
+        "round": 4,
+        "build": "w70-palette:je:one",
+        "process_ns": 485972517,
+        "peak_rss_kib": 2879360
+      },
+      {
+        "round": 5,
+        "build": "w70-packed:je:one",
+        "process_ns": 487217588,
+        "peak_rss_kib": 2887504
+      },
+      {
+        "round": 5,
+        "build": "official",
+        "process_ns": 804458318,
+        "peak_rss_kib": 2893072
+      },
+      {
+        "round": 5,
+        "build": "w70-palette:je:one",
+        "process_ns": 487690811,
+        "peak_rss_kib": 2879344
+      },
+      {
+        "round": 5,
+        "build": "compat69:je:one",
+        "process_ns": 491469921,
+        "peak_rss_kib": 2879152
+      },
+      {
+        "round": 6,
+        "build": "w70-packed:je:one",
+        "process_ns": 485653828,
+        "peak_rss_kib": 2891600
+      },
+      {
+        "round": 6,
+        "build": "w70-palette:je:one",
+        "process_ns": 486744000,
+        "peak_rss_kib": 2881128
+      },
+      {
+        "round": 6,
+        "build": "official",
+        "process_ns": 719647694,
+        "peak_rss_kib": 2891028
+      },
+      {
+        "round": 6,
+        "build": "compat69:je:one",
+        "process_ns": 493383633,
+        "peak_rss_kib": 2885356
+      },
+      {
+        "round": 7,
+        "build": "compat69:je:one",
+        "process_ns": 499270068,
+        "peak_rss_kib": 2873020
+      },
+      {
+        "round": 7,
+        "build": "official",
+        "process_ns": 714140117,
+        "peak_rss_kib": 2890496
+      },
+      {
+        "round": 7,
+        "build": "w70-palette:je:one",
+        "process_ns": 523210391,
+        "peak_rss_kib": 2879772
+      },
+      {
+        "round": 7,
+        "build": "w70-packed:je:one",
+        "process_ns": 492215232,
+        "peak_rss_kib": 2877264
+      },
+      {
+        "round": 8,
+        "build": "compat69:je:one",
+        "process_ns": 491073738,
+        "peak_rss_kib": 2867096
+      },
+      {
+        "round": 8,
+        "build": "official",
+        "process_ns": 713469694,
+        "peak_rss_kib": 2889836
+      },
+      {
+        "round": 8,
+        "build": "w70-palette:je:one",
+        "process_ns": 494875856,
+        "peak_rss_kib": 2887440
+      },
+      {
+        "round": 8,
+        "build": "w70-packed:je:one",
+        "process_ns": 487707450,
+        "peak_rss_kib": 2883412
+      }
+    ],
+    "1724859792": [
+      {
+        "round": 0,
+        "build": "w70-packed:je:one",
+        "process_ns": 501856843,
+        "peak_rss_kib": 2830128
+      },
+      {
+        "round": 0,
+        "build": "official",
+        "process_ns": 703066511,
+        "peak_rss_kib": 2862152
+      },
+      {
+        "round": 1,
+        "build": "official",
+        "process_ns": 695675607,
+        "peak_rss_kib": 2861384
+      },
+      {
+        "round": 1,
+        "build": "w70-packed:je:one",
+        "process_ns": 479345696,
+        "peak_rss_kib": 2846156
+      },
+      {
+        "round": 2,
+        "build": "w70-packed:je:one",
+        "process_ns": 505790511,
+        "peak_rss_kib": 2844232
+      },
+      {
+        "round": 2,
+        "build": "official",
+        "process_ns": 709769633,
+        "peak_rss_kib": 2862988
+      },
+      {
+        "round": 3,
+        "build": "official",
+        "process_ns": 777008198,
+        "peak_rss_kib": 2860080
+      },
+      {
+        "round": 3,
+        "build": "w70-packed:je:one",
+        "process_ns": 502464410,
+        "peak_rss_kib": 2848384
+      },
+      {
+        "round": 4,
+        "build": "w70-packed:je:one",
+        "process_ns": 484242283,
+        "peak_rss_kib": 2862728
+      },
+      {
+        "round": 4,
+        "build": "official",
+        "process_ns": 697051862,
+        "peak_rss_kib": 2859316
+      },
+      {
+        "round": 5,
+        "build": "official",
+        "process_ns": 697506750,
+        "peak_rss_kib": 2862244
+      },
+      {
+        "round": 5,
+        "build": "w70-packed:je:one",
+        "process_ns": 477481007,
+        "peak_rss_kib": 2852876
+      },
+      {
+        "round": 6,
+        "build": "w70-packed:je:one",
+        "process_ns": 478735425,
+        "peak_rss_kib": 2844332
+      },
+      {
+        "round": 6,
+        "build": "official",
+        "process_ns": 697334349,
+        "peak_rss_kib": 2862040
+      },
+      {
+        "round": 7,
+        "build": "official",
+        "process_ns": 693969758,
+        "peak_rss_kib": 2860756
+      },
+      {
+        "round": 7,
+        "build": "w70-packed:je:one",
+        "process_ns": 477389074,
+        "peak_rss_kib": 2848420
+      },
+      {
+        "round": 8,
+        "build": "w70-packed:je:one",
+        "process_ns": 473343304,
+        "peak_rss_kib": 2846356
+      },
+      {
+        "round": 8,
+        "build": "official",
+        "process_ns": 695508666,
+        "peak_rss_kib": 2860604
+      },
+      {
+        "round": 9,
+        "build": "official",
+        "process_ns": 694951623,
+        "peak_rss_kib": 2863972
+      },
+      {
+        "round": 9,
+        "build": "w70-packed:je:one",
+        "process_ns": 474342859,
+        "peak_rss_kib": 2848188
+      },
+      {
+        "round": 10,
+        "build": "w70-packed:je:one",
+        "process_ns": 478128024,
+        "peak_rss_kib": 2850052
+      },
+      {
+        "round": 10,
+        "build": "official",
+        "process_ns": 696476449,
+        "peak_rss_kib": 2863040
+      },
+      {
+        "round": 11,
+        "build": "official",
+        "process_ns": 697600762,
+        "peak_rss_kib": 2862076
+      },
+      {
+        "round": 11,
+        "build": "w70-packed:je:one",
+        "process_ns": 473885854,
+        "peak_rss_kib": 2852712
+      },
+      {
+        "round": 12,
+        "build": "w70-packed:je:one",
+        "process_ns": 479277383,
+        "peak_rss_kib": 2866720
+      },
+      {
+        "round": 12,
+        "build": "official",
+        "process_ns": 691755020,
+        "peak_rss_kib": 2864636
+      }
+    ],
+    "73": [
+      {
+        "round": 0,
+        "build": "official",
+        "process_ns": 3956333279,
+        "peak_rss_kib": 8016252
+      },
+      {
+        "round": 0,
+        "build": "compat69:je:one",
+        "process_ns": 1479907876,
+        "peak_rss_kib": 8125960
+      },
+      {
+        "round": 0,
+        "build": "w70-palette:je:one",
+        "process_ns": 1441358034,
+        "peak_rss_kib": 8124816
+      },
+      {
+        "round": 0,
+        "build": "w70-packed:je:one",
+        "process_ns": 1417802283,
+        "peak_rss_kib": 8140744
+      },
+      {
+        "round": 1,
+        "build": "w70-packed:je:one",
+        "process_ns": 1430810370,
+        "peak_rss_kib": 8148488
+      },
+      {
+        "round": 1,
+        "build": "w70-palette:je:one",
+        "process_ns": 1451546529,
+        "peak_rss_kib": 8150932
+      },
+      {
+        "round": 1,
+        "build": "compat69:je:one",
+        "process_ns": 1437770709,
+        "peak_rss_kib": 8137256
+      },
+      {
+        "round": 1,
+        "build": "official",
+        "process_ns": 2102465604,
+        "peak_rss_kib": 8230344
+      },
+      {
+        "round": 2,
+        "build": "w70-packed:je:one",
+        "process_ns": 1426761050,
+        "peak_rss_kib": 8148528
+      },
+      {
+        "round": 2,
+        "build": "official",
+        "process_ns": 2091452534,
+        "peak_rss_kib": 8228760
+      },
+      {
+        "round": 2,
+        "build": "compat69:je:one",
+        "process_ns": 1433202264,
+        "peak_rss_kib": 8138000
+      },
+      {
+        "round": 2,
+        "build": "w70-palette:je:one",
+        "process_ns": 1429723662,
+        "peak_rss_kib": 8150668
+      },
+      {
+        "round": 3,
+        "build": "w70-palette:je:one",
+        "process_ns": 1424504127,
+        "peak_rss_kib": 8151720
+      },
+      {
+        "round": 3,
+        "build": "official",
+        "process_ns": 2085891613,
+        "peak_rss_kib": 8227148
+      },
+      {
+        "round": 3,
+        "build": "compat69:je:one",
+        "process_ns": 1449290079,
+        "peak_rss_kib": 8147264
+      },
+      {
+        "round": 3,
+        "build": "w70-packed:je:one",
+        "process_ns": 1424915691,
+        "peak_rss_kib": 8119928
+      },
+      {
+        "round": 4,
+        "build": "w70-packed:je:one",
+        "process_ns": 1419858573,
+        "peak_rss_kib": 8147856
+      },
+      {
+        "round": 4,
+        "build": "compat69:je:one",
+        "process_ns": 1435237548,
+        "peak_rss_kib": 8148376
+      },
+      {
+        "round": 4,
+        "build": "official",
+        "process_ns": 2097307323,
+        "peak_rss_kib": 8226964
+      },
+      {
+        "round": 4,
+        "build": "w70-palette:je:one",
+        "process_ns": 1429574599,
+        "peak_rss_kib": 8141216
+      },
+      {
+        "round": 5,
+        "build": "w70-packed:je:one",
+        "process_ns": 1419642799,
+        "peak_rss_kib": 8141160
+      },
+      {
+        "round": 5,
+        "build": "official",
+        "process_ns": 2109866697,
+        "peak_rss_kib": 8236740
+      },
+      {
+        "round": 5,
+        "build": "w70-palette:je:one",
+        "process_ns": 1450918569,
+        "peak_rss_kib": 8154232
+      },
+      {
+        "round": 5,
+        "build": "compat69:je:one",
+        "process_ns": 1451280603,
+        "peak_rss_kib": 8163256
+      },
+      {
+        "round": 6,
+        "build": "w70-packed:je:one",
+        "process_ns": 1430908374,
+        "peak_rss_kib": 8121984
+      },
+      {
+        "round": 6,
+        "build": "w70-palette:je:one",
+        "process_ns": 1421771577,
+        "peak_rss_kib": 8127556
+      },
+      {
+        "round": 6,
+        "build": "official",
+        "process_ns": 2153878001,
+        "peak_rss_kib": 8234032
+      },
+      {
+        "round": 6,
+        "build": "compat69:je:one",
+        "process_ns": 1460085438,
+        "peak_rss_kib": 8155584
+      },
+      {
+        "round": 7,
+        "build": "compat69:je:one",
+        "process_ns": 1431313516,
+        "peak_rss_kib": 8153468
+      },
+      {
+        "round": 7,
+        "build": "official",
+        "process_ns": 2102807275,
+        "peak_rss_kib": 8226360
+      },
+      {
+        "round": 7,
+        "build": "w70-palette:je:one",
+        "process_ns": 1428645904,
+        "peak_rss_kib": 8121412
+      },
+      {
+        "round": 7,
+        "build": "w70-packed:je:one",
+        "process_ns": 1453332850,
+        "peak_rss_kib": 8136240
+      },
+      {
+        "round": 8,
+        "build": "compat69:je:one",
+        "process_ns": 1429030240,
+        "peak_rss_kib": 8133248
+      },
+      {
+        "round": 8,
+        "build": "official",
+        "process_ns": 2099519579,
+        "peak_rss_kib": 8219896
+      },
+      {
+        "round": 8,
+        "build": "w70-palette:je:one",
+        "process_ns": 1429314513,
+        "peak_rss_kib": 8136292
+      },
+      {
+        "round": 8,
+        "build": "w70-packed:je:one",
+        "process_ns": 1428582079,
+        "peak_rss_kib": 8146768
+      }
+    ]
+  },
+  "ryzen_9950x_smt": {
+    "42": [
+      {
+        "round": 0,
+        "build": "packed",
+        "process_ns": 389087654,
+        "peak_rss_kib": 2926156
+      },
+      {
+        "round": 0,
+        "build": "official",
+        "process_ns": 384618685,
+        "peak_rss_kib": 2884396
+      },
+      {
+        "round": 1,
+        "build": "official",
+        "process_ns": 367801744,
+        "peak_rss_kib": 2916628
+      },
+      {
+        "round": 1,
+        "build": "packed",
+        "process_ns": 299193491,
+        "peak_rss_kib": 2920384
+      },
+      {
+        "round": 2,
+        "build": "packed",
+        "process_ns": 293894546,
+        "peak_rss_kib": 2920516
+      },
+      {
+        "round": 2,
+        "build": "official",
+        "process_ns": 354793106,
+        "peak_rss_kib": 2917316
+      },
+      {
+        "round": 3,
+        "build": "official",
+        "process_ns": 354824775,
+        "peak_rss_kib": 2915584
+      },
+      {
+        "round": 3,
+        "build": "packed",
+        "process_ns": 286825860,
+        "peak_rss_kib": 2917864
+      },
+      {
+        "round": 4,
+        "build": "packed",
+        "process_ns": 279986460,
+        "peak_rss_kib": 2946896
+      },
+      {
+        "round": 4,
+        "build": "official",
+        "process_ns": 358149361,
+        "peak_rss_kib": 2911488
+      },
+      {
+        "round": 5,
+        "build": "official",
+        "process_ns": 352542451,
+        "peak_rss_kib": 2910764
+      },
+      {
+        "round": 5,
+        "build": "packed",
+        "process_ns": 281767403,
+        "peak_rss_kib": 2928500
+      },
+      {
+        "round": 6,
+        "build": "packed",
+        "process_ns": 274862557,
+        "peak_rss_kib": 2918524
+      },
+      {
+        "round": 6,
+        "build": "official",
+        "process_ns": 339067526,
+        "peak_rss_kib": 2903552
+      },
+      {
+        "round": 7,
+        "build": "official",
+        "process_ns": 344240463,
+        "peak_rss_kib": 2901964
+      },
+      {
+        "round": 7,
+        "build": "packed",
+        "process_ns": 289368871,
+        "peak_rss_kib": 2946604
+      },
+      {
+        "round": 8,
+        "build": "packed",
+        "process_ns": 278272735,
+        "peak_rss_kib": 2912064
+      },
+      {
+        "round": 8,
+        "build": "official",
+        "process_ns": 362302409,
+        "peak_rss_kib": 2909904
+      },
+      {
+        "round": 9,
+        "build": "official",
+        "process_ns": 346534159,
+        "peak_rss_kib": 2916008
+      },
+      {
+        "round": 9,
+        "build": "packed",
+        "process_ns": 290494238,
+        "peak_rss_kib": 2938324
+      },
+      {
+        "round": 10,
+        "build": "packed",
+        "process_ns": 289464111,
+        "peak_rss_kib": 2932664
+      },
+      {
+        "round": 10,
+        "build": "official",
+        "process_ns": 348647122,
+        "peak_rss_kib": 2911440
+      }
+    ],
+    "1896044346": [
+      {
+        "round": 0,
+        "build": "packed",
+        "process_ns": 328440547,
+        "peak_rss_kib": 2909496
+      },
+      {
+        "round": 0,
+        "build": "official",
+        "process_ns": 366319985,
+        "peak_rss_kib": 2919244
+      },
+      {
+        "round": 1,
+        "build": "official",
+        "process_ns": 374113734,
+        "peak_rss_kib": 2918772
+      },
+      {
+        "round": 1,
+        "build": "packed",
+        "process_ns": 319015936,
+        "peak_rss_kib": 2941988
+      },
+      {
+        "round": 2,
+        "build": "packed",
+        "process_ns": 299070928,
+        "peak_rss_kib": 2934692
+      },
+      {
+        "round": 2,
+        "build": "official",
+        "process_ns": 383587527,
+        "peak_rss_kib": 2923412
+      },
+      {
+        "round": 3,
+        "build": "official",
+        "process_ns": 369725418,
+        "peak_rss_kib": 2914384
+      },
+      {
+        "round": 3,
+        "build": "packed",
+        "process_ns": 299834739,
+        "peak_rss_kib": 2907664
+      },
+      {
+        "round": 4,
+        "build": "packed",
+        "process_ns": 301826843,
+        "peak_rss_kib": 2921552
+      },
+      {
+        "round": 4,
+        "build": "official",
+        "process_ns": 378375958,
+        "peak_rss_kib": 2918188
+      },
+      {
+        "round": 5,
+        "build": "official",
+        "process_ns": 375272384,
+        "peak_rss_kib": 2918128
+      },
+      {
+        "round": 5,
+        "build": "packed",
+        "process_ns": 308937254,
+        "peak_rss_kib": 2932480
+      },
+      {
+        "round": 6,
+        "build": "packed",
+        "process_ns": 318061558,
+        "peak_rss_kib": 2954808
+      },
+      {
+        "round": 6,
+        "build": "official",
+        "process_ns": 376566070,
+        "peak_rss_kib": 2920440
+      },
+      {
+        "round": 7,
+        "build": "official",
+        "process_ns": 376107170,
+        "peak_rss_kib": 2913156
+      },
+      {
+        "round": 7,
+        "build": "packed",
+        "process_ns": 313471080,
+        "peak_rss_kib": 2923164
+      },
+      {
+        "round": 8,
+        "build": "packed",
+        "process_ns": 295203352,
+        "peak_rss_kib": 2932684
+      },
+      {
+        "round": 8,
+        "build": "official",
+        "process_ns": 372217000,
+        "peak_rss_kib": 2915980
+      },
+      {
+        "round": 9,
+        "build": "official",
+        "process_ns": 377286008,
+        "peak_rss_kib": 2916120
+      },
+      {
+        "round": 9,
+        "build": "packed",
+        "process_ns": 310547245,
+        "peak_rss_kib": 2921840
+      },
+      {
+        "round": 10,
+        "build": "packed",
+        "process_ns": 305404739,
+        "peak_rss_kib": 2907356
+      },
+      {
+        "round": 10,
+        "build": "official",
+        "process_ns": 374621187,
+        "peak_rss_kib": 2911240
+      }
+    ]
+  }
+}

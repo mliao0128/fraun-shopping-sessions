@@ -63,6 +63,7 @@ struct Chunk {
     uint64_t offset = 0, rawBytes = 0, storedBytes = 0, firstData = 0;
     bool hasDictionary = false;
     uint8_t dataEncoding = plain;
+    uint8_t codec = lz4Raw;
 };
 struct Group { size_t rows; std::vector<Chunk> columns; };
 
@@ -71,6 +72,7 @@ class Writer {
     std::span<const Field> schema;
     std::vector<Group> groups;
     std::vector<char> compressed;
+    std::vector<int64_t> widened;
     std::string header, values, levels, combined, indices;
     uint64_t written = 0, totalRows = 0;
     static constexpr size_t targetPage = 1 << 20;
@@ -88,14 +90,20 @@ class Writer {
             c.hasDictionary = true;
         else if (!c.firstData)
             c.firstData = written;
-        if (raw.size() > INT32_MAX) throw std::length_error("Parquet page too large");
+        if (raw.size() > INT32_MAX)
+            throw std::length_error("Parquet page too large");
         const int bytes = static_cast<int>(raw.size());
-        const int bound = LZ4_compressBound(bytes);
-        if (!bound) throw std::length_error("Parquet page exceeds LZ4 maximum");
-        if (compressed.size() < static_cast<size_t>(bound))
-            compressed.resize(bound);
-        const int size = LZ4_compress_fast(raw.data(), compressed.data(), bytes, bound, 2);
-        if (!size) throw std::runtime_error("LZ4 compression failed");
+        string_view payload = raw;
+        if (c.codec == lz4Raw) {
+            const int bound = LZ4_compressBound(bytes);
+            if (!bound) throw std::length_error("Parquet page exceeds LZ4 maximum");
+            if (compressed.size() < static_cast<size_t>(bound))
+                compressed.resize(bound);
+            const int stored = LZ4_compress_fast(raw.data(), compressed.data(), bytes, bound, 2);
+            if (!stored) throw std::runtime_error("LZ4 compression failed");
+            payload = {compressed.data(), static_cast<size_t>(stored)};
+        }
+        const size_t size = payload.size();
         header.clear();
         Compact h{header};
         h.integer(1, I32, dictionary ? 2 : 0); // DATA_PAGE (v1)
@@ -115,7 +123,7 @@ class Writer {
             });
         h.finish();
         emit(header);
-        emit({compressed.data(),size_t(size)});
+        emit(payload);
         c.rawBytes += header.size()+bytes;
         c.storedBytes += header.size()+size;
     }
@@ -149,7 +157,7 @@ class Writer {
                     if (c.hasDictionary)
                         varint(d.out, 8u << 1);
                     d.list(3,Binary,1); d.bytes(field.name);
-                    d.integer(4,I32,lz4Raw); d.integer(5,I64,group.rows);
+                    d.integer(4,I32,c.codec); d.integer(5,I64,group.rows);
                     d.integer(6,I64,c.rawBytes); d.integer(7,I64,c.storedBytes);
                     d.integer(9, I64, c.firstData);
                     if (c.hasDictionary)
@@ -180,42 +188,6 @@ public:
         for (size_t i = 0; i < n; ++i)
             dst[i] = static_cast<char>(static_cast<U>(src[i]) >> (Plane * 8));
     }
-    template <class T> void splitNumbers(const T *src, size_t n) {
-        if (n < 256) {
-            numbers(src, n);
-            return;
-        }
-        using U = std::make_unsigned_t<T>;
-        U all = 0;
-        for (size_t i = 0; i < n; ++i)
-            all |= static_cast<U>(src[i]);
-        const size_t planes = std::max<size_t>(1, (std::bit_width(all) + 7) / 8);
-        values.resize(n * sizeof(T));
-        auto *dst = values.data();
-        if (planes < sizeof(T))
-            std::memset(dst + planes * n, 0, (sizeof(T) - planes) * n);
-        if constexpr (sizeof(T) == 8) {
-            if (planes >= 8)
-                bytePlane<T, 7>(src, dst + 7 * n, n);
-            if (planes >= 7)
-                bytePlane<T, 6>(src, dst + 6 * n, n);
-            if (planes >= 6)
-                bytePlane<T, 5>(src, dst + 5 * n, n);
-            if (planes >= 5)
-                bytePlane<T, 4>(src, dst + 4 * n, n);
-        }
-        if (planes >= 4)
-            bytePlane<T, 3>(src, dst + 3 * n, n);
-        if (planes >= 3)
-            bytePlane<T, 2>(src, dst + 2 * n, n);
-        if (planes >= 2)
-            bytePlane<T, 1>(src, dst + n, n);
-        bytePlane<T, 0>(src, dst, n);
-        auto &c = column();
-        c.dataEncoding = 9;
-        page(c, values, n, 9);
-    }
-
     void userRuns(size_t n, const std::vector<Key> &keys, const std::vector<uint32_t> &counts,
                   size_t &run, size_t &consumed) {
         const size_t initial = run, skip = consumed;
@@ -279,24 +251,141 @@ public:
         page(c, {values.data(), static_cast<size_t>(p - values.data())}, distinct, plain, true);
         page(c, combined, n, 8);
     }
-    void counts64(const uint32_t *src, size_t n) {
-        values.resize(n * 8);
-        uint32_t bits = 0;
-        for (size_t i = 0; i < n; ++i)
-            bits |= src[i];
-        size_t planes = std::max<size_t>(1, (std::bit_width(bits) + 7) / 8);
-        auto *dst = values.data();
-        if (planes == 4)
-            bytePlane<uint32_t, 3>(src, dst + 3 * n, n);
-        if (planes >= 3)
-            bytePlane<uint32_t, 2>(src, dst + 2 * n, n);
-        if (planes >= 2)
-            bytePlane<uint32_t, 1>(src, dst + n, n);
-        bytePlane<uint32_t, 0>(src, dst, n);
-        std::memset(dst + planes * n, 0, (8 - planes) * n);
+    template<unsigned Width> void smallCountPage(const uint32_t *src, size_t n, uint32_t largest) {
+        std::array<int64_t, 64> dictionary;
+        for (uint32_t i = 0; i <= largest; ++i)
+            dictionary[i] = i;
         auto &c = column();
-        c.dataEncoding = 9;
-        page(c, values, n, 9);
+        c.codec = 0;
+        page(c, {reinterpret_cast<const char *>(dictionary.data()), (largest + 1) * sizeof(int64_t)}, largest + 1, plain, true);
+        const size_t groups = (n + 7) / 8;
+        combined.clear();
+        combined.push_back(Width);
+        varint(combined, (groups << 1) | 1);
+        const size_t header = combined.size();
+        combined.resize(header + groups * Width);
+        indices.resize(groups * 8);
+        bytePlane<uint32_t, 0>(src, indices.data(), n);
+        std::memset(indices.data() + n, 0, groups * 8 - n);
+        constexpr uint64_t mask = 0x0101010101010101ULL * ((1u << Width) - 1);
+        for (size_t j = 0; j < groups; ++j) {
+            uint64_t eight;
+            std::memcpy(&eight, indices.data() + 8 * j, 8);
+            const uint64_t packed = _pext_u64(eight, mask);
+            std::memcpy(combined.data() + header + Width * j, &packed, Width);
+        }
+        page(c, combined, n, 8);
+    }
+
+    // Most counts fit in the first 64 entries. Less frequent values get a
+    // dictionary entry on demand, preserving the full 32-bit count.
+    bool countDictionary(const uint32_t *src, size_t n) {
+        if (n < 256)
+            return false;
+        uint32_t largest = 0;
+        for (size_t i = 0; i < n; ++i)
+            largest = std::max(largest, src[i]);
+        if (largest < 64) {
+            if (largest < 16)
+                smallCountPage<4>(src, n, largest);
+            else if (largest < 32)
+                smallCountPage<5>(src, n, largest);
+            else
+                smallCountPage<6>(src, n, largest);
+            return true;
+        }
+        constexpr unsigned common = 64;
+        std::array<uint32_t, 256> keys;
+        std::array<uint16_t, 256> slots;
+        slots.fill(UINT16_MAX);
+        std::array<int64_t, 256> dictionary;
+        for (unsigned j = 0; j < common; ++j)
+            dictionary[j] = j;
+        unsigned used = common;
+        indices.resize(n);
+        bytePlane<uint32_t, 0>(src, indices.data(), n);
+        const auto ceiling = _mm256_set1_epi32(common - 1);
+        for (size_t i = 0; i < n; i += 8) {
+            unsigned exceptions = 0;
+            if (i + 8 <= n) {
+                const auto v = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(src + i));
+                const auto inRange = _mm256_cmpeq_epi32(_mm256_min_epu32(v, ceiling), v);
+                exceptions = ~static_cast<unsigned>(_mm256_movemask_ps(_mm256_castsi256_ps(inRange))) & 255;
+            } else {
+                for (size_t j = i; j < n; ++j)
+                    exceptions |= static_cast<unsigned>(src[j] >= common) << (j - i);
+            }
+            while (exceptions) {
+                const size_t row = i + std::countr_zero(exceptions);
+                exceptions &= exceptions - 1;
+                const uint32_t value = src[row];
+                unsigned slot = (value * 0x9e3779b1u) >> 24;
+                while (slots[slot] != UINT16_MAX && keys[slot] != value)
+                    slot = (slot + 1) & 255;
+                if (slots[slot] == UINT16_MAX) {
+                    if (used == dictionary.size())
+                        return false;
+                    keys[slot] = value;
+                    slots[slot] = used;
+                    dictionary[used++] = value;
+                }
+                indices[row] = static_cast<char>(slots[slot]);
+            }
+        }
+        auto &c = column();
+        c.codec = 0;
+        page(c, {reinterpret_cast<const char *>(dictionary.data()), used * sizeof(int64_t)}, used, plain, true);
+        combined.clear();
+        dictionaryIndices(combined, n);
+        page(c, combined, n, 8);
+        return true;
+    }
+
+    void days(const int32_t *src, size_t n) {
+        if (n < 256) {
+            numbers(src, n);
+            return;
+        }
+        int32_t low = src[0], high = src[0];
+        for (size_t j = 1; j < n; ++j) {
+            low = std::min(low, src[j]);
+            high = std::max(high, src[j]);
+        }
+        const int64_t range = int64_t(high) - low;
+        if (range > 15) {
+            numbers(src, n);
+            return;
+        }
+        const size_t entries = static_cast<size_t>(range) + 1;
+        std::array<int32_t, 16> dictionary;
+        for (size_t j = 0; j < entries; ++j)
+            dictionary[j] = static_cast<int32_t>(int64_t(low) + static_cast<int64_t>(j));
+        auto &c = column();
+        c.codec = 0;
+        page(c, {reinterpret_cast<const char *>(dictionary.data()), entries * sizeof(int32_t)}, entries, plain, true);
+        combined.clear();
+        combined.push_back(4);
+        const size_t groups = (n + 7) / 8;
+        varint(combined, (groups << 1) | 1);
+        const size_t headerBytes = combined.size();
+        combined.resize(headerBytes + 4 * groups);
+        indices.resize(groups * 8);
+        for (size_t j = 0; j < n; ++j)
+            indices[j] = static_cast<char>(uint32_t(src[j]) - uint32_t(low));
+        std::memset(indices.data() + n, 0, groups * 8 - n);
+        for (size_t j = 0; j < groups; ++j) {
+            uint64_t eight;
+            std::memcpy(&eight, indices.data() + j * 8, 8);
+            const uint32_t packed = static_cast<uint32_t>(_pext_u64(eight, 0x0f0f0f0f0f0f0f0fULL));
+            std::memcpy(combined.data() + headerBytes + 4 * j, &packed, 4);
+        }
+        page(c, combined, n, 8);
+    }
+    void counts64(const uint32_t *src, size_t n) {
+        if (countDictionary(src, n))
+            return;
+        widened.assign(src, src + n);
+        numbers(widened.data(), n);
     }
 
     void dictionaryIndices(std::string &out, size_t n) {

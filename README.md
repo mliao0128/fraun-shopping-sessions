@@ -1,6 +1,6 @@
 # Shopping Sessions
 
-A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the mounted CSV files, resolves identities, and writes `user_daily` and `campaign_daily` as Parquet. The [latest paired benchmark](benchmarks/branch-alignment/benchmark.md) compares this build with our official 0.84 s submission and records complete output checks.
+A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the mounted CSV files, resolves identities, and writes `user_daily` and `campaign_daily` as Parquet. The [latest paired benchmark](benchmarks/reader-compatibility/benchmark.md) compares this build with our official 0.84 s submission and records complete output checks.
 
 ## Build and run
 
@@ -62,7 +62,7 @@ To check a generated seed with an independent implementation, install DuckDB 2.0
 - An ordinary duplicate record stores the arrival time and the staged event location in 16 bytes. Long time spans and large bucket indices take a full-width path. Losing copies are marked directly. After identity linking, workers keep unaliased events in place and move aliases to the bucket for their canonical user.
 - The timestamp parser decodes paired event and arrival clocks together when possible. A shared date is converted once. Other supported timestamp forms retain their own conversion paths.
 - Workers collect event times per shopper. For shoppers with many events in a window that fits 32-bit millisecond offsets, a bitmap enumerates occupied time intervals. Each interval is shorter than the 30-minute session gap, so its first event, last event and count are sufficient to recover exact session boundaries. Small groups and wide time windows use a full timestamp sort. Workers group purchases by shopper and sort within each shopper's span. Clicks are also sorted per shopper. A moving seven-day window tracks the last eligible click and the distinct campaigns present. Identical click copies enter and expire together, so the winner and the set of assists are invariant to their multiplicity.
-- Workers write completed user columns in batches and reuse their buffers for subsequent buckets. A writer for the two flat Parquet schemas emits plain data pages with LZ4_RAW compression and nullable definition levels. Workers merge campaign totals before writing the campaign table. Every run derives its time window, identities, product categories and campaign metadata from the mounted data.
+- Workers write completed user columns in batches and reuse their buffers for subsequent buckets. The Parquet writer uses compact dictionaries for short date ranges, counts and repeated strings. It uses full-width PLAIN integer values for revenue and as a fallback, and writes definition levels for nullable categories. Workers merge campaign totals before writing the campaign table. Every run derives its time window, identities, product categories and campaign metadata from the mounted data.
 
 ## Dependencies and license
 

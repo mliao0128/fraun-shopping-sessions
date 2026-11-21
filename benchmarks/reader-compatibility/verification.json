@@ -1,0 +1,226 @@
+{
+  "duckdb_version": "1.5.6",
+  "fixtures": {
+    "A1": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "A10": {
+      "user_daily": 3,
+      "campaign_daily": 3
+    },
+    "A11": {
+      "user_daily": 2,
+      "campaign_daily": 3
+    },
+    "A12": {
+      "user_daily": 4,
+      "campaign_daily": 6
+    },
+    "A2": {
+      "user_daily": 2,
+      "campaign_daily": 2
+    },
+    "A3": {
+      "user_daily": 1,
+      "campaign_daily": 2
+    },
+    "A4": {
+      "user_daily": 2,
+      "campaign_daily": 2
+    },
+    "A5": {
+      "user_daily": 1,
+      "campaign_daily": 2
+    },
+    "A6": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "A7": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "A8": {
+      "user_daily": 2,
+      "campaign_daily": 2
+    },
+    "A9": {
+      "user_daily": 1,
+      "campaign_daily": 2
+    },
+    "E1": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "E10": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "E11": {
+      "user_daily": 2,
+      "campaign_daily": 1
+    },
+    "E12": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "E13": {
+      "user_daily": 0,
+      "campaign_daily": 0
+    },
+    "E14": {
+      "user_daily": 2,
+      "campaign_daily": 2
+    },
+    "E15": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "E16": {
+      "user_daily": 2,
+      "campaign_daily": 2
+    },
+    "E17": {
+      "user_daily": 2,
+      "campaign_daily": 1
+    },
+    "E18": {
+      "user_daily": 2,
+      "campaign_daily": 1
+    },
+    "E19": {
+      "user_daily": 3,
+      "campaign_daily": 2
+    },
+    "E2": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "E20": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "E3": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "E4": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "E5": {
+      "user_daily": 0,
+      "campaign_daily": 0
+    },
+    "E6": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "E7": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "E8": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "E9": {
+      "user_daily": 1,
+      "campaign_daily": 1
+    },
+    "L1": {
+      "user_daily": 2,
+      "campaign_daily": 1
+    },
+    "L2": {
+      "user_daily": 2,
+      "campaign_daily": 2
+    },
+    "L3": {
+      "user_daily": 5,
+      "campaign_daily": 1
+    },
+    "L4": {
+      "user_daily": 1,
+      "campaign_daily": 2
+    }
+  },
+  "dev": {
+    "user_daily": 117038,
+    "campaign_daily": 27400
+  },
+  "timed": {
+    "42": {
+      "user_daily": {
+        "rows": 2246306,
+        "sha256": "eb7d6dd604e897d3ac28c7e4261e6033f9764acc4d33db76e74ae52b644c2eef"
+      },
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "b496a8b06f7da98514af82e13fced52e8de927f4aedcc20ea394286230075a79"
+      }
+    },
+    "807154": {
+      "user_daily": {
+        "rows": 2221335,
+        "sha256": "8ecbe7f48da9cd257a103b6b3538065efad6109befd8250666aadf2681beefb4"
+      },
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "b3fd22446c3230eb1e040de8bb384a5a25ead9a3e85cae085f1c9e42669182e0"
+      }
+    },
+    "73": {
+      "user_daily": {
+        "rows": 6612082,
+        "sha256": "593a3acba6af2639406a8ad12d85e205ecd22f4af90a4cfa40c7878f40602dbd"
+      },
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "927ca38c075969892e97a79a4dbf932f69a8f4dfd5e1c3ddd8f2ce29bb8aa522"
+      }
+    },
+    "1599080644": {
+      "user_daily": {
+        "rows": 2239981,
+        "sha256": "40e884ac3fd83d574a32708fdf160d64a67ff141607c29c9beaa65e9349faf95"
+      },
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "9c90c9141ca5835d214e7ea04dc81cacc92a2b31aba312900aeecdefd315bd51"
+      }
+    },
+    "1376142809": {
+      "user_daily": {
+        "rows": 2223952,
+        "sha256": "85dd6c2b3d24631bf8dc61130e3ee4157734662d889ae48fd91b7de289c6f55a"
+      },
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "e0576e53eee34ded107f63a93ce22f3b24123777aaa52d575a8f24615ff68bfc"
+      }
+    },
+    "1896044346": {
+      "user_daily": {
+        "rows": 2230228,
+        "sha256": "2f0e7732b4ef5169c70a862855b7103e8ccc1eb27a28b5df45fe1640b2e5c098"
+      },
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "fc80f342b38c074268da1dd35a666f08ee8c36f81f11c40c7aa62c9bb95e07dd"
+      }
+    },
+    "1724859792": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "a78e0fd67f4dce672a3b65ec1c4b19732748795cbc916e40f137dd877a5e15ad"
+      },
+      "user_daily": {
+        "rows": 2226373,
+        "sha256": "c4d19c86edb31f0916ab1b8a5d4e0f522f3f5714a5e067fe89cecec39fc84605"
+      }
+    }
+  },
+  "passed": true
+}

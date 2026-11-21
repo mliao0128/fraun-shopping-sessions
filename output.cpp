@@ -35,10 +35,10 @@ void writeOutputs(const fs::path& root, const Context& ctx, std::vector<Result>&
                 const size_t n = std::min(rowsPerGroup, rows.days.size() - start);
                 file.group(n);
                 file.userRuns(n, rows.people, rows.userCounts, run, consumed);
-                file.splitNumbers(rows.days.data() + start, n);
+                file.days(rows.days.data() + start, n);
                 file.counts64(rows.sessions.data() + start, n);
                 file.counts64(rows.events.data() + start, n);
-                file.splitNumbers(rows.revenue.data() + start, n);
+                file.numbers(rows.revenue.data() + start, n);
                 file.categories(rows.top.data() + start, n, ctx.categories);
             }
             rows.userCounts.clear();
