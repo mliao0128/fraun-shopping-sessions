@@ -1,6 +1,8 @@
 # Shopping Sessions benchmark
 
-The [current benchmark](benchmarks/after-084/benchmark.md) compares this candidate with the submitted 0.84 s build. The [previous comparison](benchmarks/sub70/benchmark.md) measured that build against our 0.87 s submission.
+The [Intel event parser benchmark](benchmarks/intel-event-parser/benchmark.md) compares independent CSV delimiter decoding with commit `64e6b93` on six Intel cores. [Raw measurements](benchmarks/intel-event-parser/measurements.json)
+
+The [previous benchmark](benchmarks/after-084/benchmark.md) compares this candidate with the submitted 0.84 s build. The [previous comparison](benchmarks/sub70/benchmark.md) measured that build against our 0.87 s submission.
 
 The [previous release benchmark](benchmarks/subsecond/benchmark.md) compares the submitted 0.87 s build with Jerry Hu's official 1.19 s entry.
 

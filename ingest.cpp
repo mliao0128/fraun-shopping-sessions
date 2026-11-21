@@ -1,5 +1,6 @@
 #include <sys/mman.h>
 #include "shared.hpp"
+#include "event_fields.hpp"
 
 #include <algorithm>
 #include <array>
@@ -414,7 +415,7 @@ inline bool eventTimes(std::string_view event, std::string_view arrival, const C
 // copy does, valid or not: an invalid earliest copy suppresses later ones.
 inline bool parseEvent(std::string_view line, const Context& ctx, ParsedEvent& out) {
     std::array<std::string_view,7> f;
-    if (!csv(line, f) || f[0].empty()) return false;
+    if (!eventFields(line, f) || f[0].empty()) return false;
     out.id = Key::from(f[0]);
     out.valid = false;
     out.arrival = invalidTime;

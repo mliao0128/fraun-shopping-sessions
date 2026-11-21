@@ -1,0 +1,1397 @@
+{
+  "confirmation": {
+    "p42": {
+      "reference_s": 0.691594116,
+      "candidate_s": 0.6856439895,
+      "reduction": 0.008603494972475922,
+      "wins": 5,
+      "parse_reference_s": 0.315696,
+      "parse_candidate_s": 0.310772
+    },
+    "p807154": {
+      "reference_s": 0.6599201065,
+      "candidate_s": 0.65506072,
+      "reduction": 0.007363598187320797,
+      "wins": 6,
+      "parse_reference_s": 0.30572699999999997,
+      "parse_candidate_s": 0.300469
+    },
+    "f73": {
+      "reference_s": 1.905338273,
+      "candidate_s": 1.8824643525,
+      "reduction": 0.012005175576505045,
+      "wins": 5,
+      "parse_reference_s": 0.923593,
+      "parse_candidate_s": 0.9193285
+    }
+  },
+  "profiling": {
+    "p42": {
+      "event": {
+        "worker_ms": 1370.093979,
+        "timestamp_ns": 12.086932329512058,
+        "estimated_timestamp_cpu_ms": 259.1708667466256
+      },
+      "click": {
+        "worker_ms": 278.027758,
+        "timestamp_ns": 10.304620553207343,
+        "estimated_timestamp_cpu_ms": 52.9383955269665
+      },
+      "event_csv_ns": 19.157390584955778,
+      "event_parse_ns": 38.893789872939976
+    },
+    "p807154": {
+      "event": {
+        "worker_ms": 1345.345458,
+        "timestamp_ns": 12.129546367346371,
+        "estimated_timestamp_cpu_ms": 260.55488798747405
+      },
+      "click": {
+        "worker_ms": 245.023397,
+        "timestamp_ns": 10.311026040185801,
+        "estimated_timestamp_cpu_ms": 52.32829047121218
+      },
+      "event_csv_ns": 19.20082887402412,
+      "event_parse_ns": 38.99265243331441
+    },
+    "f73": {
+      "event": {
+        "worker_ms": 3994.533345,
+        "timestamp_ns": 12.05093094065027,
+        "estimated_timestamp_cpu_ms": 755.538869206278
+      },
+      "click": {
+        "worker_ms": 1070.102432,
+        "timestamp_ns": 10.210427919207481,
+        "estimated_timestamp_cpu_ms": 155.59541851637087
+      },
+      "event_csv_ns": 19.237613364037784,
+      "event_parse_ns": 38.74008282550087
+    }
+  },
+  "screen_medians": {
+    "p42": {
+      "64e6b93": 0.687437783,
+      "event": 0.690662029,
+      "bisect": 0.690339782
+    },
+    "p807154": {},
+    "f73": {
+      "64e6b93": 1.881025549,
+      "event": 1.873155297,
+      "bisect": 1.888457683
+    }
+  },
+  "screen": [
+    {
+      "seed": "p42",
+      "pair": 0,
+      "commit": "bisect",
+      "stages": {
+        "dimensions": 0.00697312,
+        "start": 4.1e-08,
+        "parse": 0.315666,
+        "dedup": 0.105709,
+        "await-links": 9.9334e-05,
+        "route": 0.0574429,
+        "ingest": 0.478987,
+        "aggregate-output": 0.197741
+      },
+      "process_ns": 729003629,
+      "monotonic_ns": 729005160,
+      "peak_rss_kib": 2877052
+    },
+    {
+      "seed": "p42",
+      "pair": 0,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00583616,
+        "start": 4.2e-08,
+        "parse": 0.315833,
+        "dedup": 0.10632,
+        "await-links": 8.2375e-05,
+        "route": 0.0574533,
+        "ingest": 0.479747,
+        "aggregate-output": 0.162008
+      },
+      "process_ns": 690223132,
+      "monotonic_ns": 690224759,
+      "peak_rss_kib": 2877504
+    },
+    {
+      "seed": "p42",
+      "pair": 0,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00581712,
+        "start": 3.3e-08,
+        "parse": 0.310318,
+        "dedup": 0.105232,
+        "await-links": 9.2415e-05,
+        "route": 0.0580689,
+        "ingest": 0.47378,
+        "aggregate-output": 0.163447
+      },
+      "process_ns": 684074586,
+      "monotonic_ns": 684076176,
+      "peak_rss_kib": 2878660
+    },
+    {
+      "seed": "p42",
+      "pair": 1,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00564984,
+        "start": 5.6e-08,
+        "parse": 0.318836,
+        "dedup": 0.105549,
+        "await-links": 8.4882e-05,
+        "route": 0.057474,
+        "ingest": 0.482015,
+        "aggregate-output": 0.177253
+      },
+      "process_ns": 706902235,
+      "monotonic_ns": 706903901,
+      "peak_rss_kib": 2881404
+    },
+    {
+      "seed": "p42",
+      "pair": 1,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00586736,
+        "start": 4.5e-08,
+        "parse": 0.321589,
+        "dedup": 0.106354,
+        "await-links": 6.9705e-05,
+        "route": 0.0579714,
+        "ingest": 0.486056,
+        "aggregate-output": 0.163324
+      },
+      "process_ns": 696426141,
+      "monotonic_ns": 696427776,
+      "peak_rss_kib": 2877352
+    },
+    {
+      "seed": "p42",
+      "pair": 1,
+      "commit": "bisect",
+      "stages": {
+        "dimensions": 0.00574868,
+        "start": 4.6e-08,
+        "parse": 0.318107,
+        "dedup": 0.10426,
+        "await-links": 6.4645e-05,
+        "route": 0.0574784,
+        "ingest": 0.479981,
+        "aggregate-output": 0.163132
+      },
+      "process_ns": 690339782,
+      "monotonic_ns": 690341388,
+      "peak_rss_kib": 2874016
+    },
+    {
+      "seed": "p42",
+      "pair": 2,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00584449,
+        "start": 3.4e-08,
+        "parse": 0.32156,
+        "dedup": 0.103595,
+        "await-links": 4.3289e-05,
+        "route": 0.0582539,
+        "ingest": 0.483524,
+        "aggregate-output": 0.161169
+      },
+      "process_ns": 690662029,
+      "monotonic_ns": 690663627,
+      "peak_rss_kib": 2875584
+    },
+    {
+      "seed": "p42",
+      "pair": 2,
+      "commit": "bisect",
+      "stages": {
+        "dimensions": 0.00599245,
+        "start": 6.1e-08,
+        "parse": 0.318584,
+        "dedup": 0.105628,
+        "await-links": 7.9987e-05,
+        "route": 0.0571263,
+        "ingest": 0.481493,
+        "aggregate-output": 0.162815
+      },
+      "process_ns": 690253604,
+      "monotonic_ns": 690255234,
+      "peak_rss_kib": 2879072
+    },
+    {
+      "seed": "p42",
+      "pair": 2,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00575399,
+        "start": 5.1e-08,
+        "parse": 0.313689,
+        "dedup": 0.102942,
+        "await-links": 2.8175e-05,
+        "route": 0.0571848,
+        "ingest": 0.473901,
+        "aggregate-output": 0.161554
+      },
+      "process_ns": 683023544,
+      "monotonic_ns": 683025144,
+      "peak_rss_kib": 2877616
+    },
+    {
+      "seed": "p42",
+      "pair": 3,
+      "commit": "bisect",
+      "stages": {
+        "dimensions": 0.005964,
+        "start": 4.3e-08,
+        "parse": 0.318933,
+        "dedup": 0.105744,
+        "await-links": 5.6748e-05,
+        "route": 0.0575314,
+        "ingest": 0.482339,
+        "aggregate-output": 0.164362
+      },
+      "process_ns": 692811649,
+      "monotonic_ns": 692813262,
+      "peak_rss_kib": 2879036
+    },
+    {
+      "seed": "p42",
+      "pair": 3,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00576217,
+        "start": 4.8e-08,
+        "parse": 0.315671,
+        "dedup": 0.105359,
+        "await-links": 5.2919e-05,
+        "route": 0.057371,
+        "ingest": 0.478523,
+        "aggregate-output": 0.163228
+      },
+      "process_ns": 687437783,
+      "monotonic_ns": 687439399,
+      "peak_rss_kib": 2877376
+    },
+    {
+      "seed": "p42",
+      "pair": 3,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00586383,
+        "start": 4.7e-08,
+        "parse": 0.309159,
+        "dedup": 0.104071,
+        "await-links": 5.6826e-05,
+        "route": 0.0579464,
+        "ingest": 0.471305,
+        "aggregate-output": 0.160701
+      },
+      "process_ns": 677554129,
+      "monotonic_ns": 677555724,
+      "peak_rss_kib": 2876264
+    },
+    {
+      "seed": "f73",
+      "pair": 0,
+      "commit": "bisect",
+      "stages": {
+        "dimensions": 0.00560008,
+        "start": 4.8e-08,
+        "parse": 1.05873,
+        "dedup": 0.175866,
+        "await-links": 5.9206e-05,
+        "route": 0.189808,
+        "ingest": 1.42452,
+        "aggregate-output": 0.513586
+      },
+      "process_ns": 2028617453,
+      "monotonic_ns": 2028622261,
+      "peak_rss_kib": 8159992
+    },
+    {
+      "seed": "f73",
+      "pair": 0,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00565474,
+        "start": 4.5e-08,
+        "parse": 0.963738,
+        "dedup": 0.182835,
+        "await-links": 8.3287e-05,
+        "route": 0.188455,
+        "ingest": 1.33517,
+        "aggregate-output": 0.501492
+      },
+      "process_ns": 1913423763,
+      "monotonic_ns": 1913428307,
+      "peak_rss_kib": 8164640
+    },
+    {
+      "seed": "f73",
+      "pair": 0,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.0057133,
+        "start": 4.6e-08,
+        "parse": 0.922005,
+        "dedup": 0.177198,
+        "await-links": 2.8056e-05,
+        "route": 0.191697,
+        "ingest": 1.29099,
+        "aggregate-output": 0.509691
+      },
+      "process_ns": 1887342887,
+      "monotonic_ns": 1887347371,
+      "peak_rss_kib": 8185740
+    },
+    {
+      "seed": "f73",
+      "pair": 1,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00566801,
+        "start": 4.1e-08,
+        "parse": 0.931551,
+        "dedup": 0.178116,
+        "await-links": 6.6642e-05,
+        "route": 0.187516,
+        "ingest": 1.29731,
+        "aggregate-output": 0.517894
+      },
+      "process_ns": 1891384939,
+      "monotonic_ns": 1891389414,
+      "peak_rss_kib": 8169640
+    },
+    {
+      "seed": "f73",
+      "pair": 1,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00557986,
+        "start": 4.2e-08,
+        "parse": 0.914949,
+        "dedup": 0.17498,
+        "await-links": 5.1587e-05,
+        "route": 0.191272,
+        "ingest": 1.28132,
+        "aggregate-output": 0.504775
+      },
+      "process_ns": 1858855250,
+      "monotonic_ns": 1858859669,
+      "peak_rss_kib": 8191784
+    },
+    {
+      "seed": "f73",
+      "pair": 1,
+      "commit": "bisect",
+      "stages": {
+        "dimensions": 0.00564237,
+        "start": 4.4e-08,
+        "parse": 0.934603,
+        "dedup": 0.175992,
+        "await-links": 3.0887e-05,
+        "route": 0.187186,
+        "ingest": 1.29786,
+        "aggregate-output": 0.512441
+      },
+      "process_ns": 1882479020,
+      "monotonic_ns": 1882483491,
+      "peak_rss_kib": 8191944
+    },
+    {
+      "seed": "f73",
+      "pair": 2,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00558446,
+        "start": 5.2e-08,
+        "parse": 0.911339,
+        "dedup": 0.176875,
+        "await-links": 3.4621e-05,
+        "route": 0.191528,
+        "ingest": 1.27983,
+        "aggregate-output": 0.545573
+      },
+      "process_ns": 1897991016,
+      "monotonic_ns": 1897995527,
+      "peak_rss_kib": 8175668
+    },
+    {
+      "seed": "f73",
+      "pair": 2,
+      "commit": "bisect",
+      "stages": {
+        "dimensions": 0.00560848,
+        "start": 5.2e-08,
+        "parse": 0.926138,
+        "dedup": 0.184424,
+        "await-links": 6.4125e-05,
+        "route": 0.192339,
+        "ingest": 1.30302,
+        "aggregate-output": 0.514154
+      },
+      "process_ns": 1888457683,
+      "monotonic_ns": 1888462173,
+      "peak_rss_kib": 8175484
+    },
+    {
+      "seed": "f73",
+      "pair": 2,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00567986,
+        "start": 3.4e-08,
+        "parse": 0.925207,
+        "dedup": 0.178206,
+        "await-links": 2.8948e-05,
+        "route": 0.18718,
+        "ingest": 1.29067,
+        "aggregate-output": 0.511469
+      },
+      "process_ns": 1873350074,
+      "monotonic_ns": 1873354718,
+      "peak_rss_kib": 8179272
+    },
+    {
+      "seed": "f73",
+      "pair": 3,
+      "commit": "bisect",
+      "stages": {
+        "dimensions": 0.00565377,
+        "start": 5e-08,
+        "parse": 0.953832,
+        "dedup": 0.177628,
+        "await-links": 5.8544e-05,
+        "route": 0.187056,
+        "ingest": 1.31863,
+        "aggregate-output": 0.511621
+      },
+      "process_ns": 1901613677,
+      "monotonic_ns": 1901618177,
+      "peak_rss_kib": 8187216
+    },
+    {
+      "seed": "f73",
+      "pair": 3,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00632663,
+        "start": 4.7e-08,
+        "parse": 0.92064,
+        "dedup": 0.181821,
+        "await-links": 4.1367e-05,
+        "route": 0.190317,
+        "ingest": 1.29288,
+        "aggregate-output": 0.514914
+      },
+      "process_ns": 1881025549,
+      "monotonic_ns": 1881030020,
+      "peak_rss_kib": 8173652
+    },
+    {
+      "seed": "f73",
+      "pair": 3,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00630768,
+        "start": 4.2e-08,
+        "parse": 0.902326,
+        "dedup": 0.180747,
+        "await-links": 2.713e-05,
+        "route": 0.198843,
+        "ingest": 1.28198,
+        "aggregate-output": 0.518457
+      },
+      "process_ns": 1873155297,
+      "monotonic_ns": 1873159742,
+      "peak_rss_kib": 8180692
+    }
+  ],
+  "runs": [
+    {
+      "seed": "p42",
+      "pair": 0,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00807087,
+        "start": 4.2e-08,
+        "parse": 0.311508,
+        "dedup": 0.105872,
+        "await-links": 9.506e-05,
+        "route": 0.0582406,
+        "ingest": 0.475774,
+        "aggregate-output": 0.160411
+      },
+      "process_ns": 691889262,
+      "monotonic_ns": 691890765,
+      "peak_rss_kib": 2879104
+    },
+    {
+      "seed": "p42",
+      "pair": 0,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00570942,
+        "start": 4.3e-08,
+        "parse": 0.317034,
+        "dedup": 0.110006,
+        "await-links": 9.646e-05,
+        "route": 0.0574952,
+        "ingest": 0.484711,
+        "aggregate-output": 0.161061
+      },
+      "process_ns": 696853983,
+      "monotonic_ns": 696855619,
+      "peak_rss_kib": 2879168
+    },
+    {
+      "seed": "p42",
+      "pair": 1,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00573091,
+        "start": 4.6e-08,
+        "parse": 0.315804,
+        "dedup": 0.107049,
+        "await-links": 3.866e-05,
+        "route": 0.0573627,
+        "ingest": 0.480317,
+        "aggregate-output": 0.1615
+      },
+      "process_ns": 694125443,
+      "monotonic_ns": 694127059,
+      "peak_rss_kib": 2877212
+    },
+    {
+      "seed": "p42",
+      "pair": 1,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00599271,
+        "start": 4.2e-08,
+        "parse": 0.310565,
+        "dedup": 0.109337,
+        "await-links": 4.2885e-05,
+        "route": 0.0580633,
+        "ingest": 0.478084,
+        "aggregate-output": 0.163441
+      },
+      "process_ns": 691538611,
+      "monotonic_ns": 691540232,
+      "peak_rss_kib": 2877876
+    },
+    {
+      "seed": "p42",
+      "pair": 2,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00577516,
+        "start": 4.3e-08,
+        "parse": 0.310183,
+        "dedup": 0.103546,
+        "await-links": 9.8999e-05,
+        "route": 0.0578274,
+        "ingest": 0.471726,
+        "aggregate-output": 0.162989
+      },
+      "process_ns": 685082928,
+      "monotonic_ns": 685084542,
+      "peak_rss_kib": 2877164
+    },
+    {
+      "seed": "p42",
+      "pair": 2,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00582255,
+        "start": 4.8e-08,
+        "parse": 0.317199,
+        "dedup": 0.103857,
+        "await-links": 8.5397e-05,
+        "route": 0.0572663,
+        "ingest": 0.478478,
+        "aggregate-output": 0.161197
+      },
+      "process_ns": 689597498,
+      "monotonic_ns": 689599121,
+      "peak_rss_kib": 2877720
+    },
+    {
+      "seed": "p42",
+      "pair": 3,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.0059555,
+        "start": 5.7e-08,
+        "parse": 0.314926,
+        "dedup": 0.100879,
+        "await-links": 7.2552e-05,
+        "route": 0.0571968,
+        "ingest": 0.473145,
+        "aggregate-output": 0.162342
+      },
+      "process_ns": 686075014,
+      "monotonic_ns": 686076633,
+      "peak_rss_kib": 2879560
+    },
+    {
+      "seed": "p42",
+      "pair": 3,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.0058831,
+        "start": 3.4e-08,
+        "parse": 0.31194,
+        "dedup": 0.103593,
+        "await-links": 0.000126232,
+        "route": 0.0579258,
+        "ingest": 0.473659,
+        "aggregate-output": 0.161194
+      },
+      "process_ns": 685465047,
+      "monotonic_ns": 685466668,
+      "peak_rss_kib": 2876472
+    },
+    {
+      "seed": "p42",
+      "pair": 4,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00613681,
+        "start": 4.7e-08,
+        "parse": 0.310677,
+        "dedup": 0.105994,
+        "await-links": 8.7154e-05,
+        "route": 0.0583277,
+        "ingest": 0.475143,
+        "aggregate-output": 0.164194
+      },
+      "process_ns": 690553569,
+      "monotonic_ns": 690555197,
+      "peak_rss_kib": 2881304
+    },
+    {
+      "seed": "p42",
+      "pair": 4,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00593931,
+        "start": 4.6e-08,
+        "parse": 0.315588,
+        "dedup": 0.101556,
+        "await-links": 9.7701e-05,
+        "route": 0.0572516,
+        "ingest": 0.474564,
+        "aggregate-output": 0.163016
+      },
+      "process_ns": 687734986,
+      "monotonic_ns": 687736591,
+      "peak_rss_kib": 2881216
+    },
+    {
+      "seed": "p42",
+      "pair": 5,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00580138,
+        "start": 4.3e-08,
+        "parse": 0.315311,
+        "dedup": 0.106186,
+        "await-links": 9.92e-05,
+        "route": 0.0573644,
+        "ingest": 0.479034,
+        "aggregate-output": 0.163587
+      },
+      "process_ns": 693590734,
+      "monotonic_ns": 693592363,
+      "peak_rss_kib": 2878796
+    },
+    {
+      "seed": "p42",
+      "pair": 5,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00588455,
+        "start": 3.5e-08,
+        "parse": 0.310867,
+        "dedup": 0.10371,
+        "await-links": 9.664e-05,
+        "route": 0.0579985,
+        "ingest": 0.472747,
+        "aggregate-output": 0.159561
+      },
+      "process_ns": 682270315,
+      "monotonic_ns": 682271925,
+      "peak_rss_kib": 2876920
+    },
+    {
+      "seed": "p42",
+      "pair": 6,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00586041,
+        "start": 5.1e-08,
+        "parse": 0.315414,
+        "dedup": 0.0996682,
+        "await-links": 8.796e-05,
+        "route": 0.0577887,
+        "ingest": 0.473004,
+        "aggregate-output": 0.162565
+      },
+      "process_ns": 685822932,
+      "monotonic_ns": 685824432,
+      "peak_rss_kib": 2876568
+    },
+    {
+      "seed": "p42",
+      "pair": 6,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00570475,
+        "start": 3.4e-08,
+        "parse": 0.318204,
+        "dedup": 0.113945,
+        "await-links": 9.8768e-05,
+        "route": 0.0574461,
+        "ingest": 0.489762,
+        "aggregate-output": 0.175263
+      },
+      "process_ns": 716047968,
+      "monotonic_ns": 716049649,
+      "peak_rss_kib": 2875872
+    },
+    {
+      "seed": "p807154",
+      "pair": 0,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00627978,
+        "start": 4.2e-08,
+        "parse": 0.300003,
+        "dedup": 0.112886,
+        "await-links": 7.0587e-05,
+        "route": 0.0566857,
+        "ingest": 0.46969,
+        "aggregate-output": 0.160614
+      },
+      "process_ns": 660666452,
+      "monotonic_ns": 660667996,
+      "peak_rss_kib": 2873440
+    },
+    {
+      "seed": "p807154",
+      "pair": 0,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00614615,
+        "start": 4.9e-08,
+        "parse": 0.304775,
+        "dedup": 0.103158,
+        "await-links": 9.2585e-05,
+        "route": 0.0556129,
+        "ingest": 0.46371,
+        "aggregate-output": 0.163055
+      },
+      "process_ns": 656584872,
+      "monotonic_ns": 656586417,
+      "peak_rss_kib": 2873060
+    },
+    {
+      "seed": "p807154",
+      "pair": 1,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00644875,
+        "start": 3.5e-08,
+        "parse": 0.304747,
+        "dedup": 0.106832,
+        "await-links": 9.6054e-05,
+        "route": 0.0559121,
+        "ingest": 0.467659,
+        "aggregate-output": 0.163206
+      },
+      "process_ns": 660678070,
+      "monotonic_ns": 660679611,
+      "peak_rss_kib": 2875668
+    },
+    {
+      "seed": "p807154",
+      "pair": 1,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.0063125,
+        "start": 4.5e-08,
+        "parse": 0.303469,
+        "dedup": 0.104611,
+        "await-links": 7.1552e-05,
+        "route": 0.0567574,
+        "ingest": 0.464984,
+        "aggregate-output": 0.163614
+      },
+      "process_ns": 659766838,
+      "monotonic_ns": 659768390,
+      "peak_rss_kib": 2873960
+    },
+    {
+      "seed": "p807154",
+      "pair": 2,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00654024,
+        "start": 4.2e-08,
+        "parse": 0.302385,
+        "dedup": 0.108191,
+        "await-links": 6.7757e-05,
+        "route": 0.0566593,
+        "ingest": 0.467365,
+        "aggregate-output": 0.159807
+      },
+      "process_ns": 656380346,
+      "monotonic_ns": 656381878,
+      "peak_rss_kib": 2875468
+    },
+    {
+      "seed": "p807154",
+      "pair": 2,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00635157,
+        "start": 5e-08,
+        "parse": 0.307593,
+        "dedup": 0.109566,
+        "await-links": 7.888e-05,
+        "route": 0.0586278,
+        "ingest": 0.475938,
+        "aggregate-output": 0.163894
+      },
+      "process_ns": 668919774,
+      "monotonic_ns": 668921347,
+      "peak_rss_kib": 2872428
+    },
+    {
+      "seed": "p807154",
+      "pair": 3,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00637544,
+        "start": 4.4e-08,
+        "parse": 0.306003,
+        "dedup": 0.0991247,
+        "await-links": 9.7064e-05,
+        "route": 0.0557554,
+        "ingest": 0.461056,
+        "aggregate-output": 0.166058
+      },
+      "process_ns": 657837883,
+      "monotonic_ns": 657839433,
+      "peak_rss_kib": 2875256
+    },
+    {
+      "seed": "p807154",
+      "pair": 3,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00626718,
+        "start": 4.2e-08,
+        "parse": 0.299867,
+        "dedup": 0.099827,
+        "await-links": 9.3609e-05,
+        "route": 0.0568357,
+        "ingest": 0.456695,
+        "aggregate-output": 0.161482
+      },
+      "process_ns": 648985081,
+      "monotonic_ns": 648986603,
+      "peak_rss_kib": 2875148
+    },
+    {
+      "seed": "p807154",
+      "pair": 4,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00621852,
+        "start": 4.6e-08,
+        "parse": 0.299986,
+        "dedup": 0.107142,
+        "await-links": 6.801e-05,
+        "route": 0.056588,
+        "ingest": 0.463858,
+        "aggregate-output": 0.162251
+      },
+      "process_ns": 656648753,
+      "monotonic_ns": 656650279,
+      "peak_rss_kib": 2869604
+    },
+    {
+      "seed": "p807154",
+      "pair": 4,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00619987,
+        "start": 4.6e-08,
+        "parse": 0.305451,
+        "dedup": 0.104484,
+        "await-links": 7.1482e-05,
+        "route": 0.055953,
+        "ingest": 0.466032,
+        "aggregate-output": 0.161632
+      },
+      "process_ns": 659162143,
+      "monotonic_ns": 659163673,
+      "peak_rss_kib": 2875840
+    },
+    {
+      "seed": "p807154",
+      "pair": 5,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.0063447,
+        "start": 4.1e-08,
+        "parse": 0.314871,
+        "dedup": 0.108654,
+        "await-links": 6.9718e-05,
+        "route": 0.0556946,
+        "ingest": 0.47935,
+        "aggregate-output": 0.163914
+      },
+      "process_ns": 673069557,
+      "monotonic_ns": 673071135,
+      "peak_rss_kib": 2875828
+    },
+    {
+      "seed": "p807154",
+      "pair": 5,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00639315,
+        "start": 4.3e-08,
+        "parse": 0.300952,
+        "dedup": 0.105895,
+        "await-links": 9.5251e-05,
+        "route": 0.0566551,
+        "ingest": 0.463669,
+        "aggregate-output": 0.160102
+      },
+      "process_ns": 653741094,
+      "monotonic_ns": 653742635,
+      "peak_rss_kib": 2875072
+    },
+    {
+      "seed": "p807154",
+      "pair": 6,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.0063705,
+        "start": 4.6e-08,
+        "parse": 0.298258,
+        "dedup": 0.103143,
+        "await-links": 8.7432e-05,
+        "route": 0.056809,
+        "ingest": 0.458371,
+        "aggregate-output": 0.1588
+      },
+      "process_ns": 647909630,
+      "monotonic_ns": 647911136,
+      "peak_rss_kib": 2872948
+    },
+    {
+      "seed": "p807154",
+      "pair": 6,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00613615,
+        "start": 5.2e-08,
+        "parse": 0.302809,
+        "dedup": 0.107268,
+        "await-links": 9.1628e-05,
+        "route": 0.0556918,
+        "ingest": 0.465937,
+        "aggregate-output": 0.161159
+      },
+      "process_ns": 657551377,
+      "monotonic_ns": 657552926,
+      "peak_rss_kib": 2872648
+    },
+    {
+      "seed": "f73",
+      "pair": 0,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00562127,
+        "start": 4.3e-08,
+        "parse": 1.05854,
+        "dedup": 0.186437,
+        "await-links": 3.614e-05,
+        "route": 0.193212,
+        "ingest": 1.43828,
+        "aggregate-output": 0.528594
+      },
+      "process_ns": 2075226033,
+      "monotonic_ns": 2075230963,
+      "peak_rss_kib": 8161848
+    },
+    {
+      "seed": "f73",
+      "pair": 0,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00655522,
+        "start": 4.6e-08,
+        "parse": 0.97577,
+        "dedup": 0.178909,
+        "await-links": 5.1765e-05,
+        "route": 0.192054,
+        "ingest": 1.34684,
+        "aggregate-output": 0.500272
+      },
+      "process_ns": 1929638554,
+      "monotonic_ns": 1929643102,
+      "peak_rss_kib": 8167688
+    },
+    {
+      "seed": "f73",
+      "pair": 1,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00581071,
+        "start": 4.1e-08,
+        "parse": 0.953301,
+        "dedup": 0.224686,
+        "await-links": 3.942e-05,
+        "route": 0.205865,
+        "ingest": 1.38394,
+        "aggregate-output": 0.527695
+      },
+      "process_ns": 1987510079,
+      "monotonic_ns": 1987514787,
+      "peak_rss_kib": 8189800
+    },
+    {
+      "seed": "f73",
+      "pair": 1,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00583105,
+        "start": 5e-08,
+        "parse": 0.935387,
+        "dedup": 0.179177,
+        "await-links": 3.2392e-05,
+        "route": 0.19141,
+        "ingest": 1.30606,
+        "aggregate-output": 0.505828
+      },
+      "process_ns": 1884973938,
+      "monotonic_ns": 1884978415,
+      "peak_rss_kib": 8190388
+    },
+    {
+      "seed": "f73",
+      "pair": 2,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00584161,
+        "start": 5.2e-08,
+        "parse": 0.907995,
+        "dedup": 0.18072,
+        "await-links": 2.8033e-05,
+        "route": 0.190787,
+        "ingest": 1.27959,
+        "aggregate-output": 0.514074
+      },
+      "process_ns": 1866248001,
+      "monotonic_ns": 1866252425,
+      "peak_rss_kib": 8182584
+    },
+    {
+      "seed": "f73",
+      "pair": 2,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00560094,
+        "start": 4.3e-08,
+        "parse": 0.931531,
+        "dedup": 0.177405,
+        "await-links": 7.0929e-05,
+        "route": 0.187395,
+        "ingest": 1.29646,
+        "aggregate-output": 0.5048
+      },
+      "process_ns": 1876772250,
+      "monotonic_ns": 1876776680,
+      "peak_rss_kib": 8185668
+    },
+    {
+      "seed": "f73",
+      "pair": 3,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00570583,
+        "start": 4.1e-08,
+        "parse": 0.922362,
+        "dedup": 0.17871,
+        "await-links": 6.6206e-05,
+        "route": 0.187025,
+        "ingest": 1.28822,
+        "aggregate-output": 0.510644
+      },
+      "process_ns": 1872246576,
+      "monotonic_ns": 1872251019,
+      "peak_rss_kib": 8184548
+    },
+    {
+      "seed": "f73",
+      "pair": 3,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00620518,
+        "start": 4.1e-08,
+        "parse": 0.934535,
+        "dedup": 0.18676,
+        "await-links": 2.8099e-05,
+        "route": 0.192761,
+        "ingest": 1.31413,
+        "aggregate-output": 0.507777
+      },
+      "process_ns": 1897629329,
+      "monotonic_ns": 1897633838,
+      "peak_rss_kib": 8171676
+    },
+    {
+      "seed": "f73",
+      "pair": 4,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00631692,
+        "start": 4.1e-08,
+        "parse": 0.926287,
+        "dedup": 0.177826,
+        "await-links": 2.7743e-05,
+        "route": 0.191375,
+        "ingest": 1.29558,
+        "aggregate-output": 0.51101
+      },
+      "process_ns": 1879954767,
+      "monotonic_ns": 1879959232,
+      "peak_rss_kib": 8188508
+    },
+    {
+      "seed": "f73",
+      "pair": 4,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00553378,
+        "start": 3.9e-08,
+        "parse": 0.920548,
+        "dedup": 0.184693,
+        "await-links": 2.9573e-05,
+        "route": 0.190266,
+        "ingest": 1.29558,
+        "aggregate-output": 0.673544
+      },
+      "process_ns": 2077767798,
+      "monotonic_ns": 2077772719,
+      "peak_rss_kib": 8182132
+    },
+    {
+      "seed": "f73",
+      "pair": 5,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00549896,
+        "start": 3.2e-08,
+        "parse": 0.923838,
+        "dedup": 0.192903,
+        "await-links": 2.6478e-05,
+        "route": 0.194893,
+        "ingest": 1.31172,
+        "aggregate-output": 0.516288
+      },
+      "process_ns": 1900212238,
+      "monotonic_ns": 1900216728,
+      "peak_rss_kib": 8191764
+    },
+    {
+      "seed": "f73",
+      "pair": 5,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.00575764,
+        "start": 4.1e-08,
+        "parse": 0.900608,
+        "dedup": 0.177285,
+        "await-links": 5.5094e-05,
+        "route": 0.190818,
+        "ingest": 1.26884,
+        "aggregate-output": 0.509031
+      },
+      "process_ns": 1850387257,
+      "monotonic_ns": 1850391645,
+      "peak_rss_kib": 8186224
+    },
+    {
+      "seed": "f73",
+      "pair": 6,
+      "commit": "event",
+      "stages": {
+        "dimensions": 0.0056441,
+        "start": 4.1e-08,
+        "parse": 0.91237,
+        "dedup": 0.195443,
+        "await-links": 5.0283e-05,
+        "route": 0.19893,
+        "ingest": 1.30684,
+        "aggregate-output": 0.520204
+      },
+      "process_ns": 1900237032,
+      "monotonic_ns": 1900241541,
+      "peak_rss_kib": 8192500
+    },
+    {
+      "seed": "f73",
+      "pair": 6,
+      "commit": "64e6b93",
+      "stages": {
+        "dimensions": 0.00560773,
+        "start": 4.2e-08,
+        "parse": 0.923348,
+        "dedup": 0.177414,
+        "await-links": 3.0021e-05,
+        "route": 0.186726,
+        "ingest": 1.28757,
+        "aggregate-output": 0.550334
+      },
+      "process_ns": 1910464308,
+      "monotonic_ns": 1910468843,
+      "peak_rss_kib": 8183332
+    }
+  ],
+  "large_output_checks": [
+    {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "b496a8b06f7da98514af82e13fced52e8de927f4aedcc20ea394286230075a79"
+      },
+      "user_daily": {
+        "rows": 2246306,
+        "sha256": "eb7d6dd604e897d3ac28c7e4261e6033f9764acc4d33db76e74ae52b644c2eef"
+      }
+    },
+    {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "b496a8b06f7da98514af82e13fced52e8de927f4aedcc20ea394286230075a79"
+      },
+      "user_daily": {
+        "rows": 2246306,
+        "sha256": "eb7d6dd604e897d3ac28c7e4261e6033f9764acc4d33db76e74ae52b644c2eef"
+      }
+    },
+    {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "b3fd22446c3230eb1e040de8bb384a5a25ead9a3e85cae085f1c9e42669182e0"
+      },
+      "user_daily": {
+        "rows": 2221335,
+        "sha256": "8ecbe7f48da9cd257a103b6b3538065efad6109befd8250666aadf2681beefb4"
+      }
+    },
+    {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "b3fd22446c3230eb1e040de8bb384a5a25ead9a3e85cae085f1c9e42669182e0"
+      },
+      "user_daily": {
+        "rows": 2221335,
+        "sha256": "8ecbe7f48da9cd257a103b6b3538065efad6109befd8250666aadf2681beefb4"
+      }
+    },
+    {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "927ca38c075969892e97a79a4dbf932f69a8f4dfd5e1c3ddd8f2ce29bb8aa522"
+      },
+      "user_daily": {
+        "rows": 6612082,
+        "sha256": "593a3acba6af2639406a8ad12d85e205ecd22f4af90a4cfa40c7878f40602dbd"
+      }
+    },
+    {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "927ca38c075969892e97a79a4dbf932f69a8f4dfd5e1c3ddd8f2ce29bb8aa522"
+      },
+      "user_daily": {
+        "rows": 6612082,
+        "sha256": "593a3acba6af2639406a8ad12d85e205ecd22f4af90a4cfa40c7878f40602dbd"
+      }
+    }
+  ],
+  "fixtures_dev": {
+    "event": {
+      "fixtures": [
+        "A1",
+        "A10",
+        "A11",
+        "A12",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7",
+        "A8",
+        "A9",
+        "E1",
+        "E10",
+        "E11",
+        "E12",
+        "E13",
+        "E14",
+        "E15",
+        "E16",
+        "E17",
+        "E18",
+        "E19",
+        "E2",
+        "E20",
+        "E3",
+        "E4",
+        "E5",
+        "E6",
+        "E7",
+        "E8",
+        "E9",
+        "L1",
+        "L2",
+        "L3",
+        "L4"
+      ],
+      "failures": [],
+      "dev_exit": 0,
+      "dev_result": "user_daily: rows 117038 vs 117038; only in A 0; only in B 0; duplicate keys 0 vs 0\ncampaign_daily: rows 27400 vs 27400; only in A 0; only in B 0; duplicate keys 0 vs 0\nMATCH"
+    }
+  },
+  "differential": {
+    "valid": 42879,
+    "decoded_sha256": "7124ddccbbad6a1dcecaa9037729548aaa3fcfe4eadec0225febc5a216613c19",
+    "corpus_sha256": "da8df06d9428e067909f06bf59d398f8f2828082e9cb4e102019589fa4488fdf",
+    "rows": 84661,
+    "compared_to": "64e6b93",
+    "matched": [
+      "event-candidate/haswell",
+      "event-candidate/cascadelake",
+      "bisect/haswell",
+      "bisect/cascadelake"
+    ]
+  }
+}
