@@ -1,5 +1,7 @@
 # Shopping Sessions benchmark
 
+The [fused scanner comparison](benchmarks/fused-parser/benchmark.md) records Intel and eight-thread container times and full-result checks.
+
 The [partitioned ingest benchmark](benchmarks/partitioned-ingest/benchmark.md) compares this pipeline with the 0.84 s submission on three 20M-event inputs and one 60M-event input.
 
 The [Intel event parser benchmark](benchmarks/intel-event-parser/benchmark.md) compares independent CSV delimiter decoding with commit `64e6b93` on six Intel cores. [Raw measurements](benchmarks/intel-event-parser/measurements.json)

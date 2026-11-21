@@ -547,21 +547,97 @@ struct TailLayout {
     e.tag = tag;
     return true;
 }
-inline bool parseEvent(std::string_view s, const Context &ctx, ParsedEvent &out) {
+struct PreparedMasks {
+    std::string_view line;
+    uint64_t ht, tt;
+    uint32_t commas, quotes;
+    HeadLayout *head;
+    TailLayout *tail;
+};
+inline void saveMasks(PreparedMasks &packed, CsvMask mh, CsvMask mm, CsvMask mt) {
+    static thread_local std::array<HeadLayout, 256> heads{};
+    static thread_local std::array<TailLayout, 2048> tails{};
+    packed.ht = mh.comma | (uint64_t(mh.quote) << 32);
+    packed.tt = mt.comma | (uint64_t(mt.quote) << 32);
+    packed.head = &heads[_mm_crc32_u64(0, packed.ht) & 255];
+    packed.tail = &tails[_mm_crc32_u64(0, packed.tt) & 2047];
+    packed.commas = mm.comma;
+    packed.quotes = mm.quote;
+    __builtin_prefetch(packed.head, 0, 3);
+    __builtin_prefetch(packed.tail, 0, 3);
+}
+inline void prepMasks(std::string_view s, PreparedMasks &packed) {
+    packed.line = s;
     const size_t n = s.size();
-    if (n <= 60 || n > 92)
-        return genericEvent(s, ctx, out);
+    if (n <= 60 || n > 92) {
+        packed.head = nullptr;
+        return;
+    }
     const char *p = s.data();
     auto mh = classify32(p), mm = classify32(p + 30), mt = classify32(p + n - 32);
     mh.comma &= 0x3fffffffu;
     mh.quote &= 0x3fffffffu;
     mt.comma >>= 2;
     mt.quote >>= 2;
-    static thread_local std::array<HeadLayout, 256> heads{};
-    static thread_local std::array<TailLayout, 2048> tails{};
-    uint64_t ht = mh.comma | (uint64_t(mh.quote) << 32), tt = mt.comma | (uint64_t(mt.quote) << 32);
-    auto &h = heads[_mm_crc32_u64(0, ht) & 255];
-    auto &t = tails[_mm_crc32_u64(0, tt) & 2047];
+    saveMasks(packed, mh, mm, mt);
+}
+template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
+    const char *p = chunk.file.data() + chunk.begin;
+    const char *finish = chunk.file.data() + chunk.end;
+    const char *limit = chunk.file.data() + chunk.file.size();
+    if (!chunk.begin || p[-1] != '\n') {
+        const char *sep = static_cast<const char *>(std::memchr(p, '\n', finish - p));
+        if (!sep)
+            return;
+        p = sep + 1;
+    }
+    const auto newline = _mm256_set1_epi8('\n');
+    auto byteMask = [](__m256i v, char c) -> uint32_t {
+        return _mm256_movemask_epi8(_mm256_cmpeq_epi8(v, _mm256_set1_epi8(c)));
+    };
+    while (p < finish) {
+        if (limit - p >= 92) {
+            auto h = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p));
+            auto m = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p + 30));
+            auto z = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p + 60));
+            auto early = _mm256_or_si256(_mm256_cmpeq_epi8(h, newline), _mm256_cmpeq_epi8(m, newline));
+            uint32_t last = byteMask(z, '\n');
+            if (!(_mm256_movemask_epi8(early) & 0x3fffffffu) && last && !(last & 1)) {
+                unsigned l = std::countr_zero(last), n = 60 + l;
+                CsvMask mh{byteMask(h, ',') & 0x3fffffffu, byteMask(h, '"') & 0x3fffffffu};
+                CsvMask mm{byteMask(m, ','), byteMask(m, '"')};
+                auto tailMask = [&](uint32_t middle, char c) {
+                    uint64_t bits = (middle & 0x3fffffffu) | (uint64_t(byteMask(z, c)) << 30);
+                    return static_cast<uint32_t>(bits >> l) & 0x3fffffffu;
+                };
+                CsvMask mt{tailMask(mm.comma, ','), tailMask(mm.quote, '"')};
+                PreparedMasks &row = visit();
+                row.line = {p, n};
+                saveMasks(row, mh, mm, mt);
+                p += n + 1;
+                continue;
+            }
+        }
+        const char *end = static_cast<const char *>(std::memchr(p, '\n', limit - p));
+        if (!end)
+            end = limit;
+        prepMasks({p, static_cast<size_t>(end - p)}, visit());
+        if (end == limit)
+            break;
+        p = end + 1;
+    }
+}
+inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, ParsedEvent &out) {
+    auto s = packed.line;
+    const size_t n = s.size();
+    const char *p = s.data();
+    if (!packed.head)
+        return genericEvent(s, ctx, out);
+    auto &h = *packed.head;
+    auto &t = *packed.tail;
+    auto ht = packed.ht, tt = packed.tt;
+    CsvMask mh{uint32_t(ht), uint32_t(ht >> 32)}, mt{uint32_t(tt), uint32_t(tt >> 32)},
+        mm{packed.commas, packed.quotes};
     if ((h.tag != ht || !ht) && !decodeHead(mh, ht, h))
         return genericEvent(s, ctx, out);
     if ((t.tag != tt || !tt) && !decodeTail(mt, tt, t))
@@ -865,8 +941,13 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
             const InputChunk& span = source.spans[i];
             if (i < source.eventSpans) {
                 const uint64_t base = spanStart[i] - reinterpret_cast<uintptr_t>(span.file.data());
-                chunkLines(span, [&](std::string_view line) {
-                    if (!parseEvent(line, ctx, event)) return;
+                constexpr unsigned ahead = 1;
+                std::array<PreparedMasks, ahead> queue;
+                unsigned cursor = 0;
+                auto emit = [&](PreparedMasks &m) {
+                    auto line = m.line;
+                    if (!parsePrepared(m, ctx, event))
+                        return;
                     const uint64_t offset = base + reinterpret_cast<uintptr_t>(line.data());
                     const size_t idShard = (uint64_t{filterHash(event.id)} >> idShift);
                     uint64_t info;
@@ -880,7 +961,16 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                              ? (relative << 32) | invalidArrivalTag : special(offset,sourceTag);
                     }
                     reader.ids.add(idShard, IdRecord{event.id, info});
+                };
+                eventLines(span, [&]() -> PreparedMasks & {
+                    auto &m = queue[cursor % ahead];
+                    if (cursor >= ahead)
+                        emit(m);
+                    ++cursor;
+                    return m;
                 });
+                for (unsigned j = cursor - std::min(cursor, ahead); j < cursor; ++j)
+                    emit(queue[j % ahead]);
             } else {
                 chunkLines(span, [&](std::string_view line) {
                     if (parseClick(line, ctx, click))
