@@ -66,17 +66,21 @@ inline bool hourTooLarge(const char *hour) {
     return days * dayMs;
 }
 
-inline int64_t midnight(const char* p) {
+inline int64_t cachedMidnight(const char* date, uint64_t digits) {
     struct Entry { uint64_t digits; int64_t ms = invalidTime; };
-    static thread_local std::array<Entry,64> cache{};
+    static thread_local std::array<Entry, 64> cache{};
+    const unsigned slot = ((uint8_t(date[8]) & 3) << 4) | (uint8_t(date[9]) & 15);
+    auto& entry = cache[slot];
+    if (entry.digits != digits) entry = {digits, calendarMidnight(date)};
+    return entry.ms;
+}
+
+inline int64_t midnight(const char* p) {
     const auto data = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p));
     const auto packed = _mm_shuffle_epi8(data,
         _mm_setr_epi8(0,1,2,3,5,6,8,9,-1,-1,-1,-1,-1,-1,-1,-1));
     const uint64_t digits = _mm_cvtsi128_si64(packed);
-    const unsigned slot = ((uint8_t(p[8]) & 3) << 4) | (uint8_t(p[9]) & 15);
-    auto& entry = cache[slot];
-    if (entry.digits != digits) entry = {digits, calendarMidnight(p)};
-    return entry.ms;
+    return cachedMidnight(p, digits);
 }
 
 // Convert all three clock pairs in one vector. For untrusted event times
@@ -420,26 +424,67 @@ struct ParsedEvent {
     EventData row;
 };
 
-// HH:MM:SS fits in eight bytes. Decode both clocks as six decimal pairs in
-// one SIMD register. The event clock is untrusted, whereas a twenty-byte
-// ingest field has the same input guarantee used by validIngest.
-inline bool pairedClocks(const char* event, const char* ingest,
-                         int& eventSeconds, int& ingestSeconds) {
-    const auto a = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(event));
-    const auto b = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(ingest));
-    const auto raw = _mm_unpacklo_epi64(a,b);
-    const auto digits = _mm_sub_epi8(raw,_mm_set1_epi64x(0x30303a30303a3030LL));
-    const auto excess = _mm_subs_epu8(digits,_mm_set_epi64x(-1,0x0905000905000902LL));
-    if (!_mm_testz_si128(excess, excess) || hourTooLarge(event))
+// Match midnight()'s eight-byte calendar key: YYYY followed by MMDD.
+inline uint64_t isoDateKey(const char* date, __m128i fields) {
+    uint32_t year;
+    std::memcpy(&year, date, sizeof(year));
+    const uint32_t monthDay = _mm_extract_epi32(fields, 2);
+    return uint64_t(year) | (uint64_t(monthDay) << 32);
+}
+
+template<bool HasOffset>
+inline bool isoTimes(const char* event, const char* arrival, const Context& ctx,
+                     int64_t& eventMs, int64_t& arrivalMs) {
+    // Each lane spans the first dash through the zone marker, "-MM-DDTHH:MM:SSZ".
+    // Subtraction normalizes clock digits and punctuation while preserving MM and DD.
+    const auto eventBytes = _mm_loadu_si128(reinterpret_cast<const __m128i*>(event + 4));
+    const auto arrivalBytes = _mm_loadu_si128(reinterpret_cast<const __m128i*>(arrival + 4));
+    const auto pattern = _mm_setr_epi8('-', 0, 0, '-', 0, 0, 'T', '0', '0', ':', '0', '0', ':', '0', '0', 'Z');
+    const auto normalized = _mm256_sub_epi8(_mm256_set_m128i(arrivalBytes, eventBytes),
+                                             _mm256_broadcastsi128_si256(pattern));
+
+    // Arrival has guaranteed UTC syntax. Check event punctuation, clock digits and UTC
+    // suffix here. Calendar validation runs on a cache miss using the complete date key.
+    const auto limits = _mm_setr_epi8(0, -1, -1, 0, -1, -1, 0, 2, 9, 0, 5, 9, 0, 5, 9, HasOffset ? -1 : 0);
+    const auto excess = _mm_subs_epu8(_mm256_castsi256_si128(normalized), limits);
+    if (!_mm_testz_si128(excess, excess) || hourTooLarge(event + 11))
         return false;
-    const auto packed = _mm_shuffle_epi8(digits,
-        _mm_setr_epi8(0,1,3,4,6,7,-1,-1,8,9,11,12,14,15,-1,-1));
-    const auto pairs = _mm_maddubs_epi16(packed,_mm_set1_epi16(0x010a));
-    const auto sums = _mm_madd_epi16(pairs,_mm_setr_epi16(3600,60,1,0,3600,60,1,0));
-    const auto seconds = _mm_add_epi32(sums,_mm_srli_si128(sums,4));
-    eventSeconds = _mm_cvtsi128_si32(seconds);
-    ingestSeconds = _mm_extract_epi32(seconds,2);
-    return true;
+
+    int offsetSeconds = 0;
+    if constexpr (HasOffset) {
+        const char sign = event[19];
+        if ((sign != '+' && sign != '-') || event[22] != ':' ||
+            !digit(event[20]) || !digit(event[21]) || !digit(event[23]) || !digit(event[24]))
+            return false;
+        const int hours = pairValue(event + 20);
+        const int minutes = pairValue(event + 23);
+        if (hours > 23 || minutes > 59)
+            return false;
+        offsetSeconds = (sign == '+' ? 1 : -1) * (3600 * hours + 60 * minutes);
+    }
+
+    // Each lane becomes HHMMSS, two zero bytes, MMDD, and four zero bytes.
+    const auto layout = _mm_setr_epi8(7, 8, 10, 11, 13, 14, -1, -1, 1, 2, 4, 5, -1, -1, -1, -1);
+    const auto fields = _mm256_shuffle_epi8(normalized, _mm256_broadcastsi128_si256(layout));
+    const auto pairs = _mm256_maddubs_epi16(fields, _mm256_set1_epi16(0x010a));
+    const auto weights = _mm_setr_epi16(3600, 60, 1, 0, 0, 0, 0, 0);
+    const auto partialSeconds = _mm256_madd_epi16(pairs, _mm256_broadcastsi128_si256(weights));
+    const auto seconds = _mm256_add_epi32(partialSeconds, _mm256_srli_si256(partialSeconds, 4));
+
+    const uint64_t eventKey = isoDateKey(event, _mm256_castsi256_si128(fields));
+    const int64_t eventMidnight = cachedMidnight(event, eventKey);
+    if (eventMidnight == invalidTime)
+        return false;
+    const int eventSeconds = _mm_cvtsi128_si32(_mm256_castsi256_si128(seconds));
+    eventMs = eventMidnight + 1000LL * (eventSeconds - offsetSeconds);
+    if (eventMs < ctx.start || eventMs >= ctx.end)
+        return false;
+
+    const uint64_t arrivalKey = isoDateKey(arrival, _mm256_extracti128_si256(fields, 1));
+    const int64_t arrivalMidnight = eventKey == arrivalKey ? eventMidnight : cachedMidnight(arrival, arrivalKey);
+    const int arrivalSeconds = _mm_cvtsi128_si32(_mm256_extracti128_si256(seconds, 1));
+    arrivalMs = arrivalMidnight + 1000LL * arrivalSeconds;
+    return arrivalMs - dayMs <= eventMs;
 }
 
 [[gnu::always_inline]] inline bool eventTimes(std::string_view event, std::string_view arrival,
@@ -464,32 +509,14 @@ inline bool pairedClocks(const char* event, const char* ingest,
         return ingest - dayMs <= ts;
     }
     if (arrival.size() == 20 && (event.size() == 20 || event.size() == 25) && e[4]=='-') {
-        if (e[7]!='-' || e[10]!='T') return false;
-        int offset = 0;
-        if (event.size() == 20) {
-            if (e[19]!='Z') return false;
-        } else {
-            if ((e[19]!='+' && e[19]!='-') || e[22]!=':' || !digit(e[20]) ||
-                !digit(e[21]) || !digit(e[23]) || !digit(e[24])) return false;
-            int h=pairValue(e+20), m=pairValue(e+23);
-            if (h>23 || m>59) return false;
-            offset=(e[19]=='+'?1:-1)*(3600*h+60*m);
-        }
-        int eventSeconds, ingestSeconds;
-        if (!pairedClocks(e+11,a+11,eventSeconds,ingestSeconds)) return false;
-        const auto date = midnight(e);
-        if (date == invalidTime) return false;
-        ts = date + 1000LL*(eventSeconds-offset);
-        if (ts < ctx.start || ts >= ctx.end) return false;
-        // ISO timestamps often share the exact same calendar date. Reuse the
-        // validated midnight even when an offset changes the event's UTC day.
-        const auto ingestDate = !std::memcmp(e,a,10) ? date : midnight(a);
-        ingest = ingestDate + 1000LL*ingestSeconds;
-    } else {
-        ts=timestamp(event);
-        if (ts < ctx.start || ts >= ctx.end) return false;
-        ingest=arrival.size()==20 ? validIngest(a) : timestamp(arrival);
+        if (event.size() == 20)
+            return isoTimes<false>(e, a, ctx, ts, ingest);
+        return isoTimes<true>(e, a, ctx, ts, ingest);
     }
+    ts = timestamp(event);
+    if (ts < ctx.start || ts >= ctx.end)
+        return false;
+    ingest = arrival.size() == 20 ? validIngest(a) : timestamp(arrival);
     return ingest-dayMs <= ts;
 }
 
