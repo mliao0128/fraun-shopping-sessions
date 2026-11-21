@@ -2,6 +2,8 @@
 
 A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the mounted CSV files, resolves identities, and writes `user_daily` and `campaign_daily` as Parquet. This revision chooses the number of user and event-ID partitions, reader chunk size, and click workers from the input byte count. Fraun selected those settings offline using complete solver runs on public-generator inputs. For groups of four to eight events, a timestamp check can identify one or two sessions directly. Groups that need more work use the existing sort.
 
+On Linux the solver reads the header and midpoint of the first large input mapping. If either read incurs a major page fault, it requests sequential read-ahead on large input files. The kernel can then fetch the next pages while the workers process the current records.
+
 ## Build and run
 
 The default build targets Intel Cascade Lake on Linux x86-64. Run it on a compatible CPU with eight available logical CPUs and 24 GiB of memory. For an AVX2/BMI2 machine without AVX-512, build with the Docker build argument ARCH_FLAGS=-march=haswell. Run from the repository root. On a compatible build machine, GCC collects an execution profile on synthetic CSVs and uses it for the final compilation. With the default settings, an x86-64-v3 builder that lacks the Cascade Lake features trains and ships an x86-64-v3 binary. An older builder cross-compiles the Cascade Lake binary without profiling. The runtime image contains the executable and its shared libraries.

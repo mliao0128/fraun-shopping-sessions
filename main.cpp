@@ -7,6 +7,7 @@
 #include <memory>
 #include <numeric>
 #include <sys/mman.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -71,6 +72,18 @@ uint32_t Index::insert(Key key, uint32_t value) {
 }
 
 namespace {
+// Input mappings are opened in the main thread. A major fault in the header or interior of the first
+// large input indicates that sequential readahead can serve the other readers.
+bool inputNeededIO(const char* data, size_t size) {
+    rusage before{}, after{};
+    if (getrusage(RUSAGE_THREAD, &before) != 0) return false;
+    const char first = *static_cast<const volatile char*>(data);
+    const char middle = *static_cast<const volatile char*>(data + size / 2);
+    (void)first;
+    (void)middle;
+    return getrusage(RUSAGE_THREAD, &after) == 0 && after.ru_majflt > before.ru_majflt;
+}
+
 struct Mapping {
     const char* data = nullptr;
     size_t size = 0;
@@ -84,6 +97,10 @@ struct Mapping {
         }
         size = static_cast<size_t>(info.st_size);
         if (size) data = static_cast<const char*>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0));
+        if (data != MAP_FAILED && size >= (1u << 20)) {
+            static const bool useReadahead = inputNeededIO(data, size);
+            if (useReadahead) posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL);
+        }
         close(fd);
         if (data == MAP_FAILED) throw std::runtime_error("Cannot map " + path.string());
     }
