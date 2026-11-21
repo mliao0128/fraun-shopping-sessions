@@ -33,6 +33,14 @@ int main() {
         cells.sessions(times.data(), times.size(), origin, [&](auto first, auto last, auto count) {
             actual.emplace_back(first, last, count);
         });
+        if (times.size() <= 16) {
+            std::vector<Session> fromNetwork;
+            networkSessions(times.data(), times.size(), origin, [&](auto first, auto last, auto count) {
+                fromNetwork.emplace_back(first, last, count);
+            });
+            if (fromNetwork != actual)
+                return 1;
+        }
         std::sort(times.begin(), times.end());
         for (size_t first = 0; first < times.size();) {
             size_t end = first+1;

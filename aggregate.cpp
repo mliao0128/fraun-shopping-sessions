@@ -59,8 +59,8 @@ class PersonIndex {
     std::vector<uint32_t> slots;
     std::vector<Group>& groups;
 
-    size_t slot(Key person) const {
-        size_t pos = std::rotr(uint64_t(person.hash()), 32) & (slots.size() - 1);
+    size_t slot(Key person, uint64_t hash) const {
+        size_t pos = uint32_t(hash >> 32) & (slots.size() - 1);
         while (slots[pos] != absent && !(groups[slots[pos]].person == person))
             pos = (pos + 1) & (slots.size() - 1);
         return pos;
@@ -69,16 +69,16 @@ class PersonIndex {
 public:
     PersonIndex(std::vector<Group>& groups, size_t rows) : slots(std::max<size_t>(16, std::bit_ceil(rows / 6 + 1)), absent), groups(groups) {}
 
-    uint32_t lookup(Key person) const { return slots[slot(person)]; }
+    uint32_t lookup(Key person, uint64_t h) const { return slots[slot(person, h)]; }
 
-    uint32_t add(Key person) {
-        size_t pos = slot(person);
+    uint32_t add(Key person, uint64_t h) {
+        size_t pos = slot(person, h);
         if (slots[pos] != absent) return slots[pos];
         if (groups.size() * 10 >= slots.size() * 7) {
             slots.assign(slots.size() * 2, absent);
             for (uint32_t i = 0; i < groups.size(); ++i)
-                slots[slot(groups[i].person)] = i;
-            pos = slot(person);
+                slots[slot(groups[i].person, groups[i].person.hash())] = i;
+            pos = slot(person, h);
         }
         uint32_t index = static_cast<uint32_t>(groups.size());
         groups.push_back({person});
@@ -108,14 +108,17 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
     out.pending.resize(bucket.events.size);
     uint64_t usedBits = 0;
     size_t at = 0;
-    bucket.events.each([&](const Event& e) {
-        uint32_t g = index.add(e.person);
+    bucket.events.each([&](const Event &e) {
+        uint32_t g = index.add(e.person, e.routingHash());
         const EventData row = e.unpack(origin);
         const uint64_t delta = uint64_t(row.ts)-uint64_t(origin);
         usedBits |= delta;
         out.pending[at++] = {g,static_cast<uint32_t>(delta)};
         ++groups[g].eventEnd;
-        if (row.price) { ++groups[g].purchaseEnd; out.purchases.push_back({row.ts,row.price,row.category,g}); }
+        if (row.price) {
+            ++groups[g].purchaseEnd;
+            out.purchases.push_back({row.ts, row.price, row.category, g});
+        }
     });
     out.wide = usedBits > UINT32_MAX;
     uint64_t clickBits = 0;
@@ -123,7 +126,7 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
     at = 0;
     bucket.clicks.each([&](const Click &c) {
         clickBits |= uint64_t(c.ts) - uint64_t(origin) + 7 * dayMs;
-        const uint32_t g = index.lookup(c.person);
+        const uint32_t g = index.lookup(c.person, c.routingHash());
         out.clickOwner[at++] = g;
         if (g!=absent)
             ++groups[g].clickEnd;
@@ -192,6 +195,77 @@ void exactSessions(T* times,size_t n,int64_t origin,F emit) {
     emit(origin+int64_t(times[start]),origin+int64_t(times[n-1]),uint32_t(n-start));
 }
 
+// Sort up to sixteen offsets in register-sized bitonic networks. Unused lanes
+// hold UINT32_MAX and are excluded from the resulting session counts.
+template <unsigned Stride, unsigned Order> inline __m256i swapStage(__m256i v) {
+    __m256i other;
+    if constexpr (Stride == 1)
+        other = _mm256_shuffle_epi32(v, 0xb1);
+    else if constexpr (Stride == 2)
+        other = _mm256_shuffle_epi32(v, 0x4e);
+    else
+        other = _mm256_permute2x128_si256(v, v, 1);
+    constexpr int select = []() {
+        int value = 0;
+        for (unsigned lane = 0; lane < 8; ++lane)
+            if (bool(lane & Stride) != bool(lane & Order))
+                value |= 1 << lane;
+        return value;
+    }();
+    return _mm256_blend_epi32(_mm256_min_epu32(v, other), _mm256_max_epu32(v, other), select);
+}
+inline __m256i finishEight(__m256i v) { return swapStage<1, 8>(swapStage<2, 8>(swapStage<4, 8>(v))); }
+inline __m256i sortEight(__m256i v) {
+    return finishEight(swapStage<1, 4>(swapStage<2, 4>(swapStage<1, 2>(v))));
+}
+inline __m256i loadTimes(const uint32_t *v, unsigned n) {
+    if (n >= 8)
+        return _mm256_loadu_si256(reinterpret_cast<const __m256i *>(v));
+    const auto mask = _mm256_cmpgt_epi32(_mm256_set1_epi32(n), _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7));
+    return _mm256_or_si256(_mm256_maskload_epi32(reinterpret_cast<const int *>(v), mask),
+                           _mm256_xor_si256(mask, _mm256_set1_epi32(-1)));
+}
+template <class Emit> inline void networkSessions(uint32_t *times, unsigned n, int64_t origin, Emit emit) {
+    alignas(32) uint32_t sorted[16];
+    auto a = sortEight(loadTimes(times, n));
+    __m256i b{};
+    if (n > 8) {
+        b = sortEight(loadTimes(times + 8, n - 8));
+        auto rev = _mm256_permutevar8x32_epi32(b, _mm256_setr_epi32(7, 6, 5, 4, 3, 2, 1, 0));
+        b = finishEight(_mm256_max_epu32(a, rev));
+        a = finishEight(_mm256_min_epu32(a, rev));
+        _mm256_store_si256(reinterpret_cast<__m256i *>(sorted + 8), b);
+    }
+    _mm256_store_si256(reinterpret_cast<__m256i *>(sorted), a);
+    unsigned start = 0;
+    if constexpr (true) {
+        auto gap = [](__m256i v, uint32_t previous) {
+            auto prev = _mm256_permutevar8x32_epi32(v, _mm256_setr_epi32(0, 0, 1, 2, 3, 4, 5, 6));
+            prev = _mm256_blend_epi32(prev, _mm256_set1_epi32(previous), 1);
+            auto delta = _mm256_sub_epi32(v, prev);
+            auto greater = _mm256_cmpgt_epi32(_mm256_xor_si256(delta, _mm256_set1_epi32(INT32_MIN)),
+                                              _mm256_set1_epi32(uint32_t(maxGap) ^ 0x80000000u));
+            return unsigned(_mm256_movemask_ps(_mm256_castsi256_ps(greater)));
+        };
+        unsigned cuts = gap(a, sorted[0]);
+        if (n > 8)
+            cuts |= gap(b, sorted[7]) << 8;
+        cuts &= (1u << n) - 1;
+        while (cuts) {
+            unsigned j = std::countr_zero(cuts);
+            emit(origin + sorted[start], origin + sorted[j - 1], j - start);
+            start = j;
+            cuts &= cuts - 1;
+        }
+    } else
+        for (unsigned j = 1; j < n; ++j) {
+            if (sorted[j] - sorted[j - 1] > maxGap) {
+                emit(origin + sorted[start], origin + sorted[j - 1], j - start);
+                start = j;
+            }
+        }
+    emit(origin + sorted[start], origin + sorted[n - 1], n - start);
+}
 struct TimeCell {
     uint32_t first = UINT32_MAX, last = 0, count = 0;
 };
@@ -251,7 +325,8 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
     // it spares the allocator and the kernel a round trip per bucket.
     static thread_local Grouped grouped;
     groupRows(bucket, grouped, origin);
-    const auto& groups = grouped.groups;
+    const auto &groups = grouped.groups;
+    result.users.prepare(groups.size());
     const auto& purchases = grouped.purchases;
     const auto& clicks = grouped.clicks;
     static thread_local CellTable cells;
@@ -319,8 +394,10 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
         const size_t count = group.eventEnd - i;
         if (grouped.wide)
             exactSessions(grouped.wideTimes.data() + i, count, 0, emit);
-        else if (count <= 8)
+        else if (count <= 3)
             exactSessions(grouped.times.data() + i, count, origin, emit);
+        else if (count <= 16)
+            networkSessions(grouped.times.data() + i, count, origin, emit);
         else
             cells.sessions(grouped.times.data() + i, count, origin, emit);
         const unsigned n = sessions.size();
@@ -503,7 +580,7 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
         i=group.eventEnd;
         if (daily) {
             result.users.append(row);
-            result.users.people.push_back(group.person);
+            result.users.person(group.person);
             result.users.userCounts.push_back(
                 static_cast<uint32_t>(result.users.days.size() - firstOutput));
         }

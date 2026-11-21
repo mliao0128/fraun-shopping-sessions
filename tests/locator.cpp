@@ -4,6 +4,21 @@
 #include <cassert>
 
 int main() {
+    const Key original = Key::from("u12345678"), canonical = Key::from("buyer");
+    for (auto offset : {int64_t{-1}, int64_t{0}, int64_t{1} << 31, int64_t{1} << 32}) {
+        for (uint32_t price : {0u, 1u, 1u << 23}) {
+            const EventData input{offset, price, price ? 7u : 0u};
+            auto event = Event::pack(original, 0, input, original.hash());
+            const auto check = [&](Key owner) {
+                const auto row = event.unpack(0);
+                assert(event.person == owner && (event.routingHash() >> 32) == (owner.hash() >> 32));
+                assert(row.ts == input.ts && row.price == input.price && row.category == input.category);
+            };
+            check(original);
+            event.rename(canonical, canonical.hash());
+            check(canonical);
+        }
+    }
     Reader reader(256, 1);
     Source source;
     constexpr int64_t half = int64_t{1} << 31;

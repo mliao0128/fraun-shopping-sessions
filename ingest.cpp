@@ -986,10 +986,10 @@ void correct(T* rows, size_t count, size_t bucket, unsigned shift,
     while (i < count) {
         T& row = rows[i];
         if (!reject(row)) {
-            uint64_t hash = row.person.hash();
+            uint64_t hash = row.routingHash();
             const Key canonical = identities.person(row.person, hash);
             if (canonical.bits == row.person.bits) { ++i; continue; }
-            row.person = canonical;
+            row.rename(canonical, hash);
             const size_t target = (hash >> 1) >> shift;
             if (target == bucket) { ++i; continue; }
             moved.add(target,row);
@@ -1090,8 +1090,10 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     const size_t idShard = (uint64_t{filterHash(token)} >> idShift);
                     uint64_t info;
                     if (event.valid) {
-                        const auto bucket = static_cast<uint32_t>(partOf(event.user.hash()));
-                        const uint32_t index = reader.events.add(bucket,Event::pack(event.user,ctx.start,event.row));
+                        auto rawHash = event.user.hash();
+                        const auto bucket = static_cast<uint32_t>(partOf(rawHash));
+                        const uint32_t index =
+                            reader.events.add(bucket, Event::pack(event.user, ctx.start, event.row, rawHash));
                         info = location(reader,event.arrival,arrivalOrigin,bucket,index);
                     } else {
                         const uint64_t relative = relativeArrival(event.arrival,arrivalOrigin);
@@ -1131,6 +1133,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 return;
             uint64_t hash = row.person.hash();
 
+            row.hash32 = static_cast<uint32_t>(hash >> 32);
             reader.clicks.add(partOf(hash), row);
         });
     };

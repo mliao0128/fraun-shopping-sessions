@@ -366,9 +366,7 @@ struct Identities {
     // including keys ultimately displaced by linear probing. This compact
     // directory can reject most missing keys without touching any Key.
     std::vector<uint16_t> fingerprints;
-    static uint16_t fingerprint(uint64_t hash) {
-        return static_cast<uint16_t>(1u << (hash & 15));
-    }
+    static uint16_t fingerprint(uint64_t hash) { return static_cast<uint16_t>(1u << ((hash >> 32) & 15)); }
     size_t shardSize = 0;
     unsigned slotShift = 0;  // 64 - shardBits - log2(shardSize)
     size_t home(uint64_t hash) const { return (hash >> slotShift) & (shardSize - 1); }
@@ -411,27 +409,54 @@ struct Event {
     Key person;
     uint64_t bits;
     static constexpr uint64_t overflowFlag = uint64_t{1} << 63;
-    static Event pack(Key person, int64_t origin, EventData row) {
-        const uint64_t delta = uint64_t(row.ts) - uint64_t(origin);
-        if (delta <= UINT32_MAX && row.price < (1u << 24) && row.category < 128)
-            return {person, delta | (uint64_t{row.price} << 32) | (uint64_t{row.category} << 56)};
-        // Routers exit before aggregation. These overflow pages must outlive
-        // their threads, just like the mapped inputs and bulk row slabs.
+    // An ordinary short-window event has room for the high 32 hash bits used
+    // by every person partition and fingerprint. Rich payloads recompute them.
+    static Event pack(Key person, int64_t origin, EventData row, uint64_t hash) {
+        const uint64_t off = uint64_t(row.ts) - uint64_t(origin);
+        if (!row.price && off < (uint64_t{1} << 31))
+            return {person, off | ((hash >> 32) << 31)};
+        if (off <= UINT32_MAX && row.price < (1u << 23) && row.category < 128)
+            return {person,
+                    (uint64_t{2} << 62) | off | (uint64_t(row.price) << 32) | (uint64_t(row.category) << 55)};
         static thread_local EventData* page;
         static thread_local unsigned used = 1024;
-        if (used == 1024) { page = new EventData[1024]; used = 0; }
-        EventData* saved = &page[used++];
-        *saved = row;
-        return {person, overflowFlag | reinterpret_cast<uintptr_t>(saved)};
+        if (used == 1024) {
+            page = new EventData[1024];
+            used = 0;
+        }
+        auto *v = &page[used++];
+        *v = row;
+        return {person, (uint64_t{3} << 62) | reinterpret_cast<uintptr_t>(v)};
+    }
+    uint64_t routingHash() const {
+        if (!(bits >> 63))
+            return uint64_t(uint32_t(bits >> 31)) << 32;
+        return person.hash();
+    }
+    void rename(Key to, uint64_t hash) {
+        person = to;
+        if (!(bits >> 63))
+            bits = (bits & 0x7fffffff) | ((hash >> 32) << 31);
     }
     EventData unpack(int64_t origin) const {
-        if (bits & overflowFlag)
-            return *reinterpret_cast<const EventData*>(bits & ~overflowFlag);
-        return {origin + static_cast<uint32_t>(bits), static_cast<uint32_t>(bits >> 32) & 0xffffff,
-                static_cast<uint32_t>(bits >> 56)};
+        if (!(bits >> 63))
+            return {origin + int64_t(bits & 0x7fffffff), 0, 0};
+        if ((bits >> 62) == 2)
+            return {origin + uint32_t(bits), uint32_t(bits >> 32) & 0x7fffff, uint32_t(bits >> 55) & 127};
+        return *reinterpret_cast<const EventData *>(bits & ~(uint64_t{3} << 62));
     }
 };
-struct Click { Key person, id; int64_t ts; uint32_t campaign; };
+struct Click {
+    Key person, id;
+    int64_t ts;
+    uint32_t campaign;
+    uint32_t hash32{};
+    uint64_t routingHash() const { return uint64_t(hash32) << 32; }
+    void rename(Key to, uint64_t h) {
+        person = to;
+        hash32 = h >> 32;
+    }
+};
 // A bucket's rows stay in the blocks the ingest wrote them to.
 template<class T> struct Pieces {
     std::vector<std::pair<const T*, size_t>> spans;
@@ -449,12 +474,43 @@ struct CampaignStats { int64_t sessions=0, purchasing=0, revenue=0, assists=0; }
 // Parquet worker can pass them directly to WriteBatch.
 struct UserColumns {
     std::vector<Key> people;
+    std::vector<char> dictionary;
+    std::vector<size_t> ends;
+    size_t dictionaryUsed = 0;
+    void prepare(size_t count) {
+        size_t required = dictionaryUsed + 13 * count;
+        if (dictionary.size() < required)
+            dictionary.resize(required);
+    }
+    void person(Key key) {
+        people.push_back(key);
+        char *p = dictionary.data() + dictionaryUsed;
+        uint32_t n = 0;
+        if (key.nineAscii()) {
+            n = 9;
+            key.writeNine(p + 4);
+        } else if (key.eightAscii()) {
+            n = 8;
+            uint64_t v = _pdep_u64(key.bits, Key::asciiMask);
+            std::memcpy(p + 4, &v, 8);
+        } else if (!key.external()) {
+            n = uint32_t(key.bits >> 56) & 7;
+            std::memcpy(p + 4, &key.bits, 8);
+        }
+        if (n) {
+            std::memcpy(p, &n, 4);
+            dictionaryUsed += 4 + n;
+        }
+        ends.push_back(dictionaryUsed);
+    }
     std::vector<int32_t> days;
     std::vector<uint32_t> userCounts, sessions, events;
     std::vector<int64_t> revenue;
     std::vector<uint32_t> top;
     void reserve(size_t n) {
         people.reserve(n);
+        ends.reserve(n);
+        dictionary.reserve(n * 13);
         userCounts.reserve(n);
         days.reserve(n);
         sessions.reserve(n);

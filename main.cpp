@@ -214,7 +214,7 @@ int main(int argc, char** argv) try {
     for (auto e : events) bytes += e.size();
     // More buckets balance large people across workers. Keep small datasets
     // compact, since each active bucket accumulates its own campaign totals.
-    size_t bucketCount = std::clamp(std::bit_ceil(bytes / (1u << 20)), size_t{1}, size_t{512});
+    size_t bucketCount = std::clamp(std::bit_ceil(bytes / (1u << 20)), size_t{1}, size_t{1024});
     std::vector<Bucket> buckets(bucketCount);
     stage("dimensions");
     try {

@@ -1,5 +1,7 @@
 # Shopping Sessions benchmark
 
+The [combined routing and session comparison](benchmarks/combined-routing/benchmark.md) measures the verified candidate against the 0.64 s submission on six Intel inputs.
+
 The [overnight Intel comparison](benchmarks/overnight-intel/benchmark.md) measures this candidate against the official 0.64 s commit on four practice inputs and two final-size inputs.
 
 The [branch-alignment comparison](benchmarks/branch-alignment/benchmark.md) records the release checks, five practice seeds and the 60M comparison.

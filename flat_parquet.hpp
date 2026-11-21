@@ -71,7 +71,7 @@ class Writer {
     std::ofstream stream;
     std::span<const Field> schema;
     std::vector<Group> groups;
-    std::vector<char> compressed;
+    std::vector<char> compressed, runCodes;
     std::vector<int64_t> widened;
     std::string header, values, levels, combined, indices;
     uint64_t written = 0, totalRows = 0;
@@ -188,8 +188,8 @@ public:
         for (size_t i = 0; i < n; ++i)
             dst[i] = static_cast<char>(static_cast<U>(src[i]) >> (Plane * 8));
     }
-    void userRuns(size_t n, const std::vector<Key> &keys, const std::vector<uint32_t> &counts,
-                  size_t &run, size_t &consumed) {
+    void userRuns(size_t n, const std::vector<Key> &keys, const std::vector<uint32_t> &counts, size_t &run,
+                  size_t &consumed, const std::vector<char> &dictionary, const std::vector<size_t> &ends) {
         const size_t initial = run, skip = consumed;
         const auto fallback = [&] {
             run = initial;
@@ -207,30 +207,15 @@ public:
             fallback();
             return;
         }
-        values.resize(n * 13);
-        char *p = values.data();
-        combined.clear();
-        combined.push_back(16);
+        const size_t limit = std::min(n, keys.size() - run);
+        if (runCodes.size() < limit * 5 + 1)
+            runCodes.resize(limit * 5 + 1);
+        char *code = runCodes.data();
+        *code++ = 16;
         size_t distinct = 0, remaining = n;
         while (remaining) {
             const Key &k = keys[run];
-            if (k.nineAscii()) {
-                const uint32_t len = 9;
-                std::memcpy(p, &len, 4);
-                k.writeNine(reinterpret_cast<char *>(p + 4));
-                p += 13;
-            } else if (k.eightAscii()) {
-                const uint32_t len = 8;
-                const uint64_t bytes = _pdep_u64(k.bits, Key::asciiMask);
-                std::memcpy(p, &len, 4);
-                std::memcpy(p + 4, &bytes, 8);
-                p += 12;
-            } else if (!k.external()) {
-                const uint32_t len = (k.bits >> 56) & 7;
-                std::memcpy(p, &len, 4);
-                std::memcpy(p + 4, &k.bits, 8);
-                p += 4 + len;
-            } else {
+            if (k.external()) {
                 fallback();
                 return;
             }
@@ -241,13 +226,21 @@ public:
                 ++run;
                 consumed = 0;
             }
-            varint(combined, count * 2);
+            uint32_t value = uint32_t(count * 2);
+            while (value >= 128) {
+                *code++ = char(value | 128);
+                value >>= 7;
+            }
+            *code++ = char(value);
             const uint16_t index = distinct++;
-            combined.append(reinterpret_cast<const char *>(&index), 2);
+            std::memcpy(code, &index, 2);
+            code += 2;
         }
         auto &c = column();
-        page(c, {values.data(), static_cast<size_t>(p - values.data())}, distinct, plain, true);
-        page(c, combined, n, 8);
+        c.codec = 0;
+        const size_t first = initial ? ends[initial - 1] : 0, last = ends[initial + distinct - 1];
+        page(c, {dictionary.data() + first, last - first}, distinct, plain, true);
+        page(c, {runCodes.data(), size_t(code - runCodes.data())}, n, 8);
     }
     template<unsigned Width> void smallCountPage(const uint32_t *src, size_t n, uint32_t largest) {
         std::array<int64_t, 64> dictionary;
