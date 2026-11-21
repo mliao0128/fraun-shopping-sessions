@@ -1,6 +1,6 @@
 # Shopping Sessions
 
-A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the mounted CSV files, resolves identities, and writes `user_daily` and `campaign_daily` as Parquet. See the [paired comparison against the official 0.84 s build](benchmarks/after-084/benchmark.md) for the tested environment, correctness checks, and timings.
+A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the mounted CSV files, resolves identities, and writes `user_daily` and `campaign_daily` as Parquet. The [latest paired benchmark](benchmarks/branch-alignment/benchmark.md) compares this build with our official 0.84 s submission and records complete output checks.
 
 ## Build and run
 

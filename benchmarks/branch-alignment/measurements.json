@@ -1,0 +1,3556 @@
+{
+  "paired_intel": [
+    {
+      "lap": 0,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00621491,
+        "start": 2.4e-08,
+        "parse": 0.2673,
+        "dedup": 0.0425176,
+        "await-links": 6.905e-05,
+        "route": 0.0620697,
+        "ingest": 0.372006,
+        "aggregate-output": 0.12861
+      },
+      "process_ns": 513321998,
+      "monotonic_ns": 513319895,
+      "peak_rss_kib": 2886408
+    },
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.0059854,
+        "start": 4.4e-08,
+        "parse": 0.32515,
+        "dedup": 0.109824,
+        "await-links": 9.3123e-05,
+        "route": 0.059291,
+        "ingest": 0.494417,
+        "aggregate-output": 0.196618
+      },
+      "process_ns": 757339724,
+      "monotonic_ns": 757336584,
+      "peak_rss_kib": 2888296
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00579052,
+        "start": 3.5e-08,
+        "parse": 0.328127,
+        "dedup": 0.107934,
+        "await-links": 9.7926e-05,
+        "route": 0.0592899,
+        "ingest": 0.495506,
+        "aggregate-output": 0.197654
+      },
+      "process_ns": 758687914,
+      "monotonic_ns": 758684780,
+      "peak_rss_kib": 2886236
+    },
+    {
+      "lap": 1,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00632785,
+        "start": 4e-08,
+        "parse": 0.25735,
+        "dedup": 0.0390235,
+        "await-links": 6.2162e-05,
+        "route": 0.0605263,
+        "ingest": 0.356997,
+        "aggregate-output": 0.13038
+      },
+      "process_ns": 500670279,
+      "monotonic_ns": 500668209,
+      "peak_rss_kib": 2880208
+    },
+    {
+      "lap": 2,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00644519,
+        "start": 2.3e-08,
+        "parse": 0.257287,
+        "dedup": 0.0390676,
+        "await-links": 5.1553e-05,
+        "route": 0.0600048,
+        "ingest": 0.356448,
+        "aggregate-output": 0.129686
+      },
+      "process_ns": 500173294,
+      "monotonic_ns": 500171227,
+      "peak_rss_kib": 2880044
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00596332,
+        "start": 3.3e-08,
+        "parse": 0.325555,
+        "dedup": 0.107452,
+        "await-links": 9.2383e-05,
+        "route": 0.0592233,
+        "ingest": 0.49238,
+        "aggregate-output": 0.197365
+      },
+      "process_ns": 756468262,
+      "monotonic_ns": 756465158,
+      "peak_rss_kib": 2885104
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00596693,
+        "start": 4.2e-08,
+        "parse": 0.326082,
+        "dedup": 0.106691,
+        "await-links": 5.2362e-05,
+        "route": 0.0592209,
+        "ingest": 0.49212,
+        "aggregate-output": 0.197117
+      },
+      "process_ns": 755450748,
+      "monotonic_ns": 755447651,
+      "peak_rss_kib": 2891496
+    },
+    {
+      "lap": 3,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00647567,
+        "start": 2.5e-08,
+        "parse": 0.255368,
+        "dedup": 0.038944,
+        "await-links": 6.339e-05,
+        "route": 0.0602758,
+        "ingest": 0.35469,
+        "aggregate-output": 0.130712
+      },
+      "process_ns": 498852366,
+      "monotonic_ns": 498850308,
+      "peak_rss_kib": 2880212
+    },
+    {
+      "lap": 4,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00638912,
+        "start": 3.9e-08,
+        "parse": 0.255983,
+        "dedup": 0.0388957,
+        "await-links": 4.7308e-05,
+        "route": 0.0601143,
+        "ingest": 0.355076,
+        "aggregate-output": 0.127816
+      },
+      "process_ns": 496068950,
+      "monotonic_ns": 496066920,
+      "peak_rss_kib": 2882092
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00586576,
+        "start": 4.6e-08,
+        "parse": 0.3271,
+        "dedup": 0.108992,
+        "await-links": 9.3712e-05,
+        "route": 0.0592723,
+        "ingest": 0.495533,
+        "aggregate-output": 0.196334
+      },
+      "process_ns": 759214300,
+      "monotonic_ns": 759211208,
+      "peak_rss_kib": 2889400
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.0057601,
+        "start": 3.4e-08,
+        "parse": 0.32945,
+        "dedup": 0.106377,
+        "await-links": 0.000105681,
+        "route": 0.0593146,
+        "ingest": 0.49532,
+        "aggregate-output": 0.19766
+      },
+      "process_ns": 758219123,
+      "monotonic_ns": 758216029,
+      "peak_rss_kib": 2889836
+    },
+    {
+      "lap": 5,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00634243,
+        "start": 3.6e-08,
+        "parse": 0.257522,
+        "dedup": 0.0387902,
+        "await-links": 4.8873e-05,
+        "route": 0.0602544,
+        "ingest": 0.356664,
+        "aggregate-output": 0.130289
+      },
+      "process_ns": 500281755,
+      "monotonic_ns": 500279719,
+      "peak_rss_kib": 2878016
+    },
+    {
+      "lap": 6,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.0063632,
+        "start": 3.7e-08,
+        "parse": 0.256678,
+        "dedup": 0.0390283,
+        "await-links": 6.3856e-05,
+        "route": 0.0605532,
+        "ingest": 0.356375,
+        "aggregate-output": 0.128917
+      },
+      "process_ns": 498259310,
+      "monotonic_ns": 498257283,
+      "peak_rss_kib": 2884284
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00590653,
+        "start": 4.5e-08,
+        "parse": 0.324706,
+        "dedup": 0.106951,
+        "await-links": 9.6399e-05,
+        "route": 0.0592289,
+        "ingest": 0.491041,
+        "aggregate-output": 0.198377
+      },
+      "process_ns": 754889797,
+      "monotonic_ns": 754886750,
+      "peak_rss_kib": 2887484
+    },
+    {
+      "lap": 7,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00578654,
+        "start": 3.3e-08,
+        "parse": 0.326987,
+        "dedup": 0.107519,
+        "await-links": 8.5176e-05,
+        "route": 0.0592289,
+        "ingest": 0.493892,
+        "aggregate-output": 0.198766
+      },
+      "process_ns": 758777503,
+      "monotonic_ns": 758774450,
+      "peak_rss_kib": 2890752
+    },
+    {
+      "lap": 7,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00623925,
+        "start": 4.2e-08,
+        "parse": 0.257651,
+        "dedup": 0.0392311,
+        "await-links": 6.1853e-05,
+        "route": 0.0606718,
+        "ingest": 0.357652,
+        "aggregate-output": 0.13079
+      },
+      "process_ns": 501374288,
+      "monotonic_ns": 501372272,
+      "peak_rss_kib": 2877908
+    },
+    {
+      "lap": 8,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00640283,
+        "start": 3.8e-08,
+        "parse": 0.256372,
+        "dedup": 0.0392951,
+        "await-links": 6.4264e-05,
+        "route": 0.0606075,
+        "ingest": 0.356375,
+        "aggregate-output": 0.13119
+      },
+      "process_ns": 500471284,
+      "monotonic_ns": 500469272,
+      "peak_rss_kib": 2879824
+    },
+    {
+      "lap": 8,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.0058652,
+        "start": 4.1e-08,
+        "parse": 0.326966,
+        "dedup": 0.108585,
+        "await-links": 9.3224e-05,
+        "route": 0.0592844,
+        "ingest": 0.495003,
+        "aggregate-output": 0.198018
+      },
+      "process_ns": 759442761,
+      "monotonic_ns": 759439724,
+      "peak_rss_kib": 2891548
+    },
+    {
+      "lap": 0,
+      "config": "j61-jcc:je:one",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.0103609,
+        "start": 3.4e-08,
+        "parse": 6.89627,
+        "dedup": 4.78819,
+        "await-links": 0.000159231,
+        "route": 0.310606,
+        "ingest": 11.9953,
+        "aggregate-output": 0.419046
+      },
+      "process_ns": 12653295438,
+      "monotonic_ns": 12653253487,
+      "peak_rss_kib": 7364568
+    },
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.0436368,
+        "start": 1.18e-07,
+        "parse": 2.21013,
+        "dedup": 0.179978,
+        "await-links": 4.0821e-05,
+        "route": 0.196151,
+        "ingest": 2.58642,
+        "aggregate-output": 0.701399
+      },
+      "process_ns": 3478985426,
+      "monotonic_ns": 3478974044,
+      "peak_rss_kib": 8147212
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00559566,
+        "start": 3.3e-08,
+        "parse": 1.00468,
+        "dedup": 0.179964,
+        "await-links": 2.4501e-05,
+        "route": 0.19822,
+        "ingest": 1.38296,
+        "aggregate-output": 0.688223
+      },
+      "process_ns": 2199168120,
+      "monotonic_ns": 2199161125,
+      "peak_rss_kib": 8224884
+    },
+    {
+      "lap": 1,
+      "config": "j61-jcc:je:one",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00629935,
+        "start": 2.3e-08,
+        "parse": 0.753146,
+        "dedup": 0.12156,
+        "await-links": 5.3252e-05,
+        "route": 0.186915,
+        "ingest": 1.06171,
+        "aggregate-output": 0.396309
+      },
+      "process_ns": 1481238656,
+      "monotonic_ns": 1481233946,
+      "peak_rss_kib": 8109256
+    },
+    {
+      "lap": 2,
+      "config": "j61-jcc:je:one",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00633342,
+        "start": 2.5e-08,
+        "parse": 0.722341,
+        "dedup": 0.120295,
+        "await-links": 8.8239e-05,
+        "route": 0.202329,
+        "ingest": 1.04511,
+        "aggregate-output": 0.391246
+      },
+      "process_ns": 1455059965,
+      "monotonic_ns": 1455055385,
+      "peak_rss_kib": 8141316
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00575238,
+        "start": 4.2e-08,
+        "parse": 0.960787,
+        "dedup": 0.178501,
+        "await-links": 3.8746e-05,
+        "route": 0.19425,
+        "ingest": 1.33363,
+        "aggregate-output": 0.685717
+      },
+      "process_ns": 2137313711,
+      "monotonic_ns": 2137307026,
+      "peak_rss_kib": 8224856
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00560568,
+        "start": 4e-08,
+        "parse": 0.986774,
+        "dedup": 0.200225,
+        "await-links": 3.9332e-05,
+        "route": 0.207695,
+        "ingest": 1.39479,
+        "aggregate-output": 0.688245
+      },
+      "process_ns": 2199737281,
+      "monotonic_ns": 2199730471,
+      "peak_rss_kib": 8234072
+    },
+    {
+      "lap": 3,
+      "config": "j61-jcc:je:one",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00614055,
+        "start": 3.7e-08,
+        "parse": 0.722109,
+        "dedup": 0.130368,
+        "await-links": 6.8528e-05,
+        "route": 0.186952,
+        "ingest": 1.03954,
+        "aggregate-output": 0.394354
+      },
+      "process_ns": 1454021147,
+      "monotonic_ns": 1454016665,
+      "peak_rss_kib": 8142864
+    },
+    {
+      "lap": 4,
+      "config": "j61-jcc:je:one",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00625938,
+        "start": 3.7e-08,
+        "parse": 0.72055,
+        "dedup": 0.129049,
+        "await-links": 5.7059e-05,
+        "route": 0.186902,
+        "ingest": 1.03661,
+        "aggregate-output": 0.398718
+      },
+      "process_ns": 1453758758,
+      "monotonic_ns": 1453754302,
+      "peak_rss_kib": 8144248
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.0057983,
+        "start": 3.5e-08,
+        "parse": 0.958644,
+        "dedup": 0.179247,
+        "await-links": 3.7981e-05,
+        "route": 0.194839,
+        "ingest": 1.33285,
+        "aggregate-output": 0.678337
+      },
+      "process_ns": 2127283264,
+      "monotonic_ns": 2127276812,
+      "peak_rss_kib": 8233304
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00619921,
+        "start": 4.1e-08,
+        "parse": 0.953835,
+        "dedup": 0.171149,
+        "await-links": 6.2974e-05,
+        "route": 0.194682,
+        "ingest": 1.31981,
+        "aggregate-output": 0.684356
+      },
+      "process_ns": 2120856550,
+      "monotonic_ns": 2120850173,
+      "peak_rss_kib": 8231988
+    },
+    {
+      "lap": 5,
+      "config": "j61-jcc:je:one",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00610148,
+        "start": 3.7e-08,
+        "parse": 0.71945,
+        "dedup": 0.122627,
+        "await-links": 7.0305e-05,
+        "route": 0.185987,
+        "ingest": 1.02817,
+        "aggregate-output": 0.392007
+      },
+      "process_ns": 1438664033,
+      "monotonic_ns": 1438659735,
+      "peak_rss_kib": 8138104
+    },
+    {
+      "lap": 6,
+      "config": "j61-jcc:je:one",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00624614,
+        "start": 4.3e-08,
+        "parse": 0.720005,
+        "dedup": 0.120549,
+        "await-links": 6.8579e-05,
+        "route": 0.187069,
+        "ingest": 1.02774,
+        "aggregate-output": 0.395297
+      },
+      "process_ns": 1441837152,
+      "monotonic_ns": 1441832865,
+      "peak_rss_kib": 8158572
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00578268,
+        "start": 3.3e-08,
+        "parse": 0.960094,
+        "dedup": 0.18203,
+        "await-links": 4.9697e-05,
+        "route": 0.194228,
+        "ingest": 1.33649,
+        "aggregate-output": 0.6914
+      },
+      "process_ns": 2145696822,
+      "monotonic_ns": 2145690506,
+      "peak_rss_kib": 8230148
+    },
+    {
+      "lap": 7,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00628109,
+        "start": 4.5e-08,
+        "parse": 0.959313,
+        "dedup": 0.177592,
+        "await-links": 7.1454e-05,
+        "route": 0.196749,
+        "ingest": 1.33378,
+        "aggregate-output": 0.672454
+      },
+      "process_ns": 2123218058,
+      "monotonic_ns": 2123211861,
+      "peak_rss_kib": 8230324
+    },
+    {
+      "lap": 7,
+      "config": "j61-jcc:je:one",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00615986,
+        "start": 3.8e-08,
+        "parse": 0.720344,
+        "dedup": 0.120047,
+        "await-links": 5.3845e-05,
+        "route": 0.198656,
+        "ingest": 1.03916,
+        "aggregate-output": 0.398108
+      },
+      "process_ns": 1456471694,
+      "monotonic_ns": 1456467464,
+      "peak_rss_kib": 8131152
+    },
+    {
+      "lap": 8,
+      "config": "j61-jcc:je:one",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00629326,
+        "start": 4.1e-08,
+        "parse": 0.717801,
+        "dedup": 0.120759,
+        "await-links": 6.8524e-05,
+        "route": 0.187379,
+        "ingest": 1.02608,
+        "aggregate-output": 0.386875
+      },
+      "process_ns": 1431869338,
+      "monotonic_ns": 1431865208,
+      "peak_rss_kib": 8145668
+    },
+    {
+      "lap": 8,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00567764,
+        "start": 4.4e-08,
+        "parse": 0.982702,
+        "dedup": 0.177681,
+        "await-links": 2.5753e-05,
+        "route": 0.194602,
+        "ingest": 1.35507,
+        "aggregate-output": 0.681837
+      },
+      "process_ns": 2153210577,
+      "monotonic_ns": 2153204408,
+      "peak_rss_kib": 8232308
+    },
+    {
+      "lap": 0,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00933239,
+        "start": 6.2e-08,
+        "parse": 0.260604,
+        "dedup": 0.0403212,
+        "await-links": 7.5155e-05,
+        "route": 0.0584691,
+        "ingest": 0.359509,
+        "aggregate-output": 0.14734
+      },
+      "process_ns": 523159026,
+      "monotonic_ns": 523156899,
+      "peak_rss_kib": 2869484
+    },
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.0064347,
+        "start": 4.6e-08,
+        "parse": 0.339554,
+        "dedup": 0.111867,
+        "await-links": 6.8017e-05,
+        "route": 0.0579886,
+        "ingest": 0.509554,
+        "aggregate-output": 0.199407
+      },
+      "process_ns": 766676881,
+      "monotonic_ns": 766673823,
+      "peak_rss_kib": 2886112
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00611101,
+        "start": 4.2e-08,
+        "parse": 0.319628,
+        "dedup": 0.11055,
+        "await-links": 6.7097e-05,
+        "route": 0.0577085,
+        "ingest": 0.488014,
+        "aggregate-output": 0.199628
+      },
+      "process_ns": 745679010,
+      "monotonic_ns": 745676046,
+      "peak_rss_kib": 2887460
+    },
+    {
+      "lap": 1,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00678874,
+        "start": 2.5e-08,
+        "parse": 0.258189,
+        "dedup": 0.0396733,
+        "await-links": 6.4771e-05,
+        "route": 0.0576185,
+        "ingest": 0.355596,
+        "aggregate-output": 0.127166
+      },
+      "process_ns": 496153142,
+      "monotonic_ns": 496151158,
+      "peak_rss_kib": 2871772
+    },
+    {
+      "lap": 2,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00680754,
+        "start": 2.4e-08,
+        "parse": 0.257915,
+        "dedup": 0.0400282,
+        "await-links": 7.8499e-05,
+        "route": 0.0593734,
+        "ingest": 0.357431,
+        "aggregate-output": 0.128241
+      },
+      "process_ns": 499085242,
+      "monotonic_ns": 499083257,
+      "peak_rss_kib": 2877440
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00631906,
+        "start": 4.2e-08,
+        "parse": 0.319696,
+        "dedup": 0.11173,
+        "await-links": 8.8979e-05,
+        "route": 0.0577493,
+        "ingest": 0.48934,
+        "aggregate-output": 0.201839
+      },
+      "process_ns": 750582075,
+      "monotonic_ns": 750579107,
+      "peak_rss_kib": 2889040
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00656381,
+        "start": 4.6e-08,
+        "parse": 0.332269,
+        "dedup": 0.116424,
+        "await-links": 3.7947e-05,
+        "route": 0.0607982,
+        "ingest": 0.509576,
+        "aggregate-output": 0.198198
+      },
+      "process_ns": 764498511,
+      "monotonic_ns": 764495503,
+      "peak_rss_kib": 2886920
+    },
+    {
+      "lap": 3,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00668821,
+        "start": 3.6e-08,
+        "parse": 0.256157,
+        "dedup": 0.0402268,
+        "await-links": 6.3201e-05,
+        "route": 0.0574364,
+        "ingest": 0.353932,
+        "aggregate-output": 0.129249
+      },
+      "process_ns": 496200262,
+      "monotonic_ns": 496198313,
+      "peak_rss_kib": 2873840
+    },
+    {
+      "lap": 4,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00676587,
+        "start": 3.9e-08,
+        "parse": 0.257295,
+        "dedup": 0.0396243,
+        "await-links": 6.5684e-05,
+        "route": 0.0574067,
+        "ingest": 0.354443,
+        "aggregate-output": 0.130105
+      },
+      "process_ns": 497751144,
+      "monotonic_ns": 497749193,
+      "peak_rss_kib": 2869344
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00623963,
+        "start": 4.7e-08,
+        "parse": 0.321232,
+        "dedup": 0.11468,
+        "await-links": 9.7128e-05,
+        "route": 0.0583003,
+        "ingest": 0.494371,
+        "aggregate-output": 0.202174
+      },
+      "process_ns": 754046927,
+      "monotonic_ns": 754043978,
+      "peak_rss_kib": 2887572
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00629456,
+        "start": 4.3e-08,
+        "parse": 0.323059,
+        "dedup": 0.112292,
+        "await-links": 5.1081e-05,
+        "route": 0.059544,
+        "ingest": 0.49502,
+        "aggregate-output": 0.199316
+      },
+      "process_ns": 751199700,
+      "monotonic_ns": 751196774,
+      "peak_rss_kib": 2885360
+    },
+    {
+      "lap": 5,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.0066824,
+        "start": 3.6e-08,
+        "parse": 0.26626,
+        "dedup": 0.044324,
+        "await-links": 8.3947e-05,
+        "route": 0.0678613,
+        "ingest": 0.378564,
+        "aggregate-output": 0.133257
+      },
+      "process_ns": 525009043,
+      "monotonic_ns": 525006986,
+      "peak_rss_kib": 2865400
+    },
+    {
+      "lap": 6,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00688173,
+        "start": 2.8e-08,
+        "parse": 0.266126,
+        "dedup": 0.039894,
+        "await-links": 6.5333e-05,
+        "route": 0.0576405,
+        "ingest": 0.363776,
+        "aggregate-output": 0.133873
+      },
+      "process_ns": 511693177,
+      "monotonic_ns": 511691173,
+      "peak_rss_kib": 2871804
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00633662,
+        "start": 4.1e-08,
+        "parse": 0.326418,
+        "dedup": 0.11199,
+        "await-links": 6.3081e-05,
+        "route": 0.0591698,
+        "ingest": 0.497716,
+        "aggregate-output": 0.246838
+      },
+      "process_ns": 802402476,
+      "monotonic_ns": 802399361,
+      "peak_rss_kib": 2887052
+    },
+    {
+      "lap": 7,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00617204,
+        "start": 4.3e-08,
+        "parse": 0.357331,
+        "dedup": 0.112073,
+        "await-links": 7.4415e-05,
+        "route": 0.0579781,
+        "ingest": 0.527518,
+        "aggregate-output": 0.201439
+      },
+      "process_ns": 784697364,
+      "monotonic_ns": 784694327,
+      "peak_rss_kib": 2884568
+    },
+    {
+      "lap": 7,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00667302,
+        "start": 2.3e-08,
+        "parse": 0.257087,
+        "dedup": 0.0397444,
+        "await-links": 8.866e-05,
+        "route": 0.0586327,
+        "ingest": 0.355596,
+        "aggregate-output": 0.129274
+      },
+      "process_ns": 498188440,
+      "monotonic_ns": 498186514,
+      "peak_rss_kib": 2869344
+    },
+    {
+      "lap": 8,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00682401,
+        "start": 2.2e-08,
+        "parse": 0.261035,
+        "dedup": 0.0397706,
+        "await-links": 6.501e-05,
+        "route": 0.0590513,
+        "ingest": 0.359971,
+        "aggregate-output": 0.127247
+      },
+      "process_ns": 500682459,
+      "monotonic_ns": 500680524,
+      "peak_rss_kib": 2873864
+    },
+    {
+      "lap": 8,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00633265,
+        "start": 5.5e-08,
+        "parse": 0.322258,
+        "dedup": 0.11433,
+        "await-links": 3.7683e-05,
+        "route": 0.0577796,
+        "ingest": 0.494481,
+        "aggregate-output": 0.199376
+      },
+      "process_ns": 750458079,
+      "monotonic_ns": 750455196,
+      "peak_rss_kib": 2886792
+    },
+    {
+      "lap": 0,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00603143,
+        "start": 2.6e-08,
+        "parse": 0.253083,
+        "dedup": 0.0361399,
+        "await-links": 6.2693e-05,
+        "route": 0.0559822,
+        "ingest": 0.345317,
+        "aggregate-output": 0.128773
+      },
+      "process_ns": 486447657,
+      "monotonic_ns": 486445778,
+      "peak_rss_kib": 2853776
+    },
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00567274,
+        "start": 5.9e-08,
+        "parse": 0.316206,
+        "dedup": 0.0993374,
+        "await-links": 8.7462e-05,
+        "route": 0.05659,
+        "ingest": 0.472278,
+        "aggregate-output": 0.198539
+      },
+      "process_ns": 723922205,
+      "monotonic_ns": 723919447,
+      "peak_rss_kib": 2867836
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00559999,
+        "start": 4.2e-08,
+        "parse": 0.316452,
+        "dedup": 0.100354,
+        "await-links": 5.0762e-05,
+        "route": 0.0568109,
+        "ingest": 0.47374,
+        "aggregate-output": 0.199948
+      },
+      "process_ns": 725865044,
+      "monotonic_ns": 725862273,
+      "peak_rss_kib": 2866028
+    },
+    {
+      "lap": 1,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00603623,
+        "start": 3.4e-08,
+        "parse": 0.250874,
+        "dedup": 0.0359111,
+        "await-links": 4.9888e-05,
+        "route": 0.0559447,
+        "ingest": 0.342831,
+        "aggregate-output": 0.130475
+      },
+      "process_ns": 485645958,
+      "monotonic_ns": 485644094,
+      "peak_rss_kib": 2859760
+    },
+    {
+      "lap": 2,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00624159,
+        "start": 3.6e-08,
+        "parse": 0.252357,
+        "dedup": 0.0357469,
+        "await-links": 6.6129e-05,
+        "route": 0.0560008,
+        "ingest": 0.344221,
+        "aggregate-output": 0.126831
+      },
+      "process_ns": 483885152,
+      "monotonic_ns": 483883303,
+      "peak_rss_kib": 2857732
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00568398,
+        "start": 3.6e-08,
+        "parse": 0.317437,
+        "dedup": 0.0989221,
+        "await-links": 9.1971e-05,
+        "route": 0.0569922,
+        "ingest": 0.473502,
+        "aggregate-output": 0.198939
+      },
+      "process_ns": 723578023,
+      "monotonic_ns": 723575283,
+      "peak_rss_kib": 2868424
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00556187,
+        "start": 3.3e-08,
+        "parse": 0.3181,
+        "dedup": 0.101012,
+        "await-links": 6.8152e-05,
+        "route": 0.0565933,
+        "ingest": 0.475855,
+        "aggregate-output": 0.198185
+      },
+      "process_ns": 724071695,
+      "monotonic_ns": 724068966,
+      "peak_rss_kib": 2863632
+    },
+    {
+      "lap": 3,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00610713,
+        "start": 2.3e-08,
+        "parse": 0.249723,
+        "dedup": 0.0356826,
+        "await-links": 6.3022e-05,
+        "route": 0.057618,
+        "ingest": 0.343136,
+        "aggregate-output": 0.130099
+      },
+      "process_ns": 485605016,
+      "monotonic_ns": 485603167,
+      "peak_rss_kib": 2855732
+    },
+    {
+      "lap": 4,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00628936,
+        "start": 2.3e-08,
+        "parse": 0.251848,
+        "dedup": 0.0358153,
+        "await-links": 6.4317e-05,
+        "route": 0.0558108,
+        "ingest": 0.343589,
+        "aggregate-output": 0.129787
+      },
+      "process_ns": 486942799,
+      "monotonic_ns": 486940956,
+      "peak_rss_kib": 2853672
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.0057121,
+        "start": 3.3e-08,
+        "parse": 0.3189,
+        "dedup": 0.100029,
+        "await-links": 3.7432e-05,
+        "route": 0.0567916,
+        "ingest": 0.475816,
+        "aggregate-output": 0.199421
+      },
+      "process_ns": 726113153,
+      "monotonic_ns": 726110435,
+      "peak_rss_kib": 2868000
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00575469,
+        "start": 5e-08,
+        "parse": 0.316789,
+        "dedup": 0.100275,
+        "await-links": 9.2693e-05,
+        "route": 0.0568188,
+        "ingest": 0.474048,
+        "aggregate-output": 0.198803
+      },
+      "process_ns": 724669836,
+      "monotonic_ns": 724667122,
+      "peak_rss_kib": 2867312
+    },
+    {
+      "lap": 5,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00631952,
+        "start": 4.3e-08,
+        "parse": 0.250937,
+        "dedup": 0.0363553,
+        "await-links": 6.8788e-05,
+        "route": 0.0559385,
+        "ingest": 0.343351,
+        "aggregate-output": 0.129209
+      },
+      "process_ns": 486340840,
+      "monotonic_ns": 486338999,
+      "peak_rss_kib": 2849584
+    },
+    {
+      "lap": 6,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00630108,
+        "start": 2.3e-08,
+        "parse": 0.249991,
+        "dedup": 0.035711,
+        "await-links": 5.1598e-05,
+        "route": 0.0559233,
+        "ingest": 0.341727,
+        "aggregate-output": 0.132032
+      },
+      "process_ns": 486388539,
+      "monotonic_ns": 486386715,
+      "peak_rss_kib": 2853672
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.0056774,
+        "start": 4.2e-08,
+        "parse": 0.317302,
+        "dedup": 0.102564,
+        "await-links": 6.3812e-05,
+        "route": 0.0569952,
+        "ingest": 0.476996,
+        "aggregate-output": 0.199933
+      },
+      "process_ns": 727178118,
+      "monotonic_ns": 727175398,
+      "peak_rss_kib": 2866284
+    },
+    {
+      "lap": 7,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00557977,
+        "start": 3.3e-08,
+        "parse": 0.316058,
+        "dedup": 0.0994716,
+        "await-links": 6.1727e-05,
+        "route": 0.0566741,
+        "ingest": 0.472337,
+        "aggregate-output": 0.200745
+      },
+      "process_ns": 724044495,
+      "monotonic_ns": 724041813,
+      "peak_rss_kib": 2866704
+    },
+    {
+      "lap": 7,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00635525,
+        "start": 3.7e-08,
+        "parse": 0.25158,
+        "dedup": 0.0357986,
+        "await-links": 6.3171e-05,
+        "route": 0.0557516,
+        "ingest": 0.343245,
+        "aggregate-output": 0.127806
+      },
+      "process_ns": 483570961,
+      "monotonic_ns": 483569161,
+      "peak_rss_kib": 2857788
+    },
+    {
+      "lap": 8,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00621309,
+        "start": 3.6e-08,
+        "parse": 0.252541,
+        "dedup": 0.0363786,
+        "await-links": 6.1963e-05,
+        "route": 0.0559335,
+        "ingest": 0.344951,
+        "aggregate-output": 0.132732
+      },
+      "process_ns": 490126716,
+      "monotonic_ns": 490124882,
+      "peak_rss_kib": 2853560
+    },
+    {
+      "lap": 8,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00573095,
+        "start": 4.5e-08,
+        "parse": 0.315009,
+        "dedup": 0.0999659,
+        "await-links": 4.8718e-05,
+        "route": 0.0567585,
+        "ingest": 0.471839,
+        "aggregate-output": 0.198338
+      },
+      "process_ns": 720411133,
+      "monotonic_ns": 720408454,
+      "peak_rss_kib": 2867340
+    },
+    {
+      "lap": 0,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00640269,
+        "start": 3.3e-08,
+        "parse": 0.248873,
+        "dedup": 0.0391107,
+        "await-links": 9.2526e-05,
+        "route": 0.0548896,
+        "ingest": 0.34304,
+        "aggregate-output": 0.1273
+      },
+      "process_ns": 483091096,
+      "monotonic_ns": 483089308,
+      "peak_rss_kib": 2870728
+    },
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.0059555,
+        "start": 3.5e-08,
+        "parse": 0.315721,
+        "dedup": 0.109453,
+        "await-links": 3.7557e-05,
+        "route": 0.0571105,
+        "ingest": 0.482396,
+        "aggregate-output": 0.197032
+      },
+      "process_ns": 719352430,
+      "monotonic_ns": 719349798,
+      "peak_rss_kib": 2888880
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00606868,
+        "start": 4.4e-08,
+        "parse": 0.318093,
+        "dedup": 0.107116,
+        "await-links": 9.0407e-05,
+        "route": 0.0572698,
+        "ingest": 0.48264,
+        "aggregate-output": 0.197826
+      },
+      "process_ns": 722867400,
+      "monotonic_ns": 722864755,
+      "peak_rss_kib": 2891636
+    },
+    {
+      "lap": 1,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00642413,
+        "start": 2.4e-08,
+        "parse": 0.25032,
+        "dedup": 0.0397997,
+        "await-links": 6.8517e-05,
+        "route": 0.0572839,
+        "ingest": 0.347509,
+        "aggregate-output": 0.128331
+      },
+      "process_ns": 489375278,
+      "monotonic_ns": 489373489,
+      "peak_rss_kib": 2877208
+    },
+    {
+      "lap": 2,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00656792,
+        "start": 3.7e-08,
+        "parse": 0.248212,
+        "dedup": 0.0393852,
+        "await-links": 4.8909e-05,
+        "route": 0.0609023,
+        "ingest": 0.348585,
+        "aggregate-output": 0.127924
+      },
+      "process_ns": 489579486,
+      "monotonic_ns": 489577684,
+      "peak_rss_kib": 2877156
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00593483,
+        "start": 3.5e-08,
+        "parse": 0.318388,
+        "dedup": 0.107612,
+        "await-links": 7.1543e-05,
+        "route": 0.0571169,
+        "ingest": 0.483254,
+        "aggregate-output": 0.196976
+      },
+      "process_ns": 720656635,
+      "monotonic_ns": 720654018,
+      "peak_rss_kib": 2891176
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00594694,
+        "start": 3.5e-08,
+        "parse": 0.319284,
+        "dedup": 0.10807,
+        "await-links": 5.6889e-05,
+        "route": 0.0572078,
+        "ingest": 0.484691,
+        "aggregate-output": 0.198264
+      },
+      "process_ns": 722835554,
+      "monotonic_ns": 722832933,
+      "peak_rss_kib": 2886812
+    },
+    {
+      "lap": 3,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00634812,
+        "start": 2.2e-08,
+        "parse": 0.248596,
+        "dedup": 0.0392622,
+        "await-links": 5.3649e-05,
+        "route": 0.0574559,
+        "ingest": 0.34542,
+        "aggregate-output": 0.132726
+      },
+      "process_ns": 490774430,
+      "monotonic_ns": 490772649,
+      "peak_rss_kib": 2881308
+    },
+    {
+      "lap": 4,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00642844,
+        "start": 2.2e-08,
+        "parse": 0.249102,
+        "dedup": 0.0392497,
+        "await-links": 7.8833e-05,
+        "route": 0.0546903,
+        "ingest": 0.343156,
+        "aggregate-output": 0.129518
+      },
+      "process_ns": 485846557,
+      "monotonic_ns": 485844796,
+      "peak_rss_kib": 2875156
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.0059742,
+        "start": 4.7e-08,
+        "parse": 0.316279,
+        "dedup": 0.109083,
+        "await-links": 9.0119e-05,
+        "route": 0.0571372,
+        "ingest": 0.48265,
+        "aggregate-output": 0.19728
+      },
+      "process_ns": 719990325,
+      "monotonic_ns": 719987736,
+      "peak_rss_kib": 2884800
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00590269,
+        "start": 3.5e-08,
+        "parse": 0.3173,
+        "dedup": 0.107603,
+        "await-links": 4.1753e-05,
+        "route": 0.0572739,
+        "ingest": 0.482293,
+        "aggregate-output": 0.197003
+      },
+      "process_ns": 719328674,
+      "monotonic_ns": 719326088,
+      "peak_rss_kib": 2889552
+    },
+    {
+      "lap": 5,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00645952,
+        "start": 3.6e-08,
+        "parse": 0.249844,
+        "dedup": 0.0393238,
+        "await-links": 6.309e-05,
+        "route": 0.0555848,
+        "ingest": 0.34485,
+        "aggregate-output": 0.126346
+      },
+      "process_ns": 484056945,
+      "monotonic_ns": 484055191,
+      "peak_rss_kib": 2878988
+    },
+    {
+      "lap": 6,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00649375,
+        "start": 3.9e-08,
+        "parse": 0.249082,
+        "dedup": 0.0396554,
+        "await-links": 4.9796e-05,
+        "route": 0.0573247,
+        "ingest": 0.346147,
+        "aggregate-output": 0.127563
+      },
+      "process_ns": 486733720,
+      "monotonic_ns": 486731961,
+      "peak_rss_kib": 2878960
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00602965,
+        "start": 5.2e-08,
+        "parse": 0.317532,
+        "dedup": 0.106933,
+        "await-links": 8.3245e-05,
+        "route": 0.0572076,
+        "ingest": 0.481829,
+        "aggregate-output": 0.196695
+      },
+      "process_ns": 719413100,
+      "monotonic_ns": 719410534,
+      "peak_rss_kib": 2894120
+    },
+    {
+      "lap": 7,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00584727,
+        "start": 3.5e-08,
+        "parse": 0.316257,
+        "dedup": 0.109249,
+        "await-links": 7.6506e-05,
+        "route": 0.0573038,
+        "ingest": 0.482944,
+        "aggregate-output": 0.198614
+      },
+      "process_ns": 721299559,
+      "monotonic_ns": 721296997,
+      "peak_rss_kib": 2891236
+    },
+    {
+      "lap": 7,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00645278,
+        "start": 3.9e-08,
+        "parse": 0.249271,
+        "dedup": 0.0391156,
+        "await-links": 5.0983e-05,
+        "route": 0.0572013,
+        "ingest": 0.345711,
+        "aggregate-output": 0.126559
+      },
+      "process_ns": 485178882,
+      "monotonic_ns": 485177137,
+      "peak_rss_kib": 2875136
+    },
+    {
+      "lap": 8,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00639653,
+        "start": 3.6e-08,
+        "parse": 0.24822,
+        "dedup": 0.03951,
+        "await-links": 5.4227e-05,
+        "route": 0.0574055,
+        "ingest": 0.345227,
+        "aggregate-output": 0.128096
+      },
+      "process_ns": 486905267,
+      "monotonic_ns": 486903531,
+      "peak_rss_kib": 2876928
+    },
+    {
+      "lap": 8,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00594653,
+        "start": 3.3e-08,
+        "parse": 0.317231,
+        "dedup": 0.108052,
+        "await-links": 7.2902e-05,
+        "route": 0.0573217,
+        "ingest": 0.48275,
+        "aggregate-output": 0.197566
+      },
+      "process_ns": 721187227,
+      "monotonic_ns": 721184657,
+      "peak_rss_kib": 2887784
+    },
+    {
+      "lap": 0,
+      "config": "j61-jcc:je:one",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00599974,
+        "start": 2.3e-08,
+        "parse": 0.246248,
+        "dedup": 0.0390732,
+        "await-links": 5.056e-05,
+        "route": 0.0564535,
+        "ingest": 0.341874,
+        "aggregate-output": 0.132137
+      },
+      "process_ns": 507027995,
+      "monotonic_ns": 507025792,
+      "peak_rss_kib": 2887728
+    },
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.0112421,
+        "start": 3.3e-08,
+        "parse": 0.311834,
+        "dedup": 0.108793,
+        "await-links": 9.6751e-05,
+        "route": 0.0575973,
+        "ingest": 0.478381,
+        "aggregate-output": 0.198899
+      },
+      "process_ns": 719324167,
+      "monotonic_ns": 719321075,
+      "peak_rss_kib": 2891024
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00580704,
+        "start": 4.6e-08,
+        "parse": 0.310811,
+        "dedup": 0.110866,
+        "await-links": 3.3779e-05,
+        "route": 0.057544,
+        "ingest": 0.479313,
+        "aggregate-output": 0.198927
+      },
+      "process_ns": 709367366,
+      "monotonic_ns": 709364305,
+      "peak_rss_kib": 2892036
+    },
+    {
+      "lap": 1,
+      "config": "j61-jcc:je:one",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00621048,
+        "start": 2.4e-08,
+        "parse": 0.249915,
+        "dedup": 0.0389166,
+        "await-links": 4.9022e-05,
+        "route": 0.0568562,
+        "ingest": 0.345787,
+        "aggregate-output": 0.129684
+      },
+      "process_ns": 487886023,
+      "monotonic_ns": 487883923,
+      "peak_rss_kib": 2883560
+    },
+    {
+      "lap": 2,
+      "config": "j61-jcc:je:one",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00629944,
+        "start": 2.3e-08,
+        "parse": 0.249011,
+        "dedup": 0.038745,
+        "await-links": 6.182e-05,
+        "route": 0.0561613,
+        "ingest": 0.344029,
+        "aggregate-output": 0.129069
+      },
+      "process_ns": 485601201,
+      "monotonic_ns": 485599118,
+      "peak_rss_kib": 2885552
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00575703,
+        "start": 4.5e-08,
+        "parse": 0.31119,
+        "dedup": 0.108651,
+        "await-links": 5.1499e-05,
+        "route": 0.0575898,
+        "ingest": 0.477542,
+        "aggregate-output": 0.198945
+      },
+      "process_ns": 707594994,
+      "monotonic_ns": 707591970,
+      "peak_rss_kib": 2894200
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00571269,
+        "start": 4.6e-08,
+        "parse": 0.312653,
+        "dedup": 0.105565,
+        "await-links": 3.0738e-05,
+        "route": 0.057428,
+        "ingest": 0.475736,
+        "aggregate-output": 0.198211
+      },
+      "process_ns": 703905431,
+      "monotonic_ns": 703902412,
+      "peak_rss_kib": 2893560
+    },
+    {
+      "lap": 3,
+      "config": "j61-jcc:je:one",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00631076,
+        "start": 2.4e-08,
+        "parse": 0.246785,
+        "dedup": 0.0388467,
+        "await-links": 6.3686e-05,
+        "route": 0.0562433,
+        "ingest": 0.341988,
+        "aggregate-output": 0.130147
+      },
+      "process_ns": 484784474,
+      "monotonic_ns": 484782409,
+      "peak_rss_kib": 2897832
+    },
+    {
+      "lap": 4,
+      "config": "j61-jcc:je:one",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00629213,
+        "start": 3.9e-08,
+        "parse": 0.248244,
+        "dedup": 0.0393456,
+        "await-links": 5.9154e-05,
+        "route": 0.0529134,
+        "ingest": 0.340599,
+        "aggregate-output": 0.131837
+      },
+      "process_ns": 485103665,
+      "monotonic_ns": 485101601,
+      "peak_rss_kib": 2879512
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00622076,
+        "start": 5.1e-08,
+        "parse": 0.320602,
+        "dedup": 0.110173,
+        "await-links": 3.8671e-05,
+        "route": 0.0583682,
+        "ingest": 0.489244,
+        "aggregate-output": 0.206199
+      },
+      "process_ns": 729160473,
+      "monotonic_ns": 729157381,
+      "peak_rss_kib": 2892140
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00679649,
+        "start": 4.9e-08,
+        "parse": 0.313001,
+        "dedup": 0.108435,
+        "await-links": 8.8165e-05,
+        "route": 0.057588,
+        "ingest": 0.479186,
+        "aggregate-output": 0.199906
+      },
+      "process_ns": 711339141,
+      "monotonic_ns": 711336138,
+      "peak_rss_kib": 2891268
+    },
+    {
+      "lap": 5,
+      "config": "j61-jcc:je:one",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00619205,
+        "start": 2.5e-08,
+        "parse": 0.245536,
+        "dedup": 0.0386928,
+        "await-links": 6.1547e-05,
+        "route": 0.0571574,
+        "ingest": 0.341498,
+        "aggregate-output": 0.131702
+      },
+      "process_ns": 485582760,
+      "monotonic_ns": 485580723,
+      "peak_rss_kib": 2877420
+    },
+    {
+      "lap": 6,
+      "config": "j61-jcc:je:one",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00627975,
+        "start": 2.3e-08,
+        "parse": 0.250124,
+        "dedup": 0.0387557,
+        "await-links": 6.1674e-05,
+        "route": 0.0561917,
+        "ingest": 0.345204,
+        "aggregate-output": 0.129898
+      },
+      "process_ns": 487694151,
+      "monotonic_ns": 487692093,
+      "peak_rss_kib": 2891504
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00580357,
+        "start": 4.2e-08,
+        "parse": 0.310158,
+        "dedup": 0.10846,
+        "await-links": 9.9648e-05,
+        "route": 0.0576213,
+        "ingest": 0.47641,
+        "aggregate-output": 0.199877
+      },
+      "process_ns": 706056603,
+      "monotonic_ns": 706053645,
+      "peak_rss_kib": 2893360
+    },
+    {
+      "lap": 7,
+      "config": "official",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00595631,
+        "start": 5.1e-08,
+        "parse": 0.312232,
+        "dedup": 0.106992,
+        "await-links": 5.1381e-05,
+        "route": 0.057652,
+        "ingest": 0.477001,
+        "aggregate-output": 0.19768
+      },
+      "process_ns": 704880145,
+      "monotonic_ns": 704877195,
+      "peak_rss_kib": 2887208
+    },
+    {
+      "lap": 7,
+      "config": "j61-jcc:je:one",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00622511,
+        "start": 3.5e-08,
+        "parse": 0.248507,
+        "dedup": 0.0387318,
+        "await-links": 4.922e-05,
+        "route": 0.0560899,
+        "ingest": 0.343414,
+        "aggregate-output": 0.129976
+      },
+      "process_ns": 486584924,
+      "monotonic_ns": 486582868,
+      "peak_rss_kib": 2897656
+    },
+    {
+      "lap": 8,
+      "config": "j61-jcc:je:one",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.0062918,
+        "start": 2.2e-08,
+        "parse": 0.247415,
+        "dedup": 0.0390296,
+        "await-links": 6.3461e-05,
+        "route": 0.0559112,
+        "ingest": 0.342469,
+        "aggregate-output": 0.126817
+      },
+      "process_ns": 481987957,
+      "monotonic_ns": 481985935,
+      "peak_rss_kib": 2897888
+    },
+    {
+      "lap": 8,
+      "config": "official",
+      "seed": "hold3",
+      "stages": {
+        "dimensions": 0.00569356,
+        "start": 5.2e-08,
+        "parse": 0.311747,
+        "dedup": 0.108387,
+        "await-links": 2.589e-05,
+        "route": 0.0576665,
+        "ingest": 0.477892,
+        "aggregate-output": 0.19885
+      },
+      "process_ns": 707169172,
+      "monotonic_ns": 707166201,
+      "peak_rss_kib": 2888828
+    }
+  ],
+  "compiler_comparison": [
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.0057998,
+        "start": 3.2e-08,
+        "parse": 0.327697,
+        "dedup": 0.106923,
+        "await-links": 7.1439e-05,
+        "route": 0.0589697,
+        "ingest": 0.493721,
+        "aggregate-output": 0.196838
+      },
+      "process_ns": 757486890,
+      "monotonic_ns": 757482443,
+      "peak_rss_kib": 2891808
+    },
+    {
+      "lap": 0,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00645472,
+        "start": 3.9e-08,
+        "parse": 0.2565,
+        "dedup": 0.0390548,
+        "await-links": 5.6319e-05,
+        "route": 0.0777238,
+        "ingest": 0.373373,
+        "aggregate-output": 0.131844
+      },
+      "process_ns": 518424428,
+      "monotonic_ns": 518421385,
+      "peak_rss_kib": 2894348
+    },
+    {
+      "lap": 0,
+      "config": "gcc15:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00699679,
+        "start": 2.4e-08,
+        "parse": 0.274186,
+        "dedup": 0.0395098,
+        "await-links": 6.6878e-05,
+        "route": 0.0622261,
+        "ingest": 0.376031,
+        "aggregate-output": 0.131636
+      },
+      "process_ns": 521404344,
+      "monotonic_ns": 521401301,
+      "peak_rss_kib": 2869824
+    },
+    {
+      "lap": 1,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.0064375,
+        "start": 3.9e-08,
+        "parse": 0.255657,
+        "dedup": 0.0393818,
+        "await-links": 6.8406e-05,
+        "route": 0.0609533,
+        "ingest": 0.356111,
+        "aggregate-output": 0.151683
+      },
+      "process_ns": 520986284,
+      "monotonic_ns": 520983248,
+      "peak_rss_kib": 2875744
+    },
+    {
+      "lap": 1,
+      "config": "gcc15:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00693924,
+        "start": 4.8e-08,
+        "parse": 0.276154,
+        "dedup": 0.0404281,
+        "await-links": 5.547e-05,
+        "route": 0.0690333,
+        "ingest": 0.385707,
+        "aggregate-output": 0.13377
+      },
+      "process_ns": 532935075,
+      "monotonic_ns": 532931984,
+      "peak_rss_kib": 2874020
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00585491,
+        "start": 3.3e-08,
+        "parse": 0.327409,
+        "dedup": 0.106431,
+        "await-links": 3.7972e-05,
+        "route": 0.0592014,
+        "ingest": 0.493154,
+        "aggregate-output": 0.193971
+      },
+      "process_ns": 750164278,
+      "monotonic_ns": 750159948,
+      "peak_rss_kib": 2890536
+    },
+    {
+      "lap": 2,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00650548,
+        "start": 4.3e-08,
+        "parse": 0.254691,
+        "dedup": 0.0391167,
+        "await-links": 6.6074e-05,
+        "route": 0.0632559,
+        "ingest": 0.35718,
+        "aggregate-output": 0.132813
+      },
+      "process_ns": 503514794,
+      "monotonic_ns": 503511879,
+      "peak_rss_kib": 2876092
+    },
+    {
+      "lap": 2,
+      "config": "gcc15:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.007051,
+        "start": 2.5e-08,
+        "parse": 0.270943,
+        "dedup": 0.0398948,
+        "await-links": 5.0959e-05,
+        "route": 0.0620731,
+        "ingest": 0.372999,
+        "aggregate-output": 0.13385
+      },
+      "process_ns": 520749291,
+      "monotonic_ns": 520746291,
+      "peak_rss_kib": 2863524
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00595416,
+        "start": 3.3e-08,
+        "parse": 0.3263,
+        "dedup": 0.107862,
+        "await-links": 9.1729e-05,
+        "route": 0.0593364,
+        "ingest": 0.493651,
+        "aggregate-output": 0.197137
+      },
+      "process_ns": 756023079,
+      "monotonic_ns": 756018742,
+      "peak_rss_kib": 2887928
+    },
+    {
+      "lap": 3,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00634498,
+        "start": 3.4e-08,
+        "parse": 0.257379,
+        "dedup": 0.0397201,
+        "await-links": 6.1324e-05,
+        "route": 0.0610906,
+        "ingest": 0.358287,
+        "aggregate-output": 0.127356
+      },
+      "process_ns": 498754766,
+      "monotonic_ns": 498751924,
+      "peak_rss_kib": 2878076
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00587197,
+        "start": 3.5e-08,
+        "parse": 0.325221,
+        "dedup": 0.101175,
+        "await-links": 6.579e-05,
+        "route": 0.0590506,
+        "ingest": 0.485599,
+        "aggregate-output": 0.230509
+      },
+      "process_ns": 780553084,
+      "monotonic_ns": 780548647,
+      "peak_rss_kib": 2884904
+    },
+    {
+      "lap": 3,
+      "config": "gcc15:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00696541,
+        "start": 4.1e-08,
+        "parse": 0.272707,
+        "dedup": 0.03933,
+        "await-links": 8.8263e-05,
+        "route": 0.0620217,
+        "ingest": 0.374197,
+        "aggregate-output": 0.131579
+      },
+      "process_ns": 519446100,
+      "monotonic_ns": 519443158,
+      "peak_rss_kib": 2861572
+    },
+    {
+      "lap": 4,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00638289,
+        "start": 2.4e-08,
+        "parse": 0.255527,
+        "dedup": 0.039422,
+        "await-links": 6.8214e-05,
+        "route": 0.0602179,
+        "ingest": 0.355284,
+        "aggregate-output": 0.129617
+      },
+      "process_ns": 497836260,
+      "monotonic_ns": 497833444,
+      "peak_rss_kib": 2869884
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00590205,
+        "start": 5.5e-08,
+        "parse": 0.324283,
+        "dedup": 0.100835,
+        "await-links": 4.9535e-05,
+        "route": 0.0591871,
+        "ingest": 0.484413,
+        "aggregate-output": 0.196066
+      },
+      "process_ns": 744959644,
+      "monotonic_ns": 744955440,
+      "peak_rss_kib": 2885508
+    },
+    {
+      "lap": 4,
+      "config": "gcc15:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.0069439,
+        "start": 2.7e-08,
+        "parse": 0.272394,
+        "dedup": 0.040039,
+        "await-links": 5.2074e-05,
+        "route": 0.0629403,
+        "ingest": 0.375477,
+        "aggregate-output": 0.134774
+      },
+      "process_ns": 524002749,
+      "monotonic_ns": 523999807,
+      "peak_rss_kib": 2869960
+    },
+    {
+      "lap": 5,
+      "config": "gcc15:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00697473,
+        "start": 3.4e-08,
+        "parse": 0.270475,
+        "dedup": 0.0398179,
+        "await-links": 6.7847e-05,
+        "route": 0.0620681,
+        "ingest": 0.372467,
+        "aggregate-output": 0.132698
+      },
+      "process_ns": 518962717,
+      "monotonic_ns": 518959800,
+      "peak_rss_kib": 2865432
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00585821,
+        "start": 4.2e-08,
+        "parse": 0.330091,
+        "dedup": 0.117785,
+        "await-links": 3.7639e-05,
+        "route": 0.0673841,
+        "ingest": 0.515371,
+        "aggregate-output": 0.194446
+      },
+      "process_ns": 774988614,
+      "monotonic_ns": 774984308,
+      "peak_rss_kib": 2890060
+    },
+    {
+      "lap": 5,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00646688,
+        "start": 2.6e-08,
+        "parse": 0.256622,
+        "dedup": 0.0392586,
+        "await-links": 6.739e-05,
+        "route": 0.0602192,
+        "ingest": 0.356216,
+        "aggregate-output": 0.130177
+      },
+      "process_ns": 499477711,
+      "monotonic_ns": 499474922,
+      "peak_rss_kib": 2882344
+    },
+    {
+      "lap": 6,
+      "config": "gcc15:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00690406,
+        "start": 5.1e-08,
+        "parse": 0.274115,
+        "dedup": 0.0394878,
+        "await-links": 5.3088e-05,
+        "route": 0.0622705,
+        "ingest": 0.375978,
+        "aggregate-output": 0.166563
+      },
+      "process_ns": 556204245,
+      "monotonic_ns": 556201185,
+      "peak_rss_kib": 2871924
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00584719,
+        "start": 4.7e-08,
+        "parse": 0.33215,
+        "dedup": 0.124739,
+        "await-links": 5.0515e-05,
+        "route": 0.0588156,
+        "ingest": 0.515821,
+        "aggregate-output": 0.194924
+      },
+      "process_ns": 774668718,
+      "monotonic_ns": 774664461,
+      "peak_rss_kib": 2887208
+    },
+    {
+      "lap": 6,
+      "config": "j61-jcc:je:one",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00644297,
+        "start": 3.7e-08,
+        "parse": 0.259688,
+        "dedup": 0.0392036,
+        "await-links": 5.3502e-05,
+        "route": 0.0599573,
+        "ingest": 0.358951,
+        "aggregate-output": 0.135645
+      },
+      "process_ns": 507983023,
+      "monotonic_ns": 507980222,
+      "peak_rss_kib": 2877896
+    },
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00613431,
+        "start": 4.3e-08,
+        "parse": 0.317433,
+        "dedup": 0.113365,
+        "await-links": 9.3201e-05,
+        "route": 0.0575118,
+        "ingest": 0.488465,
+        "aggregate-output": 0.198723
+      },
+      "process_ns": 743435579,
+      "monotonic_ns": 743431534,
+      "peak_rss_kib": 2888372
+    },
+    {
+      "lap": 0,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00677451,
+        "start": 2.3e-08,
+        "parse": 0.254509,
+        "dedup": 0.0398852,
+        "await-links": 6.4653e-05,
+        "route": 0.0575009,
+        "ingest": 0.351996,
+        "aggregate-output": 0.127565
+      },
+      "process_ns": 493236060,
+      "monotonic_ns": 493233346,
+      "peak_rss_kib": 2867460
+    },
+    {
+      "lap": 0,
+      "config": "gcc15:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.0072712,
+        "start": 3.7e-08,
+        "parse": 0.270262,
+        "dedup": 0.0394952,
+        "await-links": 6.6367e-05,
+        "route": 0.0591544,
+        "ingest": 0.369031,
+        "aggregate-output": 0.128824
+      },
+      "process_ns": 511636082,
+      "monotonic_ns": 511633302,
+      "peak_rss_kib": 2855468
+    },
+    {
+      "lap": 1,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00682139,
+        "start": 3.6e-08,
+        "parse": 0.254356,
+        "dedup": 0.0398079,
+        "await-links": 7.9072e-05,
+        "route": 0.0572579,
+        "ingest": 0.351549,
+        "aggregate-output": 0.131118
+      },
+      "process_ns": 496466896,
+      "monotonic_ns": 496464228,
+      "peak_rss_kib": 2875624
+    },
+    {
+      "lap": 1,
+      "config": "gcc15:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00738908,
+        "start": 2.5e-08,
+        "parse": 0.27212,
+        "dedup": 0.0404555,
+        "await-links": 6.521e-05,
+        "route": 0.0590517,
+        "ingest": 0.371753,
+        "aggregate-output": 0.126214
+      },
+      "process_ns": 511884490,
+      "monotonic_ns": 511881724,
+      "peak_rss_kib": 2863576
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00623827,
+        "start": 4.4e-08,
+        "parse": 0.317715,
+        "dedup": 0.106668,
+        "await-links": 6.3511e-05,
+        "route": 0.0574861,
+        "ingest": 0.482008,
+        "aggregate-output": 0.193484
+      },
+      "process_ns": 730508792,
+      "monotonic_ns": 730504868,
+      "peak_rss_kib": 2889144
+    },
+    {
+      "lap": 2,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00669112,
+        "start": 3.7e-08,
+        "parse": 0.25586,
+        "dedup": 0.0401812,
+        "await-links": 8.4339e-05,
+        "route": 0.0573178,
+        "ingest": 0.353478,
+        "aggregate-output": 0.129269
+      },
+      "process_ns": 496069888,
+      "monotonic_ns": 496067219,
+      "peak_rss_kib": 2882052
+    },
+    {
+      "lap": 2,
+      "config": "gcc15:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00726975,
+        "start": 3.1e-08,
+        "parse": 0.270129,
+        "dedup": 0.0399305,
+        "await-links": 5.0222e-05,
+        "route": 0.0590346,
+        "ingest": 0.369196,
+        "aggregate-output": 0.132755
+      },
+      "process_ns": 515746526,
+      "monotonic_ns": 515743745,
+      "peak_rss_kib": 2855376
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00624538,
+        "start": 4.3e-08,
+        "parse": 0.321381,
+        "dedup": 0.118582,
+        "await-links": 3.8383e-05,
+        "route": 0.0594197,
+        "ingest": 0.499484,
+        "aggregate-output": 0.207279
+      },
+      "process_ns": 762383488,
+      "monotonic_ns": 762379423,
+      "peak_rss_kib": 2886600
+    },
+    {
+      "lap": 3,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00678476,
+        "start": 3.6e-08,
+        "parse": 0.257176,
+        "dedup": 0.0396761,
+        "await-links": 6.1917e-05,
+        "route": 0.0584279,
+        "ingest": 0.355391,
+        "aggregate-output": 0.127636
+      },
+      "process_ns": 496237111,
+      "monotonic_ns": 496234475,
+      "peak_rss_kib": 2871824
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00619607,
+        "start": 3.9e-08,
+        "parse": 0.317829,
+        "dedup": 0.100686,
+        "await-links": 6.4361e-05,
+        "route": 0.0577131,
+        "ingest": 0.476364,
+        "aggregate-output": 0.194896
+      },
+      "process_ns": 725981612,
+      "monotonic_ns": 725977762,
+      "peak_rss_kib": 2887616
+    },
+    {
+      "lap": 3,
+      "config": "gcc15:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00728592,
+        "start": 2.4e-08,
+        "parse": 0.271043,
+        "dedup": 0.0404126,
+        "await-links": 8.8709e-05,
+        "route": 0.0592245,
+        "ingest": 0.37082,
+        "aggregate-output": 0.128551
+      },
+      "process_ns": 513213137,
+      "monotonic_ns": 513210422,
+      "peak_rss_kib": 2865276
+    },
+    {
+      "lap": 4,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00676982,
+        "start": 2.6e-08,
+        "parse": 0.255649,
+        "dedup": 0.039744,
+        "await-links": 5.0157e-05,
+        "route": 0.0571319,
+        "ingest": 0.352638,
+        "aggregate-output": 0.134332
+      },
+      "process_ns": 500251887,
+      "monotonic_ns": 500249256,
+      "peak_rss_kib": 2881740
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00624311,
+        "start": 4.4e-08,
+        "parse": 0.320336,
+        "dedup": 0.123942,
+        "await-links": 6.6854e-05,
+        "route": 0.0576654,
+        "ingest": 0.502084,
+        "aggregate-output": 0.193648
+      },
+      "process_ns": 750255726,
+      "monotonic_ns": 750251798,
+      "peak_rss_kib": 2886660
+    },
+    {
+      "lap": 4,
+      "config": "gcc15:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00728703,
+        "start": 4.1e-08,
+        "parse": 0.272067,
+        "dedup": 0.0401048,
+        "await-links": 6.3453e-05,
+        "route": 0.0590015,
+        "ingest": 0.37129,
+        "aggregate-output": 0.131833
+      },
+      "process_ns": 517107084,
+      "monotonic_ns": 517104379,
+      "peak_rss_kib": 2867312
+    },
+    {
+      "lap": 5,
+      "config": "gcc15:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00726727,
+        "start": 2.6e-08,
+        "parse": 0.272369,
+        "dedup": 0.0402268,
+        "await-links": 6.5559e-05,
+        "route": 0.0591645,
+        "ingest": 0.371915,
+        "aggregate-output": 0.131154
+      },
+      "process_ns": 516821672,
+      "monotonic_ns": 516818988,
+      "peak_rss_kib": 2865636
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00625958,
+        "start": 4.6e-08,
+        "parse": 0.319631,
+        "dedup": 0.137043,
+        "await-links": 9.0048e-05,
+        "route": 0.0574176,
+        "ingest": 0.514255,
+        "aggregate-output": 0.195907
+      },
+      "process_ns": 764325815,
+      "monotonic_ns": 764321863,
+      "peak_rss_kib": 2888468
+    },
+    {
+      "lap": 5,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00673679,
+        "start": 4e-08,
+        "parse": 0.254967,
+        "dedup": 0.0398693,
+        "await-links": 6.4189e-05,
+        "route": 0.0571443,
+        "ingest": 0.35208,
+        "aggregate-output": 0.132063
+      },
+      "process_ns": 497784546,
+      "monotonic_ns": 497781969,
+      "peak_rss_kib": 2869436
+    },
+    {
+      "lap": 6,
+      "config": "gcc15:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00736486,
+        "start": 2.7e-08,
+        "parse": 0.274702,
+        "dedup": 0.0403046,
+        "await-links": 6.4499e-05,
+        "route": 0.0592498,
+        "ingest": 0.374371,
+        "aggregate-output": 0.129462
+      },
+      "process_ns": 517614078,
+      "monotonic_ns": 517611412,
+      "peak_rss_kib": 2863540
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00631093,
+        "start": 3.3e-08,
+        "parse": 0.317613,
+        "dedup": 0.102304,
+        "await-links": 5.1125e-05,
+        "route": 0.0574929,
+        "ingest": 0.477536,
+        "aggregate-output": 0.197973
+      },
+      "process_ns": 729493088,
+      "monotonic_ns": 729489359,
+      "peak_rss_kib": 2887668
+    },
+    {
+      "lap": 6,
+      "config": "j61-jcc:je:one",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00673463,
+        "start": 3.6e-08,
+        "parse": 0.25823,
+        "dedup": 0.0402905,
+        "await-links": 6.9495e-05,
+        "route": 0.0571874,
+        "ingest": 0.355814,
+        "aggregate-output": 0.13499
+      },
+      "process_ns": 503817461,
+      "monotonic_ns": 503814884,
+      "peak_rss_kib": 2871812
+    },
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00564355,
+        "start": 5.4e-08,
+        "parse": 0.316854,
+        "dedup": 0.0921012,
+        "await-links": 3.3001e-05,
+        "route": 0.0564317,
+        "ingest": 0.465493,
+        "aggregate-output": 0.19877
+      },
+      "process_ns": 713689170,
+      "monotonic_ns": 713685538,
+      "peak_rss_kib": 2865944
+    },
+    {
+      "lap": 0,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00619318,
+        "start": 3.4e-08,
+        "parse": 0.251154,
+        "dedup": 0.0362783,
+        "await-links": 6.2679e-05,
+        "route": 0.0559624,
+        "ingest": 0.343509,
+        "aggregate-output": 0.13386
+      },
+      "process_ns": 489960245,
+      "monotonic_ns": 489957744,
+      "peak_rss_kib": 2851460
+    },
+    {
+      "lap": 0,
+      "config": "gcc15:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00674013,
+        "start": 4.1e-08,
+        "parse": 0.267319,
+        "dedup": 0.036512,
+        "await-links": 6.3703e-05,
+        "route": 0.0575018,
+        "ingest": 0.361446,
+        "aggregate-output": 0.13129
+      },
+      "process_ns": 505802905,
+      "monotonic_ns": 505800345,
+      "peak_rss_kib": 2841284
+    },
+    {
+      "lap": 1,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00619762,
+        "start": 3.4e-08,
+        "parse": 0.251281,
+        "dedup": 0.036081,
+        "await-links": 6.2571e-05,
+        "route": 0.0566806,
+        "ingest": 0.344161,
+        "aggregate-output": 0.129352
+      },
+      "process_ns": 486013150,
+      "monotonic_ns": 486010718,
+      "peak_rss_kib": 2857788
+    },
+    {
+      "lap": 1,
+      "config": "gcc15:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00675648,
+        "start": 2.2e-08,
+        "parse": 0.26829,
+        "dedup": 0.0363853,
+        "await-links": 6.4233e-05,
+        "route": 0.0575271,
+        "ingest": 0.362304,
+        "aggregate-output": 0.129291
+      },
+      "process_ns": 504875848,
+      "monotonic_ns": 504873309,
+      "peak_rss_kib": 2845176
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00571592,
+        "start": 4.7e-08,
+        "parse": 0.324457,
+        "dedup": 0.101144,
+        "await-links": 2.6994e-05,
+        "route": 0.0565202,
+        "ingest": 0.482206,
+        "aggregate-output": 0.197349
+      },
+      "process_ns": 729818754,
+      "monotonic_ns": 729815099,
+      "peak_rss_kib": 2866976
+    },
+    {
+      "lap": 2,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00622348,
+        "start": 2.4e-08,
+        "parse": 0.250744,
+        "dedup": 0.0358181,
+        "await-links": 5.0538e-05,
+        "route": 0.0560766,
+        "ingest": 0.342725,
+        "aggregate-output": 0.131445
+      },
+      "process_ns": 486794156,
+      "monotonic_ns": 486791705,
+      "peak_rss_kib": 2845348
+    },
+    {
+      "lap": 2,
+      "config": "gcc15:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00671962,
+        "start": 3.7e-08,
+        "parse": 0.272341,
+        "dedup": 0.0365527,
+        "await-links": 4.9997e-05,
+        "route": 0.0600902,
+        "ingest": 0.369072,
+        "aggregate-output": 0.134415
+      },
+      "process_ns": 516686527,
+      "monotonic_ns": 516683943,
+      "peak_rss_kib": 2849464
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00574589,
+        "start": 5.1e-08,
+        "parse": 0.322886,
+        "dedup": 0.0916692,
+        "await-links": 5.2574e-05,
+        "route": 0.0566452,
+        "ingest": 0.471312,
+        "aggregate-output": 0.197172
+      },
+      "process_ns": 718229782,
+      "monotonic_ns": 718226239,
+      "peak_rss_kib": 2862240
+    },
+    {
+      "lap": 3,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.0062873,
+        "start": 3.7e-08,
+        "parse": 0.250694,
+        "dedup": 0.0362011,
+        "await-links": 4.8531e-05,
+        "route": 0.0575178,
+        "ingest": 0.344498,
+        "aggregate-output": 0.131642
+      },
+      "process_ns": 489137878,
+      "monotonic_ns": 489135462,
+      "peak_rss_kib": 2861976
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00574521,
+        "start": 4.2e-08,
+        "parse": 0.322987,
+        "dedup": 0.0987057,
+        "await-links": 2.5046e-05,
+        "route": 0.056579,
+        "ingest": 0.478356,
+        "aggregate-output": 0.200771
+      },
+      "process_ns": 729945093,
+      "monotonic_ns": 729941491,
+      "peak_rss_kib": 2867488
+    },
+    {
+      "lap": 3,
+      "config": "gcc15:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00679529,
+        "start": 4.2e-08,
+        "parse": 0.278263,
+        "dedup": 0.0366226,
+        "await-links": 5.2591e-05,
+        "route": 0.058813,
+        "ingest": 0.37379,
+        "aggregate-output": 0.133433
+      },
+      "process_ns": 520317717,
+      "monotonic_ns": 520315156,
+      "peak_rss_kib": 2839256
+    },
+    {
+      "lap": 4,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00637949,
+        "start": 2.9e-08,
+        "parse": 0.260515,
+        "dedup": 0.0361225,
+        "await-links": 4.4342e-05,
+        "route": 0.0622604,
+        "ingest": 0.358985,
+        "aggregate-output": 0.131166
+      },
+      "process_ns": 502953333,
+      "monotonic_ns": 502950861,
+      "peak_rss_kib": 2853632
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00572829,
+        "start": 4.2e-08,
+        "parse": 0.324328,
+        "dedup": 0.0979495,
+        "await-links": 9.2064e-05,
+        "route": 0.0563791,
+        "ingest": 0.478807,
+        "aggregate-output": 0.197463
+      },
+      "process_ns": 727168391,
+      "monotonic_ns": 727164835,
+      "peak_rss_kib": 2866972
+    },
+    {
+      "lap": 4,
+      "config": "gcc15:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00667714,
+        "start": 4.3e-08,
+        "parse": 0.268035,
+        "dedup": 0.0366657,
+        "await-links": 4.9474e-05,
+        "route": 0.059505,
+        "ingest": 0.364294,
+        "aggregate-output": 0.13703
+      },
+      "process_ns": 515099115,
+      "monotonic_ns": 515096606,
+      "peak_rss_kib": 2855412
+    },
+    {
+      "lap": 5,
+      "config": "gcc15:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00678497,
+        "start": 3.7e-08,
+        "parse": 0.269061,
+        "dedup": 0.0359773,
+        "await-links": 4.8258e-05,
+        "route": 0.0599193,
+        "ingest": 0.365112,
+        "aggregate-output": 0.138501
+      },
+      "process_ns": 516812940,
+      "monotonic_ns": 516810428,
+      "peak_rss_kib": 2841284
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00576126,
+        "start": 4.2e-08,
+        "parse": 0.323307,
+        "dedup": 0.0991837,
+        "await-links": 2.5307e-05,
+        "route": 0.0567121,
+        "ingest": 0.479287,
+        "aggregate-output": 0.197287
+      },
+      "process_ns": 726289918,
+      "monotonic_ns": 726286419,
+      "peak_rss_kib": 2866932
+    },
+    {
+      "lap": 5,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00624633,
+        "start": 2.5e-08,
+        "parse": 0.251675,
+        "dedup": 0.0361383,
+        "await-links": 5.1126e-05,
+        "route": 0.0557917,
+        "ingest": 0.34369,
+        "aggregate-output": 0.127119
+      },
+      "process_ns": 483407311,
+      "monotonic_ns": 483404981,
+      "peak_rss_kib": 2859848
+    },
+    {
+      "lap": 6,
+      "config": "gcc15:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00690568,
+        "start": 3.3e-08,
+        "parse": 0.287979,
+        "dedup": 0.0378685,
+        "await-links": 3.8039e-05,
+        "route": 0.0641186,
+        "ingest": 0.390043,
+        "aggregate-output": 0.134533
+      },
+      "process_ns": 538306814,
+      "monotonic_ns": 538304233,
+      "peak_rss_kib": 2869716
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00572705,
+        "start": 4.1e-08,
+        "parse": 0.323348,
+        "dedup": 0.0946234,
+        "await-links": 7.751e-05,
+        "route": 0.0579474,
+        "ingest": 0.476057,
+        "aggregate-output": 0.198484
+      },
+      "process_ns": 724720173,
+      "monotonic_ns": 724716704,
+      "peak_rss_kib": 2867300
+    },
+    {
+      "lap": 6,
+      "config": "j61-jcc:je:one",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00629496,
+        "start": 2.4e-08,
+        "parse": 0.251537,
+        "dedup": 0.0362187,
+        "await-links": 4.8543e-05,
+        "route": 0.0639108,
+        "ingest": 0.351765,
+        "aggregate-output": 0.137668
+      },
+      "process_ns": 502130630,
+      "monotonic_ns": 502128243,
+      "peak_rss_kib": 2853700
+    },
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00586213,
+        "start": 4.6e-08,
+        "parse": 0.316394,
+        "dedup": 0.105152,
+        "await-links": 9.0417e-05,
+        "route": 0.056785,
+        "ingest": 0.478481,
+        "aggregate-output": 0.194067
+      },
+      "process_ns": 708941862,
+      "monotonic_ns": 708938493,
+      "peak_rss_kib": 2889280
+    },
+    {
+      "lap": 0,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00642627,
+        "start": 3.9e-08,
+        "parse": 0.248827,
+        "dedup": 0.0393389,
+        "await-links": 6.0338e-05,
+        "route": 0.0563127,
+        "ingest": 0.344575,
+        "aggregate-output": 0.133026
+      },
+      "process_ns": 490526850,
+      "monotonic_ns": 490524533,
+      "peak_rss_kib": 2883408
+    },
+    {
+      "lap": 0,
+      "config": "gcc15:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00697064,
+        "start": 3.7e-08,
+        "parse": 0.265975,
+        "dedup": 0.0398699,
+        "await-links": 7.6299e-05,
+        "route": 0.0586508,
+        "ingest": 0.364623,
+        "aggregate-output": 0.131624
+      },
+      "process_ns": 509787233,
+      "monotonic_ns": 509784829,
+      "peak_rss_kib": 2868956
+    },
+    {
+      "lap": 1,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00646623,
+        "start": 3.4e-08,
+        "parse": 0.250126,
+        "dedup": 0.0393104,
+        "await-links": 5.0398e-05,
+        "route": 0.0568158,
+        "ingest": 0.346352,
+        "aggregate-output": 0.132179
+      },
+      "process_ns": 491432682,
+      "monotonic_ns": 491430369,
+      "peak_rss_kib": 2881352
+    },
+    {
+      "lap": 1,
+      "config": "gcc15:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00700421,
+        "start": 2.4e-08,
+        "parse": 0.266423,
+        "dedup": 0.0394547,
+        "await-links": 5.1848e-05,
+        "route": 0.0585265,
+        "ingest": 0.364508,
+        "aggregate-output": 0.129215
+      },
+      "process_ns": 507145063,
+      "monotonic_ns": 507142677,
+      "peak_rss_kib": 2868900
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00599374,
+        "start": 4.6e-08,
+        "parse": 0.323721,
+        "dedup": 0.107021,
+        "await-links": 2.3837e-05,
+        "route": 0.0570104,
+        "ingest": 0.487839,
+        "aggregate-output": 0.196301
+      },
+      "process_ns": 720665362,
+      "monotonic_ns": 720661995,
+      "peak_rss_kib": 2888876
+    },
+    {
+      "lap": 2,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00652755,
+        "start": 2.2e-08,
+        "parse": 0.249002,
+        "dedup": 0.0391135,
+        "await-links": 4.8926e-05,
+        "route": 0.0579814,
+        "ingest": 0.346181,
+        "aggregate-output": 0.132183
+      },
+      "process_ns": 491543367,
+      "monotonic_ns": 491541064,
+      "peak_rss_kib": 2879288
+    },
+    {
+      "lap": 2,
+      "config": "gcc15:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00705808,
+        "start": 4.1e-08,
+        "parse": 0.271552,
+        "dedup": 0.0403044,
+        "await-links": 5.1821e-05,
+        "route": 0.0601541,
+        "ingest": 0.372104,
+        "aggregate-output": 0.140417
+      },
+      "process_ns": 525939151,
+      "monotonic_ns": 525936713,
+      "peak_rss_kib": 2871024
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00605449,
+        "start": 5.3e-08,
+        "parse": 0.322284,
+        "dedup": 0.106074,
+        "await-links": 8.5204e-05,
+        "route": 0.0572406,
+        "ingest": 0.485745,
+        "aggregate-output": 0.197989
+      },
+      "process_ns": 720215604,
+      "monotonic_ns": 720212272,
+      "peak_rss_kib": 2885572
+    },
+    {
+      "lap": 3,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00668589,
+        "start": 3.7e-08,
+        "parse": 0.249693,
+        "dedup": 0.0400402,
+        "await-links": 4.7364e-05,
+        "route": 0.0587278,
+        "ingest": 0.348545,
+        "aggregate-output": 0.129191
+      },
+      "process_ns": 490868922,
+      "monotonic_ns": 490866671,
+      "peak_rss_kib": 2881328
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00604221,
+        "start": 4.4e-08,
+        "parse": 0.323313,
+        "dedup": 0.103958,
+        "await-links": 4.5096e-05,
+        "route": 0.0568794,
+        "ingest": 0.484256,
+        "aggregate-output": 0.196892
+      },
+      "process_ns": 717227770,
+      "monotonic_ns": 717224489,
+      "peak_rss_kib": 2891136
+    },
+    {
+      "lap": 3,
+      "config": "gcc15:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.0069379,
+        "start": 3.5e-08,
+        "parse": 0.270688,
+        "dedup": 0.0406513,
+        "await-links": 5.1017e-05,
+        "route": 0.0597186,
+        "ingest": 0.371184,
+        "aggregate-output": 0.132122
+      },
+      "process_ns": 516660097,
+      "monotonic_ns": 516657720,
+      "peak_rss_kib": 2872856
+    },
+    {
+      "lap": 4,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00655501,
+        "start": 2.6e-08,
+        "parse": 0.255721,
+        "dedup": 0.0399673,
+        "await-links": 4.9093e-05,
+        "route": 0.0613273,
+        "ingest": 0.3571,
+        "aggregate-output": 0.126654
+      },
+      "process_ns": 496880866,
+      "monotonic_ns": 496878600,
+      "peak_rss_kib": 2876924
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00598048,
+        "start": 4.5e-08,
+        "parse": 0.321554,
+        "dedup": 0.10636,
+        "await-links": 9.0209e-05,
+        "route": 0.0568556,
+        "ingest": 0.484933,
+        "aggregate-output": 0.2271
+      },
+      "process_ns": 746924437,
+      "monotonic_ns": 746921054,
+      "peak_rss_kib": 2889396
+    },
+    {
+      "lap": 4,
+      "config": "gcc15:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00695301,
+        "start": 2.3e-08,
+        "parse": 0.26397,
+        "dedup": 0.0398225,
+        "await-links": 4.9705e-05,
+        "route": 0.058145,
+        "ingest": 0.362038,
+        "aggregate-output": 0.12952
+      },
+      "process_ns": 504796897,
+      "monotonic_ns": 504794597,
+      "peak_rss_kib": 2868928
+    },
+    {
+      "lap": 5,
+      "config": "gcc15:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00705832,
+        "start": 3.7e-08,
+        "parse": 0.271179,
+        "dedup": 0.0401728,
+        "await-links": 4.9978e-05,
+        "route": 0.0619338,
+        "ingest": 0.373373,
+        "aggregate-output": 0.130339
+      },
+      "process_ns": 517024736,
+      "monotonic_ns": 517022416,
+      "peak_rss_kib": 2860784
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00602405,
+        "start": 3.3e-08,
+        "parse": 0.322361,
+        "dedup": 0.101005,
+        "await-links": 5.5491e-05,
+        "route": 0.0569734,
+        "ingest": 0.480458,
+        "aggregate-output": 0.194503
+      },
+      "process_ns": 711260493,
+      "monotonic_ns": 711257300,
+      "peak_rss_kib": 2889796
+    },
+    {
+      "lap": 5,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00651897,
+        "start": 2.7e-08,
+        "parse": 0.256444,
+        "dedup": 0.0390013,
+        "await-links": 5.5326e-05,
+        "route": 0.0585402,
+        "ingest": 0.354092,
+        "aggregate-output": 0.129014
+      },
+      "process_ns": 496493099,
+      "monotonic_ns": 496490862,
+      "peak_rss_kib": 2870772
+    },
+    {
+      "lap": 6,
+      "config": "gcc15:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00701657,
+        "start": 3.9e-08,
+        "parse": 0.267453,
+        "dedup": 0.039833,
+        "await-links": 5.1325e-05,
+        "route": 0.0550394,
+        "ingest": 0.362418,
+        "aggregate-output": 0.135924
+      },
+      "process_ns": 511831833,
+      "monotonic_ns": 511829557,
+      "peak_rss_kib": 2879152
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00598335,
+        "start": 4.7e-08,
+        "parse": 0.325465,
+        "dedup": 0.111872,
+        "await-links": 6.976e-05,
+        "route": 0.0572879,
+        "ingest": 0.494766,
+        "aggregate-output": 0.196292
+      },
+      "process_ns": 727532585,
+      "monotonic_ns": 727529371,
+      "peak_rss_kib": 2887412
+    },
+    {
+      "lap": 6,
+      "config": "j61-jcc:je:one",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00641472,
+        "start": 3.7e-08,
+        "parse": 0.25171,
+        "dedup": 0.0395911,
+        "await-links": 6.3078e-05,
+        "route": 0.0582727,
+        "ingest": 0.349688,
+        "aggregate-output": 0.126919
+      },
+      "process_ns": 489464385,
+      "monotonic_ns": 489462220,
+      "peak_rss_kib": 2877196
+    }
+  ],
+  "container_verification_times": {
+    "42": {
+      "process_ns": 555169142,
+      "monotonic_ns": 540842484,
+      "peak_rss_kib": 2931664
+    },
+    "807154": {
+      "process_ns": 644478403,
+      "monotonic_ns": 642637261,
+      "peak_rss_kib": 2925512
+    },
+    "1599080644": {
+      "process_ns": 592342726,
+      "monotonic_ns": 595896746,
+      "peak_rss_kib": 2898816
+    },
+    "1376142809": {
+      "process_ns": 915472167,
+      "monotonic_ns": 922911887,
+      "peak_rss_kib": 2919900
+    },
+    "1896044346": {
+      "process_ns": 978545196,
+      "monotonic_ns": 958601334,
+      "peak_rss_kib": 2923472
+    },
+    "73": {
+      "process_ns": 911884567,
+      "monotonic_ns": 910332074,
+      "peak_rss_kib": 8171748
+    }
+  },
+  "complete_table_hashes": {
+    "42": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "b496a8b06f7da98514af82e13fced52e8de927f4aedcc20ea394286230075a79"
+      },
+      "user_daily": {
+        "rows": 2246306,
+        "sha256": "eb7d6dd604e897d3ac28c7e4261e6033f9764acc4d33db76e74ae52b644c2eef"
+      }
+    },
+    "807154": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "b3fd22446c3230eb1e040de8bb384a5a25ead9a3e85cae085f1c9e42669182e0"
+      },
+      "user_daily": {
+        "rows": 2221335,
+        "sha256": "8ecbe7f48da9cd257a103b6b3538065efad6109befd8250666aadf2681beefb4"
+      }
+    },
+    "1599080644": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "9c90c9141ca5835d214e7ea04dc81cacc92a2b31aba312900aeecdefd315bd51"
+      },
+      "user_daily": {
+        "rows": 2239981,
+        "sha256": "40e884ac3fd83d574a32708fdf160d64a67ff141607c29c9beaa65e9349faf95"
+      }
+    },
+    "1376142809": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "e0576e53eee34ded107f63a93ce22f3b24123777aaa52d575a8f24615ff68bfc"
+      },
+      "user_daily": {
+        "rows": 2223952,
+        "sha256": "85dd6c2b3d24631bf8dc61130e3ee4157734662d889ae48fd91b7de289c6f55a"
+      }
+    },
+    "1896044346": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "fc80f342b38c074268da1dd35a666f08ee8c36f81f11c40c7aa62c9bb95e07dd"
+      },
+      "user_daily": {
+        "rows": 2230228,
+        "sha256": "2f0e7732b4ef5169c70a862855b7103e8ccc1eb27a28b5df45fe1640b2e5c098"
+      }
+    },
+    "73": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "927ca38c075969892e97a79a4dbf932f69a8f4dfd5e1c3ddd8f2ce29bb8aa522"
+      },
+      "user_daily": {
+        "rows": 6612082,
+        "sha256": "593a3acba6af2639406a8ad12d85e205ecd22f4af90a4cfa40c7878f40602dbd"
+      }
+    }
+  }
+}

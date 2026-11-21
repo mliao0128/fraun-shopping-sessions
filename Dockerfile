@@ -1,5 +1,5 @@
-FROM docker.io/library/python:3.12-slim-bookworm AS build
-RUN apt-get update && apt-get install -y --no-install-recommends g++ && rm -rf /var/lib/apt/lists/*
+FROM docker.io/library/gcc:15-bookworm@sha256:9ca91b05c7b07d2979f16413e8b2cd6ec8a7c80ffca4121ccab0aeba33f90460 AS build
+RUN apt-get update && apt-get install -y --no-install-recommends python3 liblz4-dev && rm -rf /var/lib/apt/lists/*
 ARG ARCH_FLAGS="-march=cascadelake -mtune=cascadelake"
 WORKDIR /src
 COPY *.cpp *.hpp build.sh training.py ./
@@ -9,6 +9,7 @@ FROM docker.io/library/debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends libjemalloc2 && rm -rf /var/lib/apt/lists/*
 ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
 COPY --from=build /usr/local/bin/shopping-sessions /usr/local/bin/shopping-sessions
+ENV MALLOC_CONF=thp:always,narenas:1
 ENV NCPU=8
 USER 1000:1000
 ENTRYPOINT ["/usr/local/bin/shopping-sessions"]

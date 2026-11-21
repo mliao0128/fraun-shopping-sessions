@@ -5,7 +5,7 @@ output=${1:-shopping-sessions}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 compile() {
-  ${CXX:-g++} -std=c++20 -O3 -DNDEBUG $arch_flags -flto=auto -pthread "$@" \
+  ${CXX:-g++} -std=c++20 -O3 -DNDEBUG $arch_flags -static-libstdc++ -static-libgcc -Wa,-mbranches-within-32B-boundaries -flto=auto -pthread "$@" \
     main.cpp links.cpp ingest.cpp aggregate.cpp output.cpp -l:liblz4.so.1 -o "$output"
 }
 # A build host with an older CPU can still cross-compile the scorer binary.

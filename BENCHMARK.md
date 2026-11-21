@@ -1,5 +1,7 @@
 # Shopping Sessions benchmark
 
+The [branch-alignment comparison](benchmarks/branch-alignment/benchmark.md) records the release checks, five practice seeds and the 60M comparison.
+
 The [allocator and compiler-profile comparison](benchmarks/allocator-profile/benchmark.md) includes four independent 20M seeds and one 60M input.
 
 The [fused scanner comparison](benchmarks/fused-parser/benchmark.md) records Intel and eight-thread container times and full-result checks.
