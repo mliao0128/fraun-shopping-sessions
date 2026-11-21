@@ -188,11 +188,20 @@ int main(int argc, char** argv) try {
     Context ctx;
 
     // Identity linking overlaps with parsing, which needs only the small tables.
+    auto events = inputs.folder(data / "events");
+    size_t bytes = 0;
+    for (auto e : events) bytes += e.size();
+    // Small inputs use the original resource settings. On larger inputs the
+    // two schedules are fixed offline using complete, timed solver runs.
+    if (bytes >= (256u << 20)) {
+        if (bytes > 3000000000ULL) ctx.settings = {9, 10, 22, 3, 0};
+        else ctx.settings = {8, 9, 22, 3, 2};
+    }
     auto links = inputs.folder(data / "links");
     std::exception_ptr linkError;
     std::thread linker([&] {
         try {
-            linkPeople(links, ctx, std::min(workers, 3u));
+            linkPeople(links, ctx, std::min(workers, ctx.settings.linkWorkers));
         } catch (...) {
             linkError = std::current_exception();
         }
@@ -208,13 +217,12 @@ int main(int argc, char** argv) try {
             linker.join();
         throw;
     }
-    auto events = inputs.folder(data / "events");
+
     auto clicks = inputs.folder(data / "clicks");
-    size_t bytes = 0;
-    for (auto e : events) bytes += e.size();
+
     // More buckets balance large people across workers. Keep small datasets
     // compact, since each active bucket accumulates its own campaign totals.
-    size_t bucketCount = std::clamp(std::bit_ceil(bytes / (1u << 20)), size_t{1}, size_t{1024});
+    size_t bucketCount = std::clamp(std::bit_ceil(bytes / (1u << 20)), size_t{1}, size_t{1} << ctx.settings.userBits);
     std::vector<Bucket> buckets(bucketCount);
     stage("dimensions");
     try {

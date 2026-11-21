@@ -266,6 +266,45 @@ template <class Emit> inline void networkSessions(uint32_t *times, unsigned n, i
         }
     emit(origin + sorted[start], origin + sorted[n - 1], n - start);
 }
+
+template<bool Minimum> inline uint32_t laneExtreme(__m256i v) {
+    auto reduce = [](__m256i a, __m256i b) {
+        if constexpr (Minimum) return _mm256_min_epu32(a, b);
+        else return _mm256_max_epu32(a, b);
+    };
+    v = reduce(v, _mm256_permute2x128_si256(v, v, 1));
+    v = reduce(v, _mm256_shuffle_epi32(v, 0x4e));
+    v = reduce(v, _mm256_shuffle_epi32(v, 0xb1));
+    return uint32_t(_mm_cvtsi128_si32(_mm256_castsi256_si128(v)));
+}
+
+// Return exact sessions when at most two short time intervals cover the group.
+template<class Emit>
+bool shortSessions(const uint32_t* times, unsigned n, int64_t origin, Emit emit) {
+    const auto data = loadTimes(times, n);
+    const auto live = _mm256_cmpgt_epi32(_mm256_set1_epi32(n), _mm256_setr_epi32(0,1,2,3,4,5,6,7));
+    const uint32_t lo = laneExtreme<true>(data);
+    const uint32_t hi = laneExtreme<false>(_mm256_and_si256(data, live));
+    if (std::max(times[0] - lo, hi - times[0]) <= maxGap) {
+        emit(origin + lo, origin + hi, n);
+        return true;
+    }
+    // The earlier test proves lo + maxGap is strictly below hi.
+    const auto bound = _mm256_set1_epi32(lo + uint32_t(maxGap));
+    const auto left = _mm256_cmpeq_epi32(_mm256_max_epu32(data, bound), bound);
+    const uint32_t next = laneExtreme<true>(_mm256_or_si256(data, left));
+    if (hi - next > maxGap) return false;
+    const uint32_t last = laneExtreme<false>(_mm256_and_si256(data, left));
+    if (next - last <= maxGap) {
+        emit(origin + lo, origin + hi, n);
+    } else {
+        const unsigned count = std::popcount(unsigned(_mm256_movemask_ps(_mm256_castsi256_ps(left))));
+        emit(origin + lo, origin + last, count);
+        emit(origin + next, origin + hi, n - count);
+    }
+    return true;
+}
+
 struct TimeCell {
     uint32_t first = UINT32_MAX, last = 0, count = 0;
 };
@@ -400,7 +439,11 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
             exactSessions(grouped.wideTimes.data() + i, count, 0, emit);
         else if (count <= 3)
             exactSessions(grouped.times.data() + i, count, origin, emit);
-        else if (count <= 16)
+        else if (count <= 8) {
+            auto* times = grouped.times.data() + i;
+            if (!shortSessions(times, count, origin, emit))
+                networkSessions(times, count, origin, emit);
+        } else if (count <= 16)
             networkSessions(grouped.times.data() + i, count, origin, emit);
         else
             cells.sessions(grouped.times.data() + i, count, origin, emit);

@@ -127,9 +127,9 @@ struct InputChunk {
 
 // Boundaries depend only on file sizes. Readers fault in their own chunks
 // and consume every line whose first byte belongs to their range.
-std::vector<InputChunk> chunks(const std::vector<std::string_view>& files) {
+std::vector<InputChunk> chunks(const std::vector<std::string_view>& files, unsigned chunkBits) {
     std::vector<InputChunk> result;
-    constexpr size_t bytes = 2u << 20;
+    const size_t bytes = size_t{1} << chunkBits;
     for (auto file : files)
         for (size_t begin = 0; begin < file.size(); begin += bytes)
             result.push_back({file, begin, std::min(file.size(), begin + bytes)});
@@ -1154,9 +1154,9 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         bytes += file.size();
     }
     if (bytes >> refBits) throw std::runtime_error("Event input too large");
-    source.spans = chunks(eventFiles);
+    source.spans = chunks(eventFiles, ctx.settings.chunkBits);
     source.eventSpans = source.spans.size();
-    for (auto& span : chunks(clickFiles)) source.spans.push_back(span);
+    for (auto& span : chunks(clickFiles, ctx.settings.chunkBits)) source.spans.push_back(span);
     if (source.spans.empty()) { awaitIdentities(); return; }
     std::vector<uint64_t> spanStart(source.eventSpans);
     for (size_t i = 0, f = 0; i < source.eventSpans; ++i) {
@@ -1172,7 +1172,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                                                      INT64_MAX - INT32_MAX);
     const unsigned shift = 63 - std::countr_zero(parts);
     // Use more ID partitions than user partitions so a worker's duplicate bitmap fits in cache.
-    const size_t idShards = std::clamp<size_t>(std::bit_ceil(bytes >> 21), 1, 512);
+    const size_t idShards = std::clamp<size_t>(std::bit_ceil(bytes >> 21), 1, size_t{1} << ctx.settings.idBits);
     const unsigned idShift = 32 - std::countr_zero(idShards);
     auto partOf = [&](uint64_t hash) { return static_cast<size_t>((hash >> 1) >> shift); };
 
@@ -1253,6 +1253,8 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         });
     };
 
+    const unsigned clickLanes = bytes < (256u << 20)
+        ? std::max(1u, readerCount / 3) : ctx.settings.clickLanes;
     std::atomic<size_t> nextShard = 0, nextClick = 0;
     parallel(readerCount, readerCount, [&](size_t w) {
         Reader &reader = *readers[w];
@@ -1265,7 +1267,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         };
         // A small click lane overlaps its arithmetic with the random ID probes.
         // First return one ID block chain per worker to prime the shared recycler.
-        if (w < std::max<size_t>(1, readerCount / 3) && readerCount > 1) {
+        if (w < clickLanes && readerCount > 1) {
             const size_t i = nextShard.fetch_add(1, std::memory_order_relaxed);
             if (i < idShards) processShard(i);
             drainClicks();

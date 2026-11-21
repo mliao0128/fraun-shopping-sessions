@@ -392,6 +392,11 @@ struct Identities {
 };
 
 struct Context {
+    struct ExecutionSettings {
+        unsigned userBits, idBits, chunkBits, linkWorkers, clickLanes;
+    };
+    ExecutionSettings settings{10, 9, 21, 3, 2};
+
     int64_t start, end;
     Identities identities;
     DimensionIndex products, campaigns;

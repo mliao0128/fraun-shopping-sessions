@@ -1,6 +1,6 @@
 # Shopping Sessions
 
-A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the mounted CSV files, resolves identities, and writes `user_daily` and `campaign_daily` as Parquet. The [latest paired benchmark](benchmarks/campaign-counters/benchmark.md) compares this build with our official 0.64 s submission and records complete output checks.
+A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the mounted CSV files, resolves identities, and writes `user_daily` and `campaign_daily` as Parquet. This revision chooses the number of user and event-ID partitions, reader chunk size, and click workers from the input byte count. Fraun selected those settings offline using complete solver runs on public-generator inputs. For groups of four to eight events, a timestamp check can identify one or two sessions directly. Groups that need more work use the existing sort.
 
 ## Build and run
 
