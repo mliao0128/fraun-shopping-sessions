@@ -16,7 +16,7 @@ int main() {
         -half - 1, -half, half - 1, half, 0, 1
     };
 
-    for (uint32_t bucket = 0; bucket < 256; ++bucket) {
+    for (uint32_t bucket = 0; bucket < 1024; ++bucket) {
         for (int64_t origin : origins) {
             for (int64_t value : arrivals) {
                 for (uint32_t index : {0u, indexLimit - 1, indexLimit, UINT32_MAX}) {
@@ -26,7 +26,7 @@ int main() {
                     bool fits = delta >= -half && delta < half && index < indexLimit;
                     assert((uint32_t(info) < sourceTag) == fits);
                     if (fits) {
-                        assert((uint32_t(info) >> 23) == bucket);
+                        assert((uint32_t(info) >> indexBits) == bucket);
                         assert((info & (indexLimit - 1)) == index);
                     } else {
                         const Extended& extended = reader.slow[specialValue(info)];

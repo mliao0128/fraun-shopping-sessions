@@ -1,0 +1,3550 @@
+{
+  "intel": {
+    "cross42": [
+      {
+        "lap": 0,
+        "config": "ref87",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.0067773,
+          "start": 3.8e-08,
+          "parse": 0.337989,
+          "dedup": 0.05457,
+          "await-links": 4.5093e-05,
+          "route": 0.0689302,
+          "ingest": 0.461574,
+          "aggregate": 0.175321,
+          "parquet": 0.077485
+        },
+        "process_ns": 780936498,
+        "monotonic_ns": 780934005,
+        "peak_rss_kib": 3279664
+      },
+      {
+        "lap": 0,
+        "config": "g17",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00762875,
+          "start": 4.2e-08,
+          "parse": 0.295043,
+          "dedup": 0.0400032,
+          "await-links": 6.0504e-05,
+          "route": 0.0669397,
+          "ingest": 0.402092,
+          "aggregate-output": 0.140439
+        },
+        "process_ns": 559508518,
+        "monotonic_ns": 559506870,
+        "peak_rss_kib": 2840476
+      },
+      {
+        "lap": 0,
+        "config": "official",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00590735,
+          "start": 3.3e-08,
+          "parse": 0.322753,
+          "dedup": 0.108046,
+          "await-links": 4.5086e-05,
+          "route": 0.0595311,
+          "ingest": 0.490446,
+          "aggregate-output": 0.230723
+        },
+        "process_ns": 772356023,
+        "monotonic_ns": 772353760,
+        "peak_rss_kib": 2886420
+      },
+      {
+        "lap": 0,
+        "config": "refjerry",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00663158,
+          "start": 3.9e-08,
+          "parse": 0.399805,
+          "dedup": 0.153461,
+          "await-links": 3.6009e-05,
+          "route": 0.110454,
+          "ingest": 0.663863,
+          "aggregate": 0.218042,
+          "parquet": 0.0517702
+        },
+        "process_ns": 1002194510,
+        "monotonic_ns": 1002191587,
+        "peak_rss_kib": 3625288
+      },
+      {
+        "lap": 1,
+        "config": "refjerry",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00686471,
+          "start": 3.9e-08,
+          "parse": 0.405334,
+          "dedup": 0.149589,
+          "await-links": 0.000108817,
+          "route": 0.110593,
+          "ingest": 0.665681,
+          "aggregate": 0.218914,
+          "parquet": 0.0539587
+        },
+        "process_ns": 1008379522,
+        "monotonic_ns": 1008376590,
+        "peak_rss_kib": 3625756
+      },
+      {
+        "lap": 1,
+        "config": "official",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00588874,
+          "start": 4.2e-08,
+          "parse": 0.322132,
+          "dedup": 0.107992,
+          "await-links": 7.0197e-05,
+          "route": 0.059486,
+          "ingest": 0.489753,
+          "aggregate-output": 0.196776
+        },
+        "process_ns": 736348855,
+        "monotonic_ns": 736346709,
+        "peak_rss_kib": 2887800
+      },
+      {
+        "lap": 1,
+        "config": "g17",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00768431,
+          "start": 3.2e-08,
+          "parse": 0.293635,
+          "dedup": 0.040058,
+          "await-links": 5.6812e-05,
+          "route": 0.0646585,
+          "ingest": 0.398467,
+          "aggregate-output": 0.140706
+        },
+        "process_ns": 556158522,
+        "monotonic_ns": 556156879,
+        "peak_rss_kib": 2844124
+      },
+      {
+        "lap": 1,
+        "config": "ref87",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00697468,
+          "start": 3.9e-08,
+          "parse": 0.341286,
+          "dedup": 0.0497672,
+          "await-links": 3.2696e-05,
+          "route": 0.0688529,
+          "ingest": 0.459992,
+          "aggregate": 0.175253,
+          "parquet": 0.0450623
+        },
+        "process_ns": 742921006,
+        "monotonic_ns": 742918840,
+        "peak_rss_kib": 3287564
+      },
+      {
+        "lap": 2,
+        "config": "refjerry",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00678181,
+          "start": 5.1e-08,
+          "parse": 0.404747,
+          "dedup": 0.148738,
+          "await-links": 8.588e-05,
+          "route": 0.110282,
+          "ingest": 0.66391,
+          "aggregate": 0.219277,
+          "parquet": 0.053769
+        },
+        "process_ns": 1002148265,
+        "monotonic_ns": 1002145367,
+        "peak_rss_kib": 3605180
+      },
+      {
+        "lap": 2,
+        "config": "ref87",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00705974,
+          "start": 4.1e-08,
+          "parse": 0.340034,
+          "dedup": 0.0541462,
+          "await-links": 3.9482e-05,
+          "route": 0.0691924,
+          "ingest": 0.463465,
+          "aggregate": 0.175726,
+          "parquet": 0.0460523
+        },
+        "process_ns": 746982053,
+        "monotonic_ns": 746979892,
+        "peak_rss_kib": 3254048
+      },
+      {
+        "lap": 2,
+        "config": "g17",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00780789,
+          "start": 4.6e-08,
+          "parse": 0.295438,
+          "dedup": 0.0396472,
+          "await-links": 6.665e-05,
+          "route": 0.0643561,
+          "ingest": 0.399567,
+          "aggregate-output": 0.140298
+        },
+        "process_ns": 556540069,
+        "monotonic_ns": 556538457,
+        "peak_rss_kib": 2826276
+      },
+      {
+        "lap": 2,
+        "config": "official",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.0058366,
+          "start": 5.2e-08,
+          "parse": 0.324862,
+          "dedup": 0.105019,
+          "await-links": 3.6143e-05,
+          "route": 0.059406,
+          "ingest": 0.489381,
+          "aggregate-output": 0.197575
+        },
+        "process_ns": 737503672,
+        "monotonic_ns": 737501545,
+        "peak_rss_kib": 2889948
+      },
+      {
+        "lap": 3,
+        "config": "official",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.0057605,
+          "start": 4.2e-08,
+          "parse": 0.325337,
+          "dedup": 0.101616,
+          "await-links": 3.6831e-05,
+          "route": 0.0591885,
+          "ingest": 0.48625,
+          "aggregate-output": 0.19735
+        },
+        "process_ns": 733945506,
+        "monotonic_ns": 733943385,
+        "peak_rss_kib": 2887580
+      },
+      {
+        "lap": 3,
+        "config": "ref87",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00688441,
+          "start": 3.7e-08,
+          "parse": 0.338246,
+          "dedup": 0.0564362,
+          "await-links": 4.2068e-05,
+          "route": 0.0688467,
+          "ingest": 0.463612,
+          "aggregate": 0.175478,
+          "parquet": 0.0442499
+        },
+        "process_ns": 744002192,
+        "monotonic_ns": 744000049,
+        "peak_rss_kib": 3272596
+      },
+      {
+        "lap": 3,
+        "config": "g17",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00773221,
+          "start": 4.4e-08,
+          "parse": 0.293345,
+          "dedup": 0.0399445,
+          "await-links": 5.4617e-05,
+          "route": 0.062846,
+          "ingest": 0.396236,
+          "aggregate-output": 0.138904
+        },
+        "process_ns": 551859299,
+        "monotonic_ns": 551857710,
+        "peak_rss_kib": 2850392
+      },
+      {
+        "lap": 3,
+        "config": "refjerry",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00676777,
+          "start": 3.9e-08,
+          "parse": 0.433651,
+          "dedup": 0.147944,
+          "await-links": 9.3523e-05,
+          "route": 0.110586,
+          "ingest": 0.692329,
+          "aggregate": 0.220424,
+          "parquet": 0.0839242
+        },
+        "process_ns": 1070821511,
+        "monotonic_ns": 1070818451,
+        "peak_rss_kib": 3617916
+      },
+      {
+        "lap": 4,
+        "config": "refjerry",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00690693,
+          "start": 4.3e-08,
+          "parse": 0.408041,
+          "dedup": 0.145932,
+          "await-links": 5.109e-05,
+          "route": 0.110462,
+          "ingest": 0.664544,
+          "aggregate": 0.216968,
+          "parquet": 0.0561944
+        },
+        "process_ns": 1009030227,
+        "monotonic_ns": 1009027336,
+        "peak_rss_kib": 3642568
+      },
+      {
+        "lap": 4,
+        "config": "g17",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00758271,
+          "start": 4.6e-08,
+          "parse": 0.299922,
+          "dedup": 0.042152,
+          "await-links": 5.0589e-05,
+          "route": 0.0680883,
+          "ingest": 0.410271,
+          "aggregate-output": 0.141928
+        },
+        "process_ns": 569902837,
+        "monotonic_ns": 569901199,
+        "peak_rss_kib": 2829784
+      },
+      {
+        "lap": 4,
+        "config": "ref87",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00714881,
+          "start": 3.3e-08,
+          "parse": 0.372968,
+          "dedup": 0.0472617,
+          "await-links": 3.8728e-05,
+          "route": 0.076801,
+          "ingest": 0.497124,
+          "aggregate": 0.179006,
+          "parquet": 0.0479347
+        },
+        "process_ns": 791590788,
+        "monotonic_ns": 791588535,
+        "peak_rss_kib": 3303568
+      },
+      {
+        "lap": 4,
+        "config": "official",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.0063787,
+          "start": 4.3e-08,
+          "parse": 0.332492,
+          "dedup": 0.113751,
+          "await-links": 2.3603e-05,
+          "route": 0.0670668,
+          "ingest": 0.513379,
+          "aggregate-output": 0.20286
+        },
+        "process_ns": 767831500,
+        "monotonic_ns": 767829319,
+        "peak_rss_kib": 2889360
+      },
+      {
+        "lap": 5,
+        "config": "refjerry",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00678977,
+          "start": 3.8e-08,
+          "parse": 0.403411,
+          "dedup": 0.151844,
+          "await-links": 4.9934e-05,
+          "route": 0.110432,
+          "ingest": 0.665781,
+          "aggregate": 0.220923,
+          "parquet": 0.0529842
+        },
+        "process_ns": 1008935949,
+        "monotonic_ns": 1008933093,
+        "peak_rss_kib": 3650424
+      },
+      {
+        "lap": 5,
+        "config": "ref87",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00699113,
+          "start": 3.2e-08,
+          "parse": 0.346101,
+          "dedup": 0.0425489,
+          "await-links": 3.9911e-05,
+          "route": 0.0689964,
+          "ingest": 0.457738,
+          "aggregate": 0.175071,
+          "parquet": 0.0453076
+        },
+        "process_ns": 741574401,
+        "monotonic_ns": 741572316,
+        "peak_rss_kib": 3289604
+      },
+      {
+        "lap": 5,
+        "config": "official",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00580043,
+          "start": 4.1e-08,
+          "parse": 0.322784,
+          "dedup": 0.109724,
+          "await-links": 8.6811e-05,
+          "route": 0.0605554,
+          "ingest": 0.493221,
+          "aggregate-output": 0.198251
+        },
+        "process_ns": 743563189,
+        "monotonic_ns": 743561088,
+        "peak_rss_kib": 2889996
+      },
+      {
+        "lap": 5,
+        "config": "g17",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.0077992,
+          "start": 4.1e-08,
+          "parse": 0.292737,
+          "dedup": 0.0399284,
+          "await-links": 6.9553e-05,
+          "route": 0.0647242,
+          "ingest": 0.397519,
+          "aggregate-output": 0.141045
+        },
+        "process_ns": 555554578,
+        "monotonic_ns": 555553004,
+        "peak_rss_kib": 2837776
+      }
+    ],
+    "cross80": [
+      {
+        "lap": 0,
+        "config": "ref87",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00727137,
+          "start": 3.7e-08,
+          "parse": 0.351774,
+          "dedup": 0.0541956,
+          "await-links": 6.6135e-05,
+          "route": 0.0684831,
+          "ingest": 0.474574,
+          "aggregate": 0.178661,
+          "parquet": 0.0459248
+        },
+        "process_ns": 754776557,
+        "monotonic_ns": 754774430,
+        "peak_rss_kib": 3289968
+      },
+      {
+        "lap": 0,
+        "config": "g17",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00827984,
+          "start": 4.5e-08,
+          "parse": 0.294655,
+          "dedup": 0.0409071,
+          "await-links": 6.9632e-05,
+          "route": 0.0658277,
+          "ingest": 0.40152,
+          "aggregate-output": 0.156135
+        },
+        "process_ns": 575048064,
+        "monotonic_ns": 575046442,
+        "peak_rss_kib": 2837968
+      },
+      {
+        "lap": 0,
+        "config": "official",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00622415,
+          "start": 4.2e-08,
+          "parse": 0.329821,
+          "dedup": 0.112062,
+          "await-links": 6.8117e-05,
+          "route": 0.0575256,
+          "ingest": 0.499537,
+          "aggregate-output": 0.197177
+        },
+        "process_ns": 740656827,
+        "monotonic_ns": 740654746,
+        "peak_rss_kib": 2886820
+      },
+      {
+        "lap": 0,
+        "config": "refjerry",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00707426,
+          "start": 4.1e-08,
+          "parse": 0.454238,
+          "dedup": 0.153423,
+          "await-links": 9.915e-05,
+          "route": 0.112203,
+          "ingest": 0.72002,
+          "aggregate": 0.226967,
+          "parquet": 0.0612332
+        },
+        "process_ns": 1077939583,
+        "monotonic_ns": 1077936571,
+        "peak_rss_kib": 3620756
+      },
+      {
+        "lap": 1,
+        "config": "refjerry",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00707564,
+          "start": 4e-08,
+          "parse": 0.467102,
+          "dedup": 0.156012,
+          "await-links": 6.4433e-05,
+          "route": 0.123522,
+          "ingest": 0.746745,
+          "aggregate": 0.260733,
+          "parquet": 0.0646223
+        },
+        "process_ns": 1142458823,
+        "monotonic_ns": 1142455657,
+        "peak_rss_kib": 3628572
+      },
+      {
+        "lap": 1,
+        "config": "official",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00647933,
+          "start": 4.6e-08,
+          "parse": 0.324686,
+          "dedup": 0.118999,
+          "await-links": 2.783e-05,
+          "route": 0.0683253,
+          "ingest": 0.512084,
+          "aggregate-output": 0.211943
+        },
+        "process_ns": 770830944,
+        "monotonic_ns": 770828793,
+        "peak_rss_kib": 2891736
+      },
+      {
+        "lap": 1,
+        "config": "g17",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00832127,
+          "start": 5.4e-08,
+          "parse": 0.309112,
+          "dedup": 0.0433705,
+          "await-links": 4.4691e-05,
+          "route": 0.0646938,
+          "ingest": 0.417274,
+          "aggregate-output": 0.147172
+        },
+        "process_ns": 582381702,
+        "monotonic_ns": 582380071,
+        "peak_rss_kib": 2854480
+      },
+      {
+        "lap": 1,
+        "config": "ref87",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00740194,
+          "start": 3.9e-08,
+          "parse": 0.409303,
+          "dedup": 0.0444835,
+          "await-links": 4.5946e-05,
+          "route": 0.0761299,
+          "ingest": 0.530018,
+          "aggregate": 0.197665,
+          "parquet": 0.0573473
+        },
+        "process_ns": 843646792,
+        "monotonic_ns": 843644452,
+        "peak_rss_kib": 3283208
+      },
+      {
+        "lap": 2,
+        "config": "refjerry",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00725577,
+          "start": 3.3e-08,
+          "parse": 0.455433,
+          "dedup": 0.161011,
+          "await-links": 8.8868e-05,
+          "route": 0.110206,
+          "ingest": 0.7268,
+          "aggregate": 0.216534,
+          "parquet": 0.0523442
+        },
+        "process_ns": 1067843441,
+        "monotonic_ns": 1067840469,
+        "peak_rss_kib": 3628284
+      },
+      {
+        "lap": 2,
+        "config": "ref87",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00732316,
+          "start": 3.9e-08,
+          "parse": 0.333276,
+          "dedup": 0.0586421,
+          "await-links": 2.7664e-05,
+          "route": 0.0686018,
+          "ingest": 0.460603,
+          "aggregate": 0.179134,
+          "parquet": 0.0468731
+        },
+        "process_ns": 744540498,
+        "monotonic_ns": 744538443,
+        "peak_rss_kib": 3264448
+      },
+      {
+        "lap": 2,
+        "config": "g17",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00833045,
+          "start": 4.5e-08,
+          "parse": 0.29074,
+          "dedup": 0.0405693,
+          "await-links": 7.0215e-05,
+          "route": 0.0641959,
+          "ingest": 0.395622,
+          "aggregate-output": 0.139801
+        },
+        "process_ns": 553027930,
+        "monotonic_ns": 553026388,
+        "peak_rss_kib": 2833588
+      },
+      {
+        "lap": 2,
+        "config": "official",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.0062878,
+          "start": 3.5e-08,
+          "parse": 0.317944,
+          "dedup": 0.112285,
+          "await-links": 9.4304e-05,
+          "route": 0.057793,
+          "ingest": 0.488192,
+          "aggregate-output": 0.198312
+        },
+        "process_ns": 732902878,
+        "monotonic_ns": 732900856,
+        "peak_rss_kib": 2886800
+      },
+      {
+        "lap": 3,
+        "config": "official",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00634603,
+          "start": 4.5e-08,
+          "parse": 0.317339,
+          "dedup": 0.110055,
+          "await-links": 5.1065e-05,
+          "route": 0.0579987,
+          "ingest": 0.485517,
+          "aggregate-output": 0.199528
+        },
+        "process_ns": 730657047,
+        "monotonic_ns": 730655039,
+        "peak_rss_kib": 2885664
+      },
+      {
+        "lap": 3,
+        "config": "ref87",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00725711,
+          "start": 5.1e-08,
+          "parse": 0.339215,
+          "dedup": 0.0481417,
+          "await-links": 2.554e-05,
+          "route": 0.068312,
+          "ingest": 0.455751,
+          "aggregate": 0.177173,
+          "parquet": 0.0448378
+        },
+        "process_ns": 737159816,
+        "monotonic_ns": 737157794,
+        "peak_rss_kib": 3296376
+      },
+      {
+        "lap": 3,
+        "config": "g17",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00810737,
+          "start": 3.2e-08,
+          "parse": 0.29121,
+          "dedup": 0.0406807,
+          "await-links": 8.1816e-05,
+          "route": 0.0605998,
+          "ingest": 0.392617,
+          "aggregate-output": 0.139994
+        },
+        "process_ns": 550485476,
+        "monotonic_ns": 550483956,
+        "peak_rss_kib": 2839592
+      },
+      {
+        "lap": 3,
+        "config": "refjerry",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.0071653,
+          "start": 5e-08,
+          "parse": 0.416268,
+          "dedup": 0.151366,
+          "await-links": 5.977e-05,
+          "route": 0.109796,
+          "ingest": 0.677547,
+          "aggregate": 0.226091,
+          "parquet": 0.05147
+        },
+        "process_ns": 1022379380,
+        "monotonic_ns": 1022376587,
+        "peak_rss_kib": 3620812
+      },
+      {
+        "lap": 4,
+        "config": "refjerry",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00710193,
+          "start": 3.2e-08,
+          "parse": 0.426019,
+          "dedup": 0.154182,
+          "await-links": 2.4232e-05,
+          "route": 0.109192,
+          "ingest": 0.689462,
+          "aggregate": 0.216632,
+          "parquet": 0.0525086
+        },
+        "process_ns": 1024229672,
+        "monotonic_ns": 1024226878,
+        "peak_rss_kib": 3627572
+      },
+      {
+        "lap": 4,
+        "config": "g17",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00815999,
+          "start": 4.3e-08,
+          "parse": 0.293232,
+          "dedup": 0.0410305,
+          "await-links": 6.9808e-05,
+          "route": 0.0621634,
+          "ingest": 0.396545,
+          "aggregate-output": 0.139402
+        },
+        "process_ns": 554350698,
+        "monotonic_ns": 554349180,
+        "peak_rss_kib": 2835932
+      },
+      {
+        "lap": 4,
+        "config": "ref87",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00733673,
+          "start": 4.1e-08,
+          "parse": 0.344716,
+          "dedup": 0.0431088,
+          "await-links": 9.0348e-05,
+          "route": 0.0711236,
+          "ingest": 0.459082,
+          "aggregate": 0.185767,
+          "parquet": 0.0446964
+        },
+        "process_ns": 747458957,
+        "monotonic_ns": 747456921,
+        "peak_rss_kib": 3284484
+      },
+      {
+        "lap": 4,
+        "config": "official",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00643831,
+          "start": 3.4e-08,
+          "parse": 0.325198,
+          "dedup": 0.108096,
+          "await-links": 6.6572e-05,
+          "route": 0.0579387,
+          "ingest": 0.491374,
+          "aggregate-output": 0.197248
+        },
+        "process_ns": 735017849,
+        "monotonic_ns": 735015843,
+        "peak_rss_kib": 2887548
+      },
+      {
+        "lap": 5,
+        "config": "refjerry",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00729826,
+          "start": 3.9e-08,
+          "parse": 0.403327,
+          "dedup": 0.151431,
+          "await-links": 8.5372e-05,
+          "route": 0.109194,
+          "ingest": 0.664098,
+          "aggregate": 0.216517,
+          "parquet": 0.0517217
+        },
+        "process_ns": 996755942,
+        "monotonic_ns": 996753243,
+        "peak_rss_kib": 3650756
+      },
+      {
+        "lap": 5,
+        "config": "ref87",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00727527,
+          "start": 3.9e-08,
+          "parse": 0.338761,
+          "dedup": 0.0442617,
+          "await-links": 4.2686e-05,
+          "route": 0.067908,
+          "ingest": 0.45103,
+          "aggregate": 0.175254,
+          "parquet": 0.0431382
+        },
+        "process_ns": 725886261,
+        "monotonic_ns": 725884285,
+        "peak_rss_kib": 3280412
+      },
+      {
+        "lap": 5,
+        "config": "official",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00624409,
+          "start": 6e-08,
+          "parse": 0.316259,
+          "dedup": 0.109286,
+          "await-links": 8.9446e-05,
+          "route": 0.0576938,
+          "ingest": 0.483408,
+          "aggregate-output": 0.196487
+        },
+        "process_ns": 724450838,
+        "monotonic_ns": 724448871,
+        "peak_rss_kib": 2886964
+      },
+      {
+        "lap": 5,
+        "config": "g17",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00817876,
+          "start": 3.2e-08,
+          "parse": 0.292512,
+          "dedup": 0.0403861,
+          "await-links": 6.576e-05,
+          "route": 0.064048,
+          "ingest": 0.397071,
+          "aggregate-output": 0.136719
+        },
+        "process_ns": 551586761,
+        "monotonic_ns": 551585253,
+        "peak_rss_kib": 2837804
+      }
+    ],
+    "crossfresh": [
+      {
+        "lap": 0,
+        "config": "ref87",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00661479,
+          "start": 3.2e-08,
+          "parse": 0.731424,
+          "dedup": 0.0391875,
+          "await-links": 6.4846e-05,
+          "route": 0.0712686,
+          "ingest": 0.841985,
+          "aggregate": 0.174574,
+          "parquet": 0.0533772
+        },
+        "process_ns": 1153182374,
+        "monotonic_ns": 1153179076,
+        "peak_rss_kib": 3169444
+      },
+      {
+        "lap": 0,
+        "config": "g17",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00766355,
+          "start": 4.1e-08,
+          "parse": 0.366389,
+          "dedup": 0.0369201,
+          "await-links": 7.3303e-05,
+          "route": 0.0607161,
+          "ingest": 0.464156,
+          "aggregate-output": 0.140593
+        },
+        "process_ns": 626374121,
+        "monotonic_ns": 626372438,
+        "peak_rss_kib": 2775000
+      },
+      {
+        "lap": 0,
+        "config": "official",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00563184,
+          "start": 4.3e-08,
+          "parse": 0.318258,
+          "dedup": 0.101332,
+          "await-links": 9.0368e-05,
+          "route": 0.057035,
+          "ingest": 0.476786,
+          "aggregate-output": 0.199789
+        },
+        "process_ns": 722107582,
+        "monotonic_ns": 722105653,
+        "peak_rss_kib": 2863344
+      },
+      {
+        "lap": 0,
+        "config": "refjerry",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00664007,
+          "start": 3.8e-08,
+          "parse": 0.472414,
+          "dedup": 0.124303,
+          "await-links": 3.8225e-05,
+          "route": 0.119184,
+          "ingest": 0.715993,
+          "aggregate": 0.222553,
+          "parquet": 0.050109
+        },
+        "process_ns": 1073281045,
+        "monotonic_ns": 1073278206,
+        "peak_rss_kib": 3564444
+      },
+      {
+        "lap": 1,
+        "config": "refjerry",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00646107,
+          "start": 4.1e-08,
+          "parse": 0.459331,
+          "dedup": 0.131747,
+          "await-links": 6.3362e-05,
+          "route": 0.124749,
+          "ingest": 0.715933,
+          "aggregate": 0.230651,
+          "parquet": 0.0614706
+        },
+        "process_ns": 1079483743,
+        "monotonic_ns": 1079480894,
+        "peak_rss_kib": 3624616
+      },
+      {
+        "lap": 1,
+        "config": "official",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00681498,
+          "start": 6e-08,
+          "parse": 0.375232,
+          "dedup": 0.0975021,
+          "await-links": 9.2191e-05,
+          "route": 0.05693,
+          "ingest": 0.529804,
+          "aggregate-output": 0.199374
+        },
+        "process_ns": 851614906,
+        "monotonic_ns": 851612652,
+        "peak_rss_kib": 2866044
+      },
+      {
+        "lap": 1,
+        "config": "g17",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00778845,
+          "start": 3.6e-08,
+          "parse": 0.297742,
+          "dedup": 0.0368031,
+          "await-links": 7.2227e-05,
+          "route": 0.0600104,
+          "ingest": 0.394692,
+          "aggregate-output": 0.14121
+        },
+        "process_ns": 586444319,
+        "monotonic_ns": 586442758,
+        "peak_rss_kib": 2805232
+      },
+      {
+        "lap": 1,
+        "config": "ref87",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00670341,
+          "start": 5.1e-08,
+          "parse": 0.340213,
+          "dedup": 0.0418233,
+          "await-links": 2.7965e-05,
+          "route": 0.0675496,
+          "ingest": 0.449653,
+          "aggregate": 0.175258,
+          "parquet": 0.0449679
+        },
+        "process_ns": 728867169,
+        "monotonic_ns": 728865244,
+        "peak_rss_kib": 3285080
+      },
+      {
+        "lap": 2,
+        "config": "refjerry",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00657997,
+          "start": 3.9e-08,
+          "parse": 0.427005,
+          "dedup": 0.124181,
+          "await-links": 7.3968e-05,
+          "route": 0.113182,
+          "ingest": 0.664497,
+          "aggregate": 0.220165,
+          "parquet": 0.0825092
+        },
+        "process_ns": 1034524823,
+        "monotonic_ns": 1034522104,
+        "peak_rss_kib": 3651824
+      },
+      {
+        "lap": 2,
+        "config": "ref87",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00700008,
+          "start": 4.6e-08,
+          "parse": 0.341721,
+          "dedup": 0.0433028,
+          "await-links": 2.6045e-05,
+          "route": 0.072483,
+          "ingest": 0.457587,
+          "aggregate": 0.177292,
+          "parquet": 0.0773211
+        },
+        "process_ns": 771781392,
+        "monotonic_ns": 771779361,
+        "peak_rss_kib": 3233236
+      },
+      {
+        "lap": 2,
+        "config": "g17",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00780122,
+          "start": 4.2e-08,
+          "parse": 0.286964,
+          "dedup": 0.0364129,
+          "await-links": 6.4533e-05,
+          "route": 0.0599515,
+          "ingest": 0.383449,
+          "aggregate-output": 0.140801
+        },
+        "process_ns": 542002019,
+        "monotonic_ns": 542000584,
+        "peak_rss_kib": 2815656
+      },
+      {
+        "lap": 2,
+        "config": "official",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00564884,
+          "start": 5.2e-08,
+          "parse": 0.316266,
+          "dedup": 0.0997803,
+          "await-links": 6.6154e-05,
+          "route": 0.0566153,
+          "ingest": 0.472786,
+          "aggregate-output": 0.200965
+        },
+        "process_ns": 720444343,
+        "monotonic_ns": 720442441,
+        "peak_rss_kib": 2867696
+      },
+      {
+        "lap": 3,
+        "config": "official",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00564318,
+          "start": 4.6e-08,
+          "parse": 0.317226,
+          "dedup": 0.0989086,
+          "await-links": 6.0803e-05,
+          "route": 0.0566928,
+          "ingest": 0.472962,
+          "aggregate-output": 0.197403
+        },
+        "process_ns": 716793675,
+        "monotonic_ns": 716791800,
+        "peak_rss_kib": 2865296
+      },
+      {
+        "lap": 3,
+        "config": "ref87",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00674233,
+          "start": 4e-08,
+          "parse": 0.337611,
+          "dedup": 0.043123,
+          "await-links": 2.8146e-05,
+          "route": 0.0671255,
+          "ingest": 0.447929,
+          "aggregate": 0.176763,
+          "parquet": 0.0443612
+        },
+        "process_ns": 727581280,
+        "monotonic_ns": 727579385,
+        "peak_rss_kib": 3267560
+      },
+      {
+        "lap": 3,
+        "config": "g17",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00765,
+          "start": 5.9e-08,
+          "parse": 0.289738,
+          "dedup": 0.0373796,
+          "await-links": 6.9041e-05,
+          "route": 0.0618758,
+          "ingest": 0.389109,
+          "aggregate-output": 0.140296
+        },
+        "process_ns": 546051684,
+        "monotonic_ns": 546050257,
+        "peak_rss_kib": 2823872
+      },
+      {
+        "lap": 3,
+        "config": "refjerry",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00650715,
+          "start": 3.8e-08,
+          "parse": 0.420491,
+          "dedup": 0.122273,
+          "await-links": 6.8922e-05,
+          "route": 0.113473,
+          "ingest": 0.656375,
+          "aggregate": 0.223628,
+          "parquet": 0.0503193
+        },
+        "process_ns": 994633898,
+        "monotonic_ns": 994631320,
+        "peak_rss_kib": 3531228
+      },
+      {
+        "lap": 4,
+        "config": "refjerry",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00667817,
+          "start": 3.3e-08,
+          "parse": 0.405454,
+          "dedup": 0.127172,
+          "await-links": 4.8758e-05,
+          "route": 0.111162,
+          "ingest": 0.643891,
+          "aggregate": 0.220172,
+          "parquet": 0.0486032
+        },
+        "process_ns": 978519746,
+        "monotonic_ns": 978517213,
+        "peak_rss_kib": 3606712
+      },
+      {
+        "lap": 4,
+        "config": "g17",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00748973,
+          "start": 4.7e-08,
+          "parse": 0.294876,
+          "dedup": 0.0412707,
+          "await-links": 5.2382e-05,
+          "route": 0.0695834,
+          "ingest": 0.405841,
+          "aggregate-output": 0.140927
+        },
+        "process_ns": 564945081,
+        "monotonic_ns": 564943616,
+        "peak_rss_kib": 2825820
+      },
+      {
+        "lap": 4,
+        "config": "ref87",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00679196,
+          "start": 3.9e-08,
+          "parse": 0.35469,
+          "dedup": 0.0387076,
+          "await-links": 5.9522e-05,
+          "route": 0.0722175,
+          "ingest": 0.465717,
+          "aggregate": 0.17773,
+          "parquet": 0.044089
+        },
+        "process_ns": 746441910,
+        "monotonic_ns": 746439962,
+        "peak_rss_kib": 3228148
+      },
+      {
+        "lap": 4,
+        "config": "official",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00565525,
+          "start": 4.2e-08,
+          "parse": 0.318273,
+          "dedup": 0.0995426,
+          "await-links": 7.3301e-05,
+          "route": 0.0570106,
+          "ingest": 0.474969,
+          "aggregate-output": 0.214844
+        },
+        "process_ns": 736485769,
+        "monotonic_ns": 736483868,
+        "peak_rss_kib": 2866360
+      }
+    ],
+    "g1742": [
+      {
+        "lap": 0,
+        "config": "g17",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00987389,
+          "start": 3.4e-08,
+          "parse": 0.294483,
+          "dedup": 0.0400692,
+          "await-links": 5.2504e-05,
+          "route": 0.0641964,
+          "ingest": 0.398861,
+          "aggregate-output": 0.140561
+        },
+        "process_ns": 560481529,
+        "monotonic_ns": 560479297,
+        "peak_rss_kib": 2858632
+      },
+      {
+        "lap": 0,
+        "config": "cover",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00775491,
+          "start": 4.4e-08,
+          "parse": 0.294173,
+          "dedup": 0.039387,
+          "await-links": 6.5847e-05,
+          "route": 0.0630751,
+          "ingest": 0.396746,
+          "aggregate-output": 0.147787
+        },
+        "process_ns": 562703286,
+        "monotonic_ns": 562701234,
+        "peak_rss_kib": 2835980
+      },
+      {
+        "lap": 0,
+        "config": "official",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00605025,
+          "start": 4.1e-08,
+          "parse": 0.33332,
+          "dedup": 0.107015,
+          "await-links": 6.8009e-05,
+          "route": 0.058857,
+          "ingest": 0.499359,
+          "aggregate-output": 0.195061
+        },
+        "process_ns": 737223904,
+        "monotonic_ns": 737221224,
+        "peak_rss_kib": 2890376
+      },
+      {
+        "lap": 1,
+        "config": "cover",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00777279,
+          "start": 3.4e-08,
+          "parse": 0.29156,
+          "dedup": 0.0395219,
+          "await-links": 6.7032e-05,
+          "route": 0.0630663,
+          "ingest": 0.394275,
+          "aggregate-output": 0.144511
+        },
+        "process_ns": 556791502,
+        "monotonic_ns": 556789482,
+        "peak_rss_kib": 2837884
+      },
+      {
+        "lap": 1,
+        "config": "g17",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00772289,
+          "start": 4.5e-08,
+          "parse": 0.289181,
+          "dedup": 0.0398972,
+          "await-links": 5.2667e-05,
+          "route": 0.0630474,
+          "ingest": 0.392223,
+          "aggregate-output": 0.139892
+        },
+        "process_ns": 548959140,
+        "monotonic_ns": 548957148,
+        "peak_rss_kib": 2831912
+      },
+      {
+        "lap": 1,
+        "config": "official",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00581275,
+          "start": 4.6e-08,
+          "parse": 0.323648,
+          "dedup": 0.107835,
+          "await-links": 3.6104e-05,
+          "route": 0.0669403,
+          "ingest": 0.498522,
+          "aggregate-output": 0.202618
+        },
+        "process_ns": 745677920,
+        "monotonic_ns": 745675226,
+        "peak_rss_kib": 2890500
+      },
+      {
+        "lap": 2,
+        "config": "g17",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00772754,
+          "start": 4.9e-08,
+          "parse": 0.301686,
+          "dedup": 0.040095,
+          "await-links": 5.4158e-05,
+          "route": 0.0631762,
+          "ingest": 0.405055,
+          "aggregate-output": 0.140245
+        },
+        "process_ns": 562920184,
+        "monotonic_ns": 562918156,
+        "peak_rss_kib": 2852424
+      },
+      {
+        "lap": 2,
+        "config": "official",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00587851,
+          "start": 3.6e-08,
+          "parse": 0.323448,
+          "dedup": 0.107754,
+          "await-links": 6.8973e-05,
+          "route": 0.0590816,
+          "ingest": 0.490424,
+          "aggregate-output": 0.197334
+        },
+        "process_ns": 732408617,
+        "monotonic_ns": 732405977,
+        "peak_rss_kib": 2888884
+      },
+      {
+        "lap": 2,
+        "config": "cover",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00766569,
+          "start": 4.1e-08,
+          "parse": 0.293581,
+          "dedup": 0.0402214,
+          "await-links": 6.6435e-05,
+          "route": 0.0633299,
+          "ingest": 0.397262,
+          "aggregate-output": 0.14605
+        },
+        "process_ns": 560447840,
+        "monotonic_ns": 560445806,
+        "peak_rss_kib": 2848108
+      },
+      {
+        "lap": 3,
+        "config": "cover",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00773728,
+          "start": 3.4e-08,
+          "parse": 0.293405,
+          "dedup": 0.0403831,
+          "await-links": 5.1241e-05,
+          "route": 0.0627597,
+          "ingest": 0.396659,
+          "aggregate-output": 0.147152
+        },
+        "process_ns": 560817820,
+        "monotonic_ns": 560815800,
+        "peak_rss_kib": 2850004
+      },
+      {
+        "lap": 3,
+        "config": "official",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00586236,
+          "start": 4.6e-08,
+          "parse": 0.319323,
+          "dedup": 0.107841,
+          "await-links": 2.5775e-05,
+          "route": 0.0591701,
+          "ingest": 0.486432,
+          "aggregate-output": 0.197103
+        },
+        "process_ns": 726172707,
+        "monotonic_ns": 726170096,
+        "peak_rss_kib": 2886884
+      },
+      {
+        "lap": 3,
+        "config": "g17",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00795928,
+          "start": 4.5e-08,
+          "parse": 0.292052,
+          "dedup": 0.0400571,
+          "await-links": 7.6188e-05,
+          "route": 0.0617646,
+          "ingest": 0.394007,
+          "aggregate-output": 0.141632
+        },
+        "process_ns": 552686936,
+        "monotonic_ns": 552684948,
+        "peak_rss_kib": 2836380
+      },
+      {
+        "lap": 4,
+        "config": "g17",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00774066,
+          "start": 4.7e-08,
+          "parse": 0.292431,
+          "dedup": 0.0402442,
+          "await-links": 5.1771e-05,
+          "route": 0.0628934,
+          "ingest": 0.395677,
+          "aggregate-output": 0.14031
+        },
+        "process_ns": 553097784,
+        "monotonic_ns": 553095800,
+        "peak_rss_kib": 2846308
+      },
+      {
+        "lap": 4,
+        "config": "official",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00589083,
+          "start": 4.5e-08,
+          "parse": 0.321435,
+          "dedup": 0.110289,
+          "await-links": 2.5494e-05,
+          "route": 0.0594709,
+          "ingest": 0.491279,
+          "aggregate-output": 0.196452
+        },
+        "process_ns": 730500371,
+        "monotonic_ns": 730497761,
+        "peak_rss_kib": 2890372
+      },
+      {
+        "lap": 4,
+        "config": "cover",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00766355,
+          "start": 5.9e-08,
+          "parse": 0.292668,
+          "dedup": 0.0398936,
+          "await-links": 6.0406e-05,
+          "route": 0.0634203,
+          "ingest": 0.396087,
+          "aggregate-output": 0.17644
+        },
+        "process_ns": 589421793,
+        "monotonic_ns": 589419705,
+        "peak_rss_kib": 2844212
+      },
+      {
+        "lap": 5,
+        "config": "g17",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00780546,
+          "start": 4.5e-08,
+          "parse": 0.289667,
+          "dedup": 0.0405077,
+          "await-links": 5.5313e-05,
+          "route": 0.0650539,
+          "ingest": 0.395328,
+          "aggregate-output": 0.141028
+        },
+        "process_ns": 553224606,
+        "monotonic_ns": 553222617,
+        "peak_rss_kib": 2840120
+      },
+      {
+        "lap": 5,
+        "config": "official",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00585865,
+          "start": 4.2e-08,
+          "parse": 0.32113,
+          "dedup": 0.105333,
+          "await-links": 6.5441e-05,
+          "route": 0.0592785,
+          "ingest": 0.485865,
+          "aggregate-output": 0.196715
+        },
+        "process_ns": 726451254,
+        "monotonic_ns": 726448672,
+        "peak_rss_kib": 2890956
+      },
+      {
+        "lap": 5,
+        "config": "cover",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00783088,
+          "start": 3.4e-08,
+          "parse": 0.295802,
+          "dedup": 0.0402294,
+          "await-links": 5.2681e-05,
+          "route": 0.0633085,
+          "ingest": 0.399437,
+          "aggregate-output": 0.143483
+        },
+        "process_ns": 561253318,
+        "monotonic_ns": 561251302,
+        "peak_rss_kib": 2848432
+      },
+      {
+        "lap": 6,
+        "config": "g17",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00775341,
+          "start": 3.1e-08,
+          "parse": 0.297796,
+          "dedup": 0.0405857,
+          "await-links": 6.6068e-05,
+          "route": 0.0639174,
+          "ingest": 0.402425,
+          "aggregate-output": 0.142834
+        },
+        "process_ns": 562267448,
+        "monotonic_ns": 562265442,
+        "peak_rss_kib": 2842844
+      },
+      {
+        "lap": 6,
+        "config": "official",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00583218,
+          "start": 4.3e-08,
+          "parse": 0.320646,
+          "dedup": 0.108036,
+          "await-links": 5.8331e-05,
+          "route": 0.0590351,
+          "ingest": 0.487847,
+          "aggregate-output": 0.198114
+        },
+        "process_ns": 728766314,
+        "monotonic_ns": 728763729,
+        "peak_rss_kib": 2887460
+      },
+      {
+        "lap": 6,
+        "config": "cover",
+        "seed": "p42",
+        "stages": {
+          "dimensions": 0.00775275,
+          "start": 5.6e-08,
+          "parse": 0.290382,
+          "dedup": 0.0395887,
+          "await-links": 7.0036e-05,
+          "route": 0.0654104,
+          "ingest": 0.395511,
+          "aggregate-output": 0.143856
+        },
+        "process_ns": 556601301,
+        "monotonic_ns": 556599333,
+        "peak_rss_kib": 2831836
+      }
+    ],
+    "g1760": [
+      {
+        "lap": 0,
+        "config": "g17",
+        "seed": "f73",
+        "stages": {
+          "dimensions": 0.00761175,
+          "start": 4.1e-08,
+          "parse": 1.38039,
+          "dedup": 0.13715,
+          "await-links": 6.4139e-05,
+          "route": 0.207728,
+          "ingest": 1.72544,
+          "aggregate-output": 0.42401
+        },
+        "process_ns": 2232569798,
+        "monotonic_ns": 2232562326,
+        "peak_rss_kib": 8021828
+      },
+      {
+        "lap": 0,
+        "config": "official",
+        "seed": "f73",
+        "stages": {
+          "dimensions": 0.00646354,
+          "start": 3.2e-08,
+          "parse": 1.14602,
+          "dedup": 0.187811,
+          "await-links": 2.368e-05,
+          "route": 0.196878,
+          "ingest": 1.5308,
+          "aggregate-output": 0.684889
+        },
+        "process_ns": 2328653736,
+        "monotonic_ns": 2328646012,
+        "peak_rss_kib": 8209520
+      },
+      {
+        "lap": 1,
+        "config": "official",
+        "seed": "f73",
+        "stages": {
+          "dimensions": 0.00572851,
+          "start": 4.1e-08,
+          "parse": 0.994224,
+          "dedup": 0.182029,
+          "await-links": 6.6181e-05,
+          "route": 0.196281,
+          "ingest": 1.37266,
+          "aggregate-output": 0.691356
+        },
+        "process_ns": 2172911362,
+        "monotonic_ns": 2172904187,
+        "peak_rss_kib": 8224152
+      },
+      {
+        "lap": 1,
+        "config": "g17",
+        "seed": "f73",
+        "stages": {
+          "dimensions": 0.00829003,
+          "start": 5.1e-08,
+          "parse": 0.848244,
+          "dedup": 0.132778,
+          "await-links": 5.5058e-05,
+          "route": 0.204782,
+          "ingest": 1.18594,
+          "aggregate-output": 0.444644
+        },
+        "process_ns": 1662016419,
+        "monotonic_ns": 1662010948,
+        "peak_rss_kib": 8060664
+      },
+      {
+        "lap": 2,
+        "config": "g17",
+        "seed": "f73",
+        "stages": {
+          "dimensions": 0.00792982,
+          "start": 4.1e-08,
+          "parse": 0.856998,
+          "dedup": 0.133876,
+          "await-links": 7.9363e-05,
+          "route": 0.21857,
+          "ingest": 1.2096,
+          "aggregate-output": 0.497524
+        },
+        "process_ns": 1736831401,
+        "monotonic_ns": 1736825704,
+        "peak_rss_kib": 8067728
+      },
+      {
+        "lap": 2,
+        "config": "official",
+        "seed": "f73",
+        "stages": {
+          "dimensions": 0.0058091,
+          "start": 3.4e-08,
+          "parse": 0.958807,
+          "dedup": 0.176997,
+          "await-links": 2.7032e-05,
+          "route": 0.195197,
+          "ingest": 1.3311,
+          "aggregate-output": 0.692078
+        },
+        "process_ns": 2126442939,
+        "monotonic_ns": 2126435997,
+        "peak_rss_kib": 8224108
+      },
+      {
+        "lap": 3,
+        "config": "official",
+        "seed": "f73",
+        "stages": {
+          "dimensions": 0.00560801,
+          "start": 4.6e-08,
+          "parse": 0.971117,
+          "dedup": 0.181396,
+          "await-links": 7.2417e-05,
+          "route": 0.194132,
+          "ingest": 1.34678,
+          "aggregate-output": 0.691481
+        },
+        "process_ns": 2141397703,
+        "monotonic_ns": 2141390749,
+        "peak_rss_kib": 8216652
+      },
+      {
+        "lap": 3,
+        "config": "g17",
+        "seed": "f73",
+        "stages": {
+          "dimensions": 0.00770087,
+          "start": 4.1e-08,
+          "parse": 0.834124,
+          "dedup": 0.129467,
+          "await-links": 9.3639e-05,
+          "route": 0.203881,
+          "ingest": 1.16765,
+          "aggregate-output": 0.465458
+        },
+        "process_ns": 1660889734,
+        "monotonic_ns": 1660884344,
+        "peak_rss_kib": 8092400
+      },
+      {
+        "lap": 4,
+        "config": "g17",
+        "seed": "f73",
+        "stages": {
+          "dimensions": 0.0076129,
+          "start": 3.3e-08,
+          "parse": 0.856961,
+          "dedup": 0.131069,
+          "await-links": 8.3677e-05,
+          "route": 0.213267,
+          "ingest": 1.20147,
+          "aggregate-output": 0.422278
+        },
+        "process_ns": 1651006669,
+        "monotonic_ns": 1651001342,
+        "peak_rss_kib": 8073304
+      },
+      {
+        "lap": 4,
+        "config": "official",
+        "seed": "f73",
+        "stages": {
+          "dimensions": 0.00560334,
+          "start": 3.4e-08,
+          "parse": 0.959121,
+          "dedup": 0.188629,
+          "await-links": 4.0235e-05,
+          "route": 0.195713,
+          "ingest": 1.34356,
+          "aggregate-output": 0.681176
+        },
+        "process_ns": 2127887370,
+        "monotonic_ns": 2127880539,
+        "peak_rss_kib": 8222860
+      }
+    ],
+    "g1780": [
+      {
+        "lap": 0,
+        "config": "g17",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00800991,
+          "start": 4.1e-08,
+          "parse": 0.326927,
+          "dedup": 0.0401348,
+          "await-links": 6.6675e-05,
+          "route": 0.0621354,
+          "ingest": 0.429311,
+          "aggregate-output": 0.145537
+        },
+        "process_ns": 598132640,
+        "monotonic_ns": 598130528,
+        "peak_rss_kib": 2822648
+      },
+      {
+        "lap": 0,
+        "config": "cover",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00813679,
+          "start": 6.3e-08,
+          "parse": 0.32627,
+          "dedup": 0.0416124,
+          "await-links": 7.9752e-05,
+          "route": 0.0642329,
+          "ingest": 0.43224,
+          "aggregate-output": 0.142612
+        },
+        "process_ns": 596560907,
+        "monotonic_ns": 596558786,
+        "peak_rss_kib": 2818516
+      },
+      {
+        "lap": 0,
+        "config": "official",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00626562,
+          "start": 4.6e-08,
+          "parse": 0.31608,
+          "dedup": 0.110748,
+          "await-links": 6.6801e-05,
+          "route": 0.057886,
+          "ingest": 0.484837,
+          "aggregate-output": 0.197983
+        },
+        "process_ns": 727766513,
+        "monotonic_ns": 727763954,
+        "peak_rss_kib": 2885852
+      },
+      {
+        "lap": 1,
+        "config": "cover",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00817442,
+          "start": 3.9e-08,
+          "parse": 0.305931,
+          "dedup": 0.0402616,
+          "await-links": 5.6859e-05,
+          "route": 0.0627104,
+          "ingest": 0.40902,
+          "aggregate-output": 0.144123
+        },
+        "process_ns": 572273388,
+        "monotonic_ns": 572271366,
+        "peak_rss_kib": 2837356
+      },
+      {
+        "lap": 1,
+        "config": "g17",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00816253,
+          "start": 3.3e-08,
+          "parse": 0.308145,
+          "dedup": 0.0411655,
+          "await-links": 6.1219e-05,
+          "route": 0.0656424,
+          "ingest": 0.415059,
+          "aggregate-output": 0.151153
+        },
+        "process_ns": 584549826,
+        "monotonic_ns": 584547772,
+        "peak_rss_kib": 2834380
+      },
+      {
+        "lap": 1,
+        "config": "official",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00639227,
+          "start": 3.4e-08,
+          "parse": 0.317103,
+          "dedup": 0.110086,
+          "await-links": 5.1868e-05,
+          "route": 0.057767,
+          "ingest": 0.485082,
+          "aggregate-output": 0.196081
+        },
+        "process_ns": 724839490,
+        "monotonic_ns": 724836962,
+        "peak_rss_kib": 2888864
+      },
+      {
+        "lap": 2,
+        "config": "g17",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00808021,
+          "start": 5.4e-08,
+          "parse": 0.290693,
+          "dedup": 0.0405474,
+          "await-links": 5.6179e-05,
+          "route": 0.0620167,
+          "ingest": 0.393373,
+          "aggregate-output": 0.140285
+        },
+        "process_ns": 552080660,
+        "monotonic_ns": 552078710,
+        "peak_rss_kib": 2839716
+      },
+      {
+        "lap": 2,
+        "config": "official",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00653889,
+          "start": 4.2e-08,
+          "parse": 0.326489,
+          "dedup": 0.109603,
+          "await-links": 9.8327e-05,
+          "route": 0.0578251,
+          "ingest": 0.494072,
+          "aggregate-output": 0.197104
+        },
+        "process_ns": 735218587,
+        "monotonic_ns": 735216023,
+        "peak_rss_kib": 2887796
+      },
+      {
+        "lap": 2,
+        "config": "cover",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00826287,
+          "start": 4.3e-08,
+          "parse": 0.2916,
+          "dedup": 0.0402194,
+          "await-links": 7.1571e-05,
+          "route": 0.062604,
+          "ingest": 0.394541,
+          "aggregate-output": 0.142037
+        },
+        "process_ns": 555091432,
+        "monotonic_ns": 555089489,
+        "peak_rss_kib": 2827308
+      },
+      {
+        "lap": 3,
+        "config": "cover",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00818659,
+          "start": 3.3e-08,
+          "parse": 0.292423,
+          "dedup": 0.0402808,
+          "await-links": 6.9493e-05,
+          "route": 0.063943,
+          "ingest": 0.396776,
+          "aggregate-output": 0.144385
+        },
+        "process_ns": 558789894,
+        "monotonic_ns": 558787943,
+        "peak_rss_kib": 2839716
+      },
+      {
+        "lap": 3,
+        "config": "official",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00627751,
+          "start": 3.4e-08,
+          "parse": 0.315962,
+          "dedup": 0.109231,
+          "await-links": 5.1113e-05,
+          "route": 0.0578774,
+          "ingest": 0.483194,
+          "aggregate-output": 0.196582
+        },
+        "process_ns": 723569226,
+        "monotonic_ns": 723566704,
+        "peak_rss_kib": 2888004
+      },
+      {
+        "lap": 3,
+        "config": "g17",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00807375,
+          "start": 4.3e-08,
+          "parse": 0.288396,
+          "dedup": 0.0402164,
+          "await-links": 5.5441e-05,
+          "route": 0.0638131,
+          "ingest": 0.392539,
+          "aggregate-output": 0.138142
+        },
+        "process_ns": 548450781,
+        "monotonic_ns": 548448866,
+        "peak_rss_kib": 2827428
+      },
+      {
+        "lap": 4,
+        "config": "g17",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00813955,
+          "start": 4.1e-08,
+          "parse": 0.290898,
+          "dedup": 0.0404062,
+          "await-links": 5.398e-05,
+          "route": 0.0619444,
+          "ingest": 0.39336,
+          "aggregate-output": 0.16185
+        },
+        "process_ns": 572723591,
+        "monotonic_ns": 572721600,
+        "peak_rss_kib": 2843760
+      },
+      {
+        "lap": 4,
+        "config": "official",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00637152,
+          "start": 4.8e-08,
+          "parse": 0.315461,
+          "dedup": 0.105851,
+          "await-links": 2.4315e-05,
+          "route": 0.0574799,
+          "ingest": 0.47889,
+          "aggregate-output": 0.195942
+        },
+        "process_ns": 718238213,
+        "monotonic_ns": 718235725,
+        "peak_rss_kib": 2883852
+      },
+      {
+        "lap": 4,
+        "config": "cover",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00820253,
+          "start": 4.1e-08,
+          "parse": 0.298113,
+          "dedup": 0.0402247,
+          "await-links": 6.7412e-05,
+          "route": 0.0623657,
+          "ingest": 0.400819,
+          "aggregate-output": 0.142521
+        },
+        "process_ns": 562235541,
+        "monotonic_ns": 562233584,
+        "peak_rss_kib": 2837096
+      },
+      {
+        "lap": 5,
+        "config": "g17",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00820296,
+          "start": 4.1e-08,
+          "parse": 0.292764,
+          "dedup": 0.0406977,
+          "await-links": 6.2999e-05,
+          "route": 0.0615453,
+          "ingest": 0.39513,
+          "aggregate-output": 0.139582
+        },
+        "process_ns": 552956235,
+        "monotonic_ns": 552954320,
+        "peak_rss_kib": 2823204
+      },
+      {
+        "lap": 5,
+        "config": "official",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00626065,
+          "start": 3.3e-08,
+          "parse": 0.313925,
+          "dedup": 0.111606,
+          "await-links": 6.4558e-05,
+          "route": 0.0578132,
+          "ingest": 0.483483,
+          "aggregate-output": 0.197195
+        },
+        "process_ns": 724113188,
+        "monotonic_ns": 724110682,
+        "peak_rss_kib": 2889968
+      },
+      {
+        "lap": 5,
+        "config": "cover",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00810063,
+          "start": 4e-08,
+          "parse": 0.292458,
+          "dedup": 0.0406111,
+          "await-links": 5.378e-05,
+          "route": 0.0691204,
+          "ingest": 0.40229,
+          "aggregate-output": 0.14239
+        },
+        "process_ns": 563279849,
+        "monotonic_ns": 563277890,
+        "peak_rss_kib": 2833644
+      },
+      {
+        "lap": 6,
+        "config": "g17",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00819252,
+          "start": 4.4e-08,
+          "parse": 0.293191,
+          "dedup": 0.0401608,
+          "await-links": 6.7114e-05,
+          "route": 0.06381,
+          "ingest": 0.39729,
+          "aggregate-output": 0.138892
+        },
+        "process_ns": 554470088,
+        "monotonic_ns": 554468180,
+        "peak_rss_kib": 2833604
+      },
+      {
+        "lap": 6,
+        "config": "official",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00628882,
+          "start": 4.1e-08,
+          "parse": 0.315586,
+          "dedup": 0.108649,
+          "await-links": 9.4873e-05,
+          "route": 0.0580968,
+          "ingest": 0.482499,
+          "aggregate-output": 0.197555
+        },
+        "process_ns": 723495862,
+        "monotonic_ns": 723493358,
+        "peak_rss_kib": 2885552
+      },
+      {
+        "lap": 6,
+        "config": "cover",
+        "seed": "p807154",
+        "stages": {
+          "dimensions": 0.00815401,
+          "start": 3.1e-08,
+          "parse": 0.292525,
+          "dedup": 0.0408846,
+          "await-links": 5.1522e-05,
+          "route": 0.0641094,
+          "ingest": 0.397637,
+          "aggregate-output": 0.174411
+        },
+        "process_ns": 590824400,
+        "monotonic_ns": 590822373,
+        "peak_rss_kib": 2822452
+      }
+    ],
+    "g17fresh": [
+      {
+        "lap": 0,
+        "config": "g17",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00742076,
+          "start": 4.3e-08,
+          "parse": 0.292793,
+          "dedup": 0.0369748,
+          "await-links": 7.5853e-05,
+          "route": 0.0625522,
+          "ingest": 0.392452,
+          "aggregate-output": 0.140144
+        },
+        "process_ns": 549947749,
+        "monotonic_ns": 549945840,
+        "peak_rss_kib": 2803048
+      },
+      {
+        "lap": 0,
+        "config": "official",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00568346,
+          "start": 4.6e-08,
+          "parse": 0.321908,
+          "dedup": 0.0993574,
+          "await-links": 2.4135e-05,
+          "route": 0.0569354,
+          "ingest": 0.478293,
+          "aggregate-output": 0.199543
+        },
+        "process_ns": 727718711,
+        "monotonic_ns": 727716208,
+        "peak_rss_kib": 2867668
+      },
+      {
+        "lap": 1,
+        "config": "official",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00575168,
+          "start": 4.2e-08,
+          "parse": 0.31497,
+          "dedup": 0.0973328,
+          "await-links": 3.831e-05,
+          "route": 0.0566402,
+          "ingest": 0.46904,
+          "aggregate-output": 0.200567
+        },
+        "process_ns": 720108563,
+        "monotonic_ns": 720106096,
+        "peak_rss_kib": 2866264
+      },
+      {
+        "lap": 1,
+        "config": "g17",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00748394,
+          "start": 3.2e-08,
+          "parse": 0.292242,
+          "dedup": 0.0365217,
+          "await-links": 5.5251e-05,
+          "route": 0.061785,
+          "ingest": 0.39065,
+          "aggregate-output": 0.138137
+        },
+        "process_ns": 546312934,
+        "monotonic_ns": 546311060,
+        "peak_rss_kib": 2797640
+      },
+      {
+        "lap": 2,
+        "config": "g17",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00770641,
+          "start": 3.9e-08,
+          "parse": 0.295701,
+          "dedup": 0.0376082,
+          "await-links": 4.5899e-05,
+          "route": 0.065506,
+          "ingest": 0.398908,
+          "aggregate-output": 0.147603
+        },
+        "process_ns": 565003446,
+        "monotonic_ns": 565001517,
+        "peak_rss_kib": 2799016
+      },
+      {
+        "lap": 2,
+        "config": "official",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00568958,
+          "start": 3.3e-08,
+          "parse": 0.317151,
+          "dedup": 0.100419,
+          "await-links": 4.1855e-05,
+          "route": 0.0568394,
+          "ingest": 0.474497,
+          "aggregate-output": 0.199362
+        },
+        "process_ns": 724644177,
+        "monotonic_ns": 724641709,
+        "peak_rss_kib": 2871228
+      },
+      {
+        "lap": 3,
+        "config": "official",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00558705,
+          "start": 4.1e-08,
+          "parse": 0.318022,
+          "dedup": 0.101212,
+          "await-links": 9.095e-05,
+          "route": 0.0566894,
+          "ingest": 0.476085,
+          "aggregate-output": 0.200258
+        },
+        "process_ns": 724649548,
+        "monotonic_ns": 724647069,
+        "peak_rss_kib": 2867108
+      },
+      {
+        "lap": 3,
+        "config": "g17",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00767756,
+          "start": 4.2e-08,
+          "parse": 0.291027,
+          "dedup": 0.0370085,
+          "await-links": 5.8318e-05,
+          "route": 0.0604805,
+          "ingest": 0.388618,
+          "aggregate-output": 0.14331
+        },
+        "process_ns": 549410585,
+        "monotonic_ns": 549408710,
+        "peak_rss_kib": 2807704
+      },
+      {
+        "lap": 4,
+        "config": "g17",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00757502,
+          "start": 4.2e-08,
+          "parse": 0.292158,
+          "dedup": 0.0368475,
+          "await-links": 8.0079e-05,
+          "route": 0.0605201,
+          "ingest": 0.389685,
+          "aggregate-output": 0.140235
+        },
+        "process_ns": 547453079,
+        "monotonic_ns": 547451218,
+        "peak_rss_kib": 2815192
+      },
+      {
+        "lap": 4,
+        "config": "official",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00566925,
+          "start": 5.5e-08,
+          "parse": 0.318119,
+          "dedup": 0.0998464,
+          "await-links": 7.6428e-05,
+          "route": 0.0565228,
+          "ingest": 0.474624,
+          "aggregate-output": 0.19893
+        },
+        "process_ns": 723254838,
+        "monotonic_ns": 723252392,
+        "peak_rss_kib": 2862808
+      },
+      {
+        "lap": 5,
+        "config": "official",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00571601,
+          "start": 4.2e-08,
+          "parse": 0.317595,
+          "dedup": 0.100209,
+          "await-links": 6.7734e-05,
+          "route": 0.0567295,
+          "ingest": 0.474675,
+          "aggregate-output": 0.199116
+        },
+        "process_ns": 722876777,
+        "monotonic_ns": 722874332,
+        "peak_rss_kib": 2868320
+      },
+      {
+        "lap": 5,
+        "config": "g17",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00767001,
+          "start": 4.1e-08,
+          "parse": 0.298662,
+          "dedup": 0.0368444,
+          "await-links": 7.8126e-05,
+          "route": 0.0649699,
+          "ingest": 0.400613,
+          "aggregate-output": 0.140956
+        },
+        "process_ns": 559080321,
+        "monotonic_ns": 559078448,
+        "peak_rss_kib": 2821172
+      },
+      {
+        "lap": 6,
+        "config": "g17",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00759841,
+          "start": 5.9e-08,
+          "parse": 0.291095,
+          "dedup": 0.0374328,
+          "await-links": 7.6896e-05,
+          "route": 0.0616966,
+          "ingest": 0.390365,
+          "aggregate-output": 0.140929
+        },
+        "process_ns": 548747646,
+        "monotonic_ns": 548745779,
+        "peak_rss_kib": 2823716
+      },
+      {
+        "lap": 6,
+        "config": "official",
+        "seed": "fresh",
+        "stages": {
+          "dimensions": 0.00573545,
+          "start": 4.4e-08,
+          "parse": 0.319206,
+          "dedup": 0.101657,
+          "await-links": 4.986e-05,
+          "route": 0.0566735,
+          "ingest": 0.47766,
+          "aggregate-output": 0.198493
+        },
+        "process_ns": 726085441,
+        "monotonic_ns": 726082990,
+        "peak_rss_kib": 2863932
+      }
+    ]
+  },
+  "ryzen": [
+    {
+      "seed": "practice",
+      "lap": 0,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00411429,
+        "start": 5e-08,
+        "parse": 0.210963,
+        "dedup": 0.0321481,
+        "await-links": 7.0544e-05,
+        "route": 0.0330412,
+        "ingest": 0.276775,
+        "aggregate-output": 0.0801888
+      },
+      "process_ns": 405596170,
+      "monotonic_ns": 405596490,
+      "peak_rss_kib": 2919664,
+      "engine": {
+        "seconds": 0.402138153,
+        "cli_start_seconds": 3.219716822,
+        "peak_cgroup_bytes": 1108791296,
+        "output_scratch_bytes": 24232164,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 0,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00547448,
+        "start": 5e-08,
+        "parse": 0.236927,
+        "dedup": 0.0205676,
+        "await-links": 0.000144825,
+        "route": 0.0460024,
+        "ingest": 0.303792,
+        "aggregate-output": 0.0548929
+      },
+      "process_ns": 372141727,
+      "monotonic_ns": 372141817,
+      "peak_rss_kib": 2888768,
+      "engine": {
+        "seconds": 0.367391463,
+        "cli_start_seconds": 3.207286051,
+        "peak_cgroup_bytes": 1129521152,
+        "output_scratch_bytes": 17204594,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 1,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00468715,
+        "start": 8.1e-08,
+        "parse": 0.251709,
+        "dedup": 0.0201076,
+        "await-links": 0.000241667,
+        "route": 0.0485212,
+        "ingest": 0.320748,
+        "aggregate-output": 0.0523116
+      },
+      "process_ns": 385487501,
+      "monotonic_ns": 385483404,
+      "peak_rss_kib": 2894748,
+      "engine": {
+        "seconds": 0.38014727,
+        "cli_start_seconds": 2.971879816,
+        "peak_cgroup_bytes": 1134010368,
+        "output_scratch_bytes": 17202588,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 1,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00538522,
+        "start": 5e-08,
+        "parse": 0.268223,
+        "dedup": 0.0338375,
+        "await-links": 6.4577e-05,
+        "route": 0.032328,
+        "ingest": 0.334613,
+        "aggregate-output": 0.08245
+      },
+      "process_ns": 451672717,
+      "monotonic_ns": 451422317,
+      "peak_rss_kib": 2914088,
+      "engine": {
+        "seconds": 0.450245146,
+        "cli_start_seconds": 3.215233703,
+        "peak_cgroup_bytes": 1100603392,
+        "output_scratch_bytes": 24216302,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 2,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00326126,
+        "start": 5.1e-08,
+        "parse": 0.236288,
+        "dedup": 0.0325838,
+        "await-links": 6.8885e-05,
+        "route": 0.0330061,
+        "ingest": 0.302065,
+        "aggregate-output": 0.0822452
+      },
+      "process_ns": 417709617,
+      "monotonic_ns": 417490250,
+      "peak_rss_kib": 2917232,
+      "engine": {
+        "seconds": 0.413833288,
+        "cli_start_seconds": 3.22346006,
+        "peak_cgroup_bytes": 1103278080,
+        "output_scratch_bytes": 24227016,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 2,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00437172,
+        "start": 5e-08,
+        "parse": 0.202087,
+        "dedup": 0.0204067,
+        "await-links": 0.000160425,
+        "route": 0.0481801,
+        "ingest": 0.270965,
+        "aggregate-output": 0.0617009
+      },
+      "process_ns": 346168815,
+      "monotonic_ns": 345997494,
+      "peak_rss_kib": 2888328,
+      "engine": {
+        "seconds": 0.341920112,
+        "cli_start_seconds": 2.923673296,
+        "peak_cgroup_bytes": 1128071168,
+        "output_scratch_bytes": 17205035,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 3,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00497756,
+        "start": 6e-08,
+        "parse": 0.2485,
+        "dedup": 0.0201656,
+        "await-links": 0.000141102,
+        "route": 0.0506354,
+        "ingest": 0.319633,
+        "aggregate-output": 0.0674365
+      },
+      "process_ns": 400789730,
+      "monotonic_ns": 400602179,
+      "peak_rss_kib": 2892844,
+      "engine": {
+        "seconds": 0.396558207,
+        "cli_start_seconds": 3.223014523,
+        "peak_cgroup_bytes": 1134465024,
+        "output_scratch_bytes": 17203948,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 3,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.003565,
+        "start": 5e-08,
+        "parse": 0.211648,
+        "dedup": 0.0293817,
+        "await-links": 6.6459e-05,
+        "route": 0.0331658,
+        "ingest": 0.27439,
+        "aggregate-output": 0.0829537
+      },
+      "process_ns": 390769086,
+      "monotonic_ns": 390609186,
+      "peak_rss_kib": 2911864,
+      "engine": {
+        "seconds": 0.386326089,
+        "cli_start_seconds": 2.933982119,
+        "peak_cgroup_bytes": 1098137600,
+        "output_scratch_bytes": 24215196,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 4,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00324274,
+        "start": 5e-08,
+        "parse": 0.231873,
+        "dedup": 0.0304176,
+        "await-links": 6.9133e-05,
+        "route": 0.0347396,
+        "ingest": 0.297228,
+        "aggregate-output": 0.0846567
+      },
+      "process_ns": 413573561,
+      "monotonic_ns": 413400404,
+      "peak_rss_kib": 2910644,
+      "engine": {
+        "seconds": 0.410186044,
+        "cli_start_seconds": 3.02713738,
+        "peak_cgroup_bytes": 1097076736,
+        "output_scratch_bytes": 24210457,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 4,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00571982,
+        "start": 5e-08,
+        "parse": 0.239464,
+        "dedup": 0.0223257,
+        "await-links": 0.000165143,
+        "route": 0.0552192,
+        "ingest": 0.317323,
+        "aggregate-output": 0.0609621
+      },
+      "process_ns": 390921381,
+      "monotonic_ns": 390776092,
+      "peak_rss_kib": 2880656,
+      "engine": {
+        "seconds": 0.386299249,
+        "cli_start_seconds": 3.055208408,
+        "peak_cgroup_bytes": 1120239616,
+        "output_scratch_bytes": 17206945,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 0,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00398962,
+        "start": 5.1e-08,
+        "parse": 0.211955,
+        "dedup": 0.0305405,
+        "await-links": 6.9792e-05,
+        "route": 0.0308382,
+        "ingest": 0.273534,
+        "aggregate-output": 0.0815429
+      },
+      "process_ns": 389128322,
+      "monotonic_ns": 390192818,
+      "peak_rss_kib": 2911980,
+      "engine": {
+        "seconds": 0.38833445,
+        "cli_start_seconds": 2.991495217,
+        "peak_cgroup_bytes": 1100472320,
+        "output_scratch_bytes": 24023686,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 0,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00778405,
+        "start": 5.1e-08,
+        "parse": 0.318827,
+        "dedup": 0.0205474,
+        "await-links": 0.00014049,
+        "route": 0.0436617,
+        "ingest": 0.383312,
+        "aggregate-output": 0.0541108
+      },
+      "process_ns": 455110331,
+      "monotonic_ns": 455120178,
+      "peak_rss_kib": 2883728,
+      "engine": {
+        "seconds": 0.453221786,
+        "cli_start_seconds": 3.047117472,
+        "peak_cgroup_bytes": 1129291776,
+        "output_scratch_bytes": 17069666,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 1,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00581547,
+        "start": 5e-08,
+        "parse": 0.243807,
+        "dedup": 0.0205352,
+        "await-links": 0.000137512,
+        "route": 0.0449746,
+        "ingest": 0.30964,
+        "aggregate-output": 0.0550072
+      },
+      "process_ns": 378011837,
+      "monotonic_ns": 378040711,
+      "peak_rss_kib": 2882244,
+      "engine": {
+        "seconds": 0.375450132,
+        "cli_start_seconds": 2.98661367,
+        "peak_cgroup_bytes": 1129811968,
+        "output_scratch_bytes": 17069175,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 1,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00434853,
+        "start": 5e-08,
+        "parse": 0.215269,
+        "dedup": 0.0313163,
+        "await-links": 6.7173e-05,
+        "route": 0.0308788,
+        "ingest": 0.277662,
+        "aggregate-output": 0.0812564
+      },
+      "process_ns": 391904605,
+      "monotonic_ns": 391935816,
+      "peak_rss_kib": 2920140,
+      "engine": {
+        "seconds": 0.38924035,
+        "cli_start_seconds": 2.960519451,
+        "peak_cgroup_bytes": 1108520960,
+        "output_scratch_bytes": 23994738,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 2,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00527859,
+        "start": 7e-08,
+        "parse": 0.407554,
+        "dedup": 0.0589852,
+        "await-links": 8.7984e-05,
+        "route": 0.0415693,
+        "ingest": 0.508378,
+        "aggregate-output": 0.0906379
+      },
+      "process_ns": 646765381,
+      "monotonic_ns": 646813781,
+      "peak_rss_kib": 2913888,
+      "engine": {
+        "seconds": 0.646614361,
+        "cli_start_seconds": 3.504743765,
+        "peak_cgroup_bytes": 1102426112,
+        "output_scratch_bytes": 24032421,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 2,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00526157,
+        "start": 5.1e-08,
+        "parse": 0.247167,
+        "dedup": 0.0215345,
+        "await-links": 0.000135176,
+        "route": 0.0442395,
+        "ingest": 0.313207,
+        "aggregate-output": 0.054378
+      },
+      "process_ns": 382529357,
+      "monotonic_ns": 382555056,
+      "peak_rss_kib": 2882772,
+      "engine": {
+        "seconds": 0.380985766,
+        "cli_start_seconds": 2.943260348,
+        "peak_cgroup_bytes": 1125249024,
+        "output_scratch_bytes": 17071670,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 3,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00462283,
+        "start": 5e-08,
+        "parse": 0.238394,
+        "dedup": 0.0211518,
+        "await-links": 0.000142308,
+        "route": 0.0411752,
+        "ingest": 0.301002,
+        "aggregate-output": 0.0576567
+      },
+      "process_ns": 371897173,
+      "monotonic_ns": 371838768,
+      "peak_rss_kib": 2891308,
+      "engine": {
+        "seconds": 0.368645065,
+        "cli_start_seconds": 2.959922339,
+        "peak_cgroup_bytes": 1136693248,
+        "output_scratch_bytes": 17070901,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 3,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.0046273,
+        "start": 5e-08,
+        "parse": 0.203928,
+        "dedup": 0.0316819,
+        "await-links": 7.1347e-05,
+        "route": 0.0310411,
+        "ingest": 0.266847,
+        "aggregate-output": 0.0838684
+      },
+      "process_ns": 385597259,
+      "monotonic_ns": 385546517,
+      "peak_rss_kib": 2918868,
+      "engine": {
+        "seconds": 0.384507969,
+        "cli_start_seconds": 2.950127991,
+        "peak_cgroup_bytes": 1107001344,
+        "output_scratch_bytes": 24012602,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 4,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00392263,
+        "start": 5e-08,
+        "parse": 0.198139,
+        "dedup": 0.0300419,
+        "await-links": 6.8414e-05,
+        "route": 0.0317865,
+        "ingest": 0.260165,
+        "aggregate-output": 0.0796532
+      },
+      "process_ns": 374161683,
+      "monotonic_ns": 374186696,
+      "peak_rss_kib": 2911136,
+      "engine": {
+        "seconds": 0.372128571,
+        "cli_start_seconds": 2.916178516,
+        "peak_cgroup_bytes": 1099501568,
+        "output_scratch_bytes": 24003060,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 4,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00660006,
+        "start": 5.1e-08,
+        "parse": 0.218639,
+        "dedup": 0.0204557,
+        "await-links": 0.000159713,
+        "route": 0.0455721,
+        "ingest": 0.284976,
+        "aggregate-output": 0.0547124
+      },
+      "process_ns": 353355711,
+      "monotonic_ns": 353377092,
+      "peak_rss_kib": 2896400,
+      "engine": {
+        "seconds": 0.351735195,
+        "cli_start_seconds": 2.804740851,
+        "peak_cgroup_bytes": 1144459264,
+        "output_scratch_bytes": 17068610,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 0,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00351726,
+        "start": 5e-08,
+        "parse": 0.209355,
+        "dedup": 0.0269323,
+        "await-links": 7.0036e-05,
+        "route": 0.0307712,
+        "ingest": 0.267265,
+        "aggregate-output": 0.0813116
+      },
+      "process_ns": 378885161,
+      "monotonic_ns": 378905303,
+      "peak_rss_kib": 2893680,
+      "engine": {
+        "seconds": 0.375767594,
+        "cli_start_seconds": 3.00001443,
+        "peak_cgroup_bytes": 1098080256,
+        "output_scratch_bytes": 24114176,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 0,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.004765,
+        "start": 5e-08,
+        "parse": 0.260445,
+        "dedup": 0.0228853,
+        "await-links": 0.000160723,
+        "route": 0.0472938,
+        "ingest": 0.330925,
+        "aggregate-output": 0.0622678
+      },
+      "process_ns": 405346285,
+      "monotonic_ns": 405365769,
+      "peak_rss_kib": 2876472,
+      "engine": {
+        "seconds": 0.403375432,
+        "cli_start_seconds": 3.272328849,
+        "peak_cgroup_bytes": 1134346240,
+        "output_scratch_bytes": 17158837,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 1,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00540791,
+        "start": 6e-08,
+        "parse": 0.216979,
+        "dedup": 0.0187549,
+        "await-links": 0.000128271,
+        "route": 0.0446164,
+        "ingest": 0.280617,
+        "aggregate-output": 0.0595594
+      },
+      "process_ns": 351974532,
+      "monotonic_ns": 351939780,
+      "peak_rss_kib": 2867612,
+      "engine": {
+        "seconds": 0.347267534,
+        "cli_start_seconds": 2.951543927,
+        "peak_cgroup_bytes": 1126780928,
+        "output_scratch_bytes": 17161711,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 1,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00292653,
+        "start": 5e-08,
+        "parse": 0.198236,
+        "dedup": 0.0295257,
+        "await-links": 7.0999e-05,
+        "route": 0.0314118,
+        "ingest": 0.259373,
+        "aggregate-output": 0.0869764
+      },
+      "process_ns": 373626067,
+      "monotonic_ns": 373592670,
+      "peak_rss_kib": 2897832,
+      "engine": {
+        "seconds": 0.371778038,
+        "cli_start_seconds": 2.937536812,
+        "peak_cgroup_bytes": 1101340672,
+        "output_scratch_bytes": 24113663,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 2,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00366143,
+        "start": 5e-08,
+        "parse": 0.192833,
+        "dedup": 0.0282913,
+        "await-links": 8.1819e-05,
+        "route": 0.0303519,
+        "ingest": 0.251691,
+        "aggregate-output": 0.0852567
+      },
+      "process_ns": 365142964,
+      "monotonic_ns": 365160961,
+      "peak_rss_kib": 2898316,
+      "engine": {
+        "seconds": 0.363725381,
+        "cli_start_seconds": 3.179953913,
+        "peak_cgroup_bytes": 1102708736,
+        "output_scratch_bytes": 24114265,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 2,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00469303,
+        "start": 5e-08,
+        "parse": 0.22581,
+        "dedup": 0.0179595,
+        "await-links": 0.000132778,
+        "route": 0.0431522,
+        "ingest": 0.287183,
+        "aggregate-output": 0.05632
+      },
+      "process_ns": 357006169,
+      "monotonic_ns": 357022383,
+      "peak_rss_kib": 2844588,
+      "engine": {
+        "seconds": 0.353026838,
+        "cli_start_seconds": 3.147299647,
+        "peak_cgroup_bytes": 1109807104,
+        "output_scratch_bytes": 17160096,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 3,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00424975,
+        "start": 7e-08,
+        "parse": 0.243234,
+        "dedup": 0.0193503,
+        "await-links": 0.000167325,
+        "route": 0.0412781,
+        "ingest": 0.304212,
+        "aggregate-output": 0.0553337
+      },
+      "process_ns": 370978878,
+      "monotonic_ns": 370994327,
+      "peak_rss_kib": 2862356,
+      "engine": {
+        "seconds": 0.367680034,
+        "cli_start_seconds": 2.937521009,
+        "peak_cgroup_bytes": 1123176448,
+        "output_scratch_bytes": 17159505,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 3,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00382478,
+        "start": 5e-08,
+        "parse": 0.231162,
+        "dedup": 0.03303,
+        "await-links": 4.4125e-05,
+        "route": 0.0304534,
+        "ingest": 0.294844,
+        "aggregate-output": 0.0848211
+      },
+      "process_ns": 408004284,
+      "monotonic_ns": 408019307,
+      "peak_rss_kib": 2892232,
+      "engine": {
+        "seconds": 0.404040731,
+        "cli_start_seconds": 2.587151827,
+        "peak_cgroup_bytes": 1095598080,
+        "output_scratch_bytes": 24115193,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 4,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00326749,
+        "start": 3e-08,
+        "parse": 0.226795,
+        "dedup": 0.0273563,
+        "await-links": 7.151e-05,
+        "route": 0.030933,
+        "ingest": 0.285273,
+        "aggregate-output": 0.0811251
+      },
+      "process_ns": 393984064,
+      "monotonic_ns": 393953014,
+      "peak_rss_kib": 2893624,
+      "engine": {
+        "seconds": 0.392318995,
+        "cli_start_seconds": 2.761320792,
+        "peak_cgroup_bytes": 1097039872,
+        "output_scratch_bytes": 24106218,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 4,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00735664,
+        "start": 6e-08,
+        "parse": 0.271497,
+        "dedup": 0.0220531,
+        "await-links": 0.00014271,
+        "route": 0.0431757,
+        "ingest": 0.337015,
+        "aggregate-output": 0.0649644
+      },
+      "process_ns": 415857289,
+      "monotonic_ns": 415829134,
+      "peak_rss_kib": 2874628,
+      "engine": {
+        "seconds": 0.413635226,
+        "cli_start_seconds": 3.310004484,
+        "peak_cgroup_bytes": 1134551040,
+        "output_scratch_bytes": 17157439,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 0,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00356453,
+        "start": 5e-08,
+        "parse": 1.1058,
+        "dedup": 0.0798926,
+        "await-links": 6.6292e-05,
+        "route": 0.0967993,
+        "ingest": 1.28268,
+        "aggregate-output": 0.306858
+      },
+      "process_ns": 1673807351,
+      "monotonic_ns": 1673744577,
+      "peak_rss_kib": 8274008,
+      "engine": {
+        "seconds": 1.671527836,
+        "cli_start_seconds": 4.548507541,
+        "peak_cgroup_bytes": 2954821632,
+        "output_scratch_bytes": 70507372,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 0,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.0072438,
+        "start": 5e-08,
+        "parse": 1.07871,
+        "dedup": 0.0832068,
+        "await-links": 0.000156264,
+        "route": 0.122397,
+        "ingest": 1.28468,
+        "aggregate-output": 0.285213
+      },
+      "process_ns": 1601548167,
+      "monotonic_ns": 1601521844,
+      "peak_rss_kib": 8116368,
+      "engine": {
+        "seconds": 1.599623845,
+        "cli_start_seconds": 4.813770887,
+        "peak_cgroup_bytes": 2920030208,
+        "output_scratch_bytes": 50342643,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 1,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00453312,
+        "start": 5.1e-08,
+        "parse": 0.588248,
+        "dedup": 0.0564807,
+        "await-links": 0.000142081,
+        "route": 0.115666,
+        "ingest": 0.760681,
+        "aggregate-output": 0.177405
+      },
+      "process_ns": 960686165,
+      "monotonic_ns": 960691273,
+      "peak_rss_kib": 8127912,
+      "engine": {
+        "seconds": 0.956257287,
+        "cli_start_seconds": 3.619749909,
+        "peak_cgroup_bytes": 2931650560,
+        "output_scratch_bytes": 50343853,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 1,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00469885,
+        "start": 3e-08,
+        "parse": 0.783575,
+        "dedup": 0.0850984,
+        "await-links": 6.6329e-05,
+        "route": 0.112954,
+        "ingest": 0.981871,
+        "aggregate-output": 0.397053
+      },
+      "process_ns": 1455941542,
+      "monotonic_ns": 1455796906,
+      "peak_rss_kib": 8269680,
+      "engine": {
+        "seconds": 1.454475036,
+        "cli_start_seconds": 4.100178729,
+        "peak_cgroup_bytes": 2948763648,
+        "output_scratch_bytes": 70472334,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 2,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00394334,
+        "start": 5e-08,
+        "parse": 0.755819,
+        "dedup": 0.0806508,
+        "await-links": 7.2822e-05,
+        "route": 0.101093,
+        "ingest": 0.937789,
+        "aggregate-output": 0.298516
+      },
+      "process_ns": 1306548728,
+      "monotonic_ns": 1306505804,
+      "peak_rss_kib": 8272048,
+      "engine": {
+        "seconds": 1.302919619,
+        "cli_start_seconds": 3.717619519,
+        "peak_cgroup_bytes": 2952232960,
+        "output_scratch_bytes": 70496662,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 2,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00457289,
+        "start": 6e-08,
+        "parse": 0.680708,
+        "dedup": 0.0688039,
+        "await-links": 0.000171486,
+        "route": 0.131755,
+        "ingest": 0.881596,
+        "aggregate-output": 0.182775
+      },
+      "process_ns": 1083757519,
+      "monotonic_ns": 1083780803,
+      "peak_rss_kib": 8111012,
+      "engine": {
+        "seconds": 1.082468266,
+        "cli_start_seconds": 3.980037301,
+        "peak_cgroup_bytes": 2913976320,
+        "output_scratch_bytes": 50344951,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 3,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00438575,
+        "start": 6e-08,
+        "parse": 0.679781,
+        "dedup": 0.0565572,
+        "await-links": 0.000156271,
+        "route": 0.129016,
+        "ingest": 0.865669,
+        "aggregate-output": 0.177153
+      },
+      "process_ns": 1062985991,
+      "monotonic_ns": 1063001692,
+      "peak_rss_kib": 8113376,
+      "engine": {
+        "seconds": 1.058506155,
+        "cli_start_seconds": 4.052439899,
+        "peak_cgroup_bytes": 2917478400,
+        "output_scratch_bytes": 50344430,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 3,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.0035101,
+        "start": 5e-08,
+        "parse": 0.675754,
+        "dedup": 0.0997788,
+        "await-links": 8.2048e-05,
+        "route": 0.114371,
+        "ingest": 0.890129,
+        "aggregate-output": 0.307254
+      },
+      "process_ns": 1268614171,
+      "monotonic_ns": 1268616882,
+      "peak_rss_kib": 8284528,
+      "engine": {
+        "seconds": 1.266097959,
+        "cli_start_seconds": 4.273720417,
+        "peak_cgroup_bytes": 2965184512,
+        "output_scratch_bytes": 70494053,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 4,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00326002,
+        "start": 4e-08,
+        "parse": 0.646358,
+        "dedup": 0.0758659,
+        "await-links": 6.9133e-05,
+        "route": 0.100164,
+        "ingest": 0.822595,
+        "aggregate-output": 0.314488
+      },
+      "process_ns": 1209018367,
+      "monotonic_ns": 1209029781,
+      "peak_rss_kib": 8265372,
+      "engine": {
+        "seconds": 1.206746603,
+        "cli_start_seconds": 4.115424312,
+        "peak_cgroup_bytes": 2946232320,
+        "output_scratch_bytes": 70498880,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 4,
+      "config": "chase-g17",
+      "stages": {
+        "dimensions": 0.00497672,
+        "start": 8e-08,
+        "parse": 0.77323,
+        "dedup": 0.0963007,
+        "await-links": 0.000173934,
+        "route": 0.17223,
+        "ingest": 1.04213,
+        "aggregate-output": 0.319615
+      },
+      "process_ns": 1394925726,
+      "monotonic_ns": 1394872704,
+      "peak_rss_kib": 8112592,
+      "engine": {
+        "seconds": 1.393283125,
+        "cli_start_seconds": 5.220314385,
+        "peak_cgroup_bytes": 2919469056,
+        "output_scratch_bytes": 50338782,
+        "exit_code": 0
+      }
+    }
+  ],
+  "independent_tables": {
+    "42": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "b496a8b06f7da98514af82e13fced52e8de927f4aedcc20ea394286230075a79"
+      },
+      "user_daily": {
+        "rows": 2246306,
+        "sha256": "eb7d6dd604e897d3ac28c7e4261e6033f9764acc4d33db76e74ae52b644c2eef"
+      }
+    },
+    "807154": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "b3fd22446c3230eb1e040de8bb384a5a25ead9a3e85cae085f1c9e42669182e0"
+      },
+      "user_daily": {
+        "rows": 2221335,
+        "sha256": "8ecbe7f48da9cd257a103b6b3538065efad6109befd8250666aadf2681beefb4"
+      }
+    },
+    "73": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "927ca38c075969892e97a79a4dbf932f69a8f4dfd5e1c3ddd8f2ce29bb8aa522"
+      },
+      "user_daily": {
+        "rows": 6612082,
+        "sha256": "593a3acba6af2639406a8ad12d85e205ecd22f4af90a4cfa40c7878f40602dbd"
+      }
+    },
+    "1599080644": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "9c90c9141ca5835d214e7ea04dc81cacc92a2b31aba312900aeecdefd315bd51"
+      },
+      "user_daily": {
+        "rows": 2239981,
+        "sha256": "40e884ac3fd83d574a32708fdf160d64a67ff141607c29c9beaa65e9349faf95"
+      }
+    }
+  },
+  "verified": [
+    {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "b496a8b06f7da98514af82e13fced52e8de927f4aedcc20ea394286230075a79"
+      },
+      "user_daily": {
+        "rows": 2246306,
+        "sha256": "eb7d6dd604e897d3ac28c7e4261e6033f9764acc4d33db76e74ae52b644c2eef"
+      }
+    },
+    {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "b3fd22446c3230eb1e040de8bb384a5a25ead9a3e85cae085f1c9e42669182e0"
+      },
+      "user_daily": {
+        "rows": 2221335,
+        "sha256": "8ecbe7f48da9cd257a103b6b3538065efad6109befd8250666aadf2681beefb4"
+      }
+    },
+    {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "9c90c9141ca5835d214e7ea04dc81cacc92a2b31aba312900aeecdefd315bd51"
+      },
+      "user_daily": {
+        "rows": 2239981,
+        "sha256": "40e884ac3fd83d574a32708fdf160d64a67ff141607c29c9beaa65e9349faf95"
+      }
+    },
+    {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "927ca38c075969892e97a79a4dbf932f69a8f4dfd5e1c3ddd8f2ce29bb8aa522"
+      },
+      "user_daily": {
+        "rows": 6612082,
+        "sha256": "593a3acba6af2639406a8ad12d85e205ecd22f4af90a4cfa40c7878f40602dbd"
+      }
+    }
+  ]
+}

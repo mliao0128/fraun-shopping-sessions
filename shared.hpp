@@ -281,10 +281,51 @@ class Index {
         return pos;
     }
 public:
+  template <class Fn> void visit(Fn &&fn) const {
+      for (const auto &slot : slots)
+          if (slot.value != UINT32_MAX)
+              fn(slot.key, slot.value);
+  }
     void reserve(size_t n);
     uint32_t insert(Key key, uint32_t value);
-    uint32_t find(const Key& key) const {
-        return slots.empty() ? UINT32_MAX : slots[locate(key)].value;
+    uint32_t find(const Key &key) const { return slots.empty() ? UINT32_MAX : slots[locate(key)].value; }
+};
+
+// An inline key family with only a few varying bits has an exact dense
+// address. Constant bits are checked first, then BMI2 compresses the rest.
+class DimensionIndex : public Index {
+    struct Family {
+        uint64_t fixed = 0, variable = 0, fixedMask = 0;
+        uint32_t base = UINT32_MAX;
+    };
+    std::array<Family, 8> families;
+    std::vector<uint32_t> values;
+    bool ready = false;
+    static unsigned group(Key key) { return static_cast<unsigned>((key.bits >> 56) - 0x80); }
+
+  public:
+    uint32_t insert(Key key, uint32_t value) {
+        if (ready) {
+            families = {};
+            values.clear();
+            ready = false;
+        }
+        return Index::insert(key, value);
+    }
+    void finish();
+    uint32_t lookup(std::string_view text, const char *limit) const {
+        size_t n = text.size();
+        if (n < families.size()) {
+            const auto &f = families[n];
+            if (f.base != UINT32_MAX && limit - text.data() >= 8) {
+                uint64_t raw;
+                std::memcpy(&raw, text.data(), 8);
+                if ((raw & f.fixedMask) != f.fixed)
+                    return UINT32_MAX;
+                return values[f.base + _pext_u64(raw, f.variable)];
+            }
+        }
+        return find(Key::from(text));
     }
 };
 
@@ -329,7 +370,7 @@ struct Identities {
 struct Context {
     int64_t start, end;
     Identities identities;
-    Index products, campaigns;
+    DimensionIndex products, campaigns;
     std::vector<Key> categories, campaignNames, channels;
     uint32_t unknown;
     uint32_t category(Key product) const {
@@ -383,10 +424,12 @@ struct CampaignStats { int64_t sessions=0, purchasing=0, revenue=0, assists=0; }
 struct UserColumns {
     std::vector<Key> people;
     std::vector<int32_t> days;
-    std::vector<int64_t> sessions, events, revenue;
+    std::vector<uint32_t> userCounts, sessions, events;
+    std::vector<int64_t> revenue;
     std::vector<uint32_t> top;
     void reserve(size_t n) {
         people.reserve(n);
+        userCounts.reserve(n);
         days.reserve(n);
         sessions.reserve(n);
         events.reserve(n);
@@ -394,7 +437,6 @@ struct UserColumns {
         top.reserve(n);
     }
     void append(const UserRow& row) {
-        people.push_back(row.person);
         days.push_back(row.day);
         sessions.push_back(row.sessions);
         events.push_back(row.events);

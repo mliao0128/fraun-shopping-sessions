@@ -60,7 +60,9 @@ struct Compact {
     void finish() { out.push_back(0); }
 };
 struct Chunk {
-    uint64_t offset = 0, rawBytes = 0, storedBytes = 0;
+    uint64_t offset = 0, rawBytes = 0, storedBytes = 0, firstData = 0;
+    bool hasDictionary = false;
+    uint8_t dataEncoding = plain;
 };
 struct Group { size_t rows; std::vector<Chunk> columns; };
 
@@ -69,7 +71,7 @@ class Writer {
     std::span<const Field> schema;
     std::vector<Group> groups;
     std::vector<char> compressed;
-    std::string header, values, levels, combined;
+    std::string header, values, levels, combined, indices;
     uint64_t written = 0, totalRows = 0;
     static constexpr size_t targetPage = 1 << 20;
     void emit(string_view s) {
@@ -81,23 +83,36 @@ class Writer {
         if (chunks.size() == schema.size()) throw std::logic_error("Too many columns");
         return chunks.emplace_back(Chunk{written});
     }
-    void page(Chunk& c, string_view raw, size_t n) {
+    void page(Chunk &c, string_view raw, size_t n, int encoding = plain, bool dictionary = false) {
+        if (dictionary)
+            c.hasDictionary = true;
+        else if (!c.firstData)
+            c.firstData = written;
         if (raw.size() > INT32_MAX) throw std::length_error("Parquet page too large");
         const int bytes = static_cast<int>(raw.size());
         const int bound = LZ4_compressBound(bytes);
         if (!bound) throw std::length_error("Parquet page exceeds LZ4 maximum");
-        if (compressed.size() < size_t(bound)) compressed.resize(bound);
-        const int size = LZ4_compress_fast(raw.data(),compressed.data(),bytes,bound,2);
+        if (compressed.size() < static_cast<size_t>(bound))
+            compressed.resize(bound);
+        const int size = LZ4_compress_fast(raw.data(), compressed.data(), bytes, bound, 2);
         if (!size) throw std::runtime_error("LZ4 compression failed");
         header.clear();
         Compact h{header};
-        h.integer(1,I32,0); // DATA_PAGE (v1)
+        h.integer(1, I32, dictionary ? 2 : 0); // DATA_PAGE (v1)
         h.integer(2,I32,bytes);
         h.integer(3,I32,size);
-        h.nested(5,[&](Compact& d) {
-            d.integer(1,I32,n); d.integer(2,I32,plain);
-            d.integer(3,I32,rle); d.integer(4,I32,rle);
-        });
+        if (dictionary)
+            h.nested(7, [&](Compact &d) {
+                d.integer(1, I32, n);
+                d.integer(2, I32, plain);
+            });
+        else
+            h.nested(5, [&](Compact &d) {
+                d.integer(1, I32, n);
+                d.integer(2, I32, encoding);
+                d.integer(3, I32, rle);
+                d.integer(4, I32, rle);
+            });
         h.finish();
         emit(header);
         emit({compressed.data(),size_t(size)});
@@ -128,13 +143,17 @@ class Writer {
                 chunk.integer(2,I64,0); // deprecated ColumnChunk.file_offset
                 chunk.nested(3,[&](Compact& d) {
                     d.integer(1,I32,field.type);
-                    d.list(2,I32,field.nullable ? 2 : 1);
-                    varint(d.out,plain << 1);
+                    d.list(2, I32, 1 + size_t(field.nullable) + size_t(c.hasDictionary));
+                    varint(d.out, c.dataEncoding << 1);
                     if (field.nullable) varint(d.out,rle << 1);
+                    if (c.hasDictionary)
+                        varint(d.out, 8u << 1);
                     d.list(3,Binary,1); d.bytes(field.name);
                     d.integer(4,I32,lz4Raw); d.integer(5,I64,group.rows);
                     d.integer(6,I64,c.rawBytes); d.integer(7,I64,c.storedBytes);
-                    d.integer(9,I64,c.offset);
+                    d.integer(9, I64, c.firstData);
+                    if (c.hasDictionary)
+                        d.integer(11, I64, c.offset);
                 });
             });
         }
@@ -155,6 +174,187 @@ public:
         static_assert(std::is_same_v<T,int32_t> || std::is_same_v<T,int64_t>);
         auto& c = column();
         page(c,{reinterpret_cast<const char*>(data),n*sizeof(T)},n);
+    }
+    template <class T, unsigned Plane> static void bytePlane(const T *src, char *dst, size_t n) {
+        using U = std::make_unsigned_t<T>;
+        for (size_t i = 0; i < n; ++i)
+            dst[i] = static_cast<char>(static_cast<U>(src[i]) >> (Plane * 8));
+    }
+    template <class T> void splitNumbers(const T *src, size_t n) {
+        if (n < 256) {
+            numbers(src, n);
+            return;
+        }
+        using U = std::make_unsigned_t<T>;
+        U all = 0;
+        for (size_t i = 0; i < n; ++i)
+            all |= static_cast<U>(src[i]);
+        const size_t planes = std::max<size_t>(1, (std::bit_width(all) + 7) / 8);
+        values.resize(n * sizeof(T));
+        auto *dst = values.data();
+        if (planes < sizeof(T))
+            std::memset(dst + planes * n, 0, (sizeof(T) - planes) * n);
+        if constexpr (sizeof(T) == 8) {
+            if (planes >= 8)
+                bytePlane<T, 7>(src, dst + 7 * n, n);
+            if (planes >= 7)
+                bytePlane<T, 6>(src, dst + 6 * n, n);
+            if (planes >= 6)
+                bytePlane<T, 5>(src, dst + 5 * n, n);
+            if (planes >= 5)
+                bytePlane<T, 4>(src, dst + 4 * n, n);
+        }
+        if (planes >= 4)
+            bytePlane<T, 3>(src, dst + 3 * n, n);
+        if (planes >= 3)
+            bytePlane<T, 2>(src, dst + 2 * n, n);
+        if (planes >= 2)
+            bytePlane<T, 1>(src, dst + n, n);
+        bytePlane<T, 0>(src, dst, n);
+        auto &c = column();
+        c.dataEncoding = 9;
+        page(c, values, n, 9);
+    }
+
+    void userRuns(size_t n, const std::vector<Key> &keys, const std::vector<uint32_t> &counts,
+                  size_t &run, size_t &consumed) {
+        const size_t initial = run, skip = consumed;
+        const auto fallback = [&] {
+            run = initial;
+            consumed = skip;
+            strings<false>(n, [&](size_t) {
+                const Key *k = &keys[run];
+                if (++consumed == counts[run]) {
+                    ++run;
+                    consumed = 0;
+                }
+                return k;
+            });
+        };
+        if (n < 256 || n > 65536) {
+            fallback();
+            return;
+        }
+        values.resize(n * 13);
+        char *p = values.data();
+        combined.clear();
+        combined.push_back(16);
+        size_t distinct = 0, remaining = n;
+        while (remaining) {
+            const Key &k = keys[run];
+            if (k.nineAscii()) {
+                const uint32_t len = 9;
+                const uint64_t bytes = __builtin_bswap64(_pdep_u64(k.bits >> 7, Key::asciiMask));
+                std::memcpy(p, &len, 4);
+                std::memcpy(p + 4, &bytes, 8);
+                p[12] = static_cast<char>(k.bits & 127);
+                p += 13;
+            } else if (k.eightAscii()) {
+                const uint32_t len = 8;
+                const uint64_t bytes = _pdep_u64(k.bits, Key::asciiMask);
+                std::memcpy(p, &len, 4);
+                std::memcpy(p + 4, &bytes, 8);
+                p += 12;
+            } else if (!k.external()) {
+                const uint32_t len = (k.bits >> 56) & 7;
+                std::memcpy(p, &len, 4);
+                std::memcpy(p + 4, &k.bits, 8);
+                p += 4 + len;
+            } else {
+                fallback();
+                return;
+            }
+            const size_t count = std::min(remaining, size_t(counts[run]) - consumed);
+            remaining -= count;
+            consumed += count;
+            if (consumed == counts[run]) {
+                ++run;
+                consumed = 0;
+            }
+            varint(combined, count * 2);
+            const uint16_t index = distinct++;
+            combined.append(reinterpret_cast<const char *>(&index), 2);
+        }
+        auto &c = column();
+        page(c, {values.data(), static_cast<size_t>(p - values.data())}, distinct, plain, true);
+        page(c, combined, n, 8);
+    }
+    void counts64(const uint32_t *src, size_t n) {
+        values.resize(n * 8);
+        uint32_t bits = 0;
+        for (size_t i = 0; i < n; ++i)
+            bits |= src[i];
+        size_t planes = std::max<size_t>(1, (std::bit_width(bits) + 7) / 8);
+        auto *dst = values.data();
+        if (planes == 4)
+            bytePlane<uint32_t, 3>(src, dst + 3 * n, n);
+        if (planes >= 3)
+            bytePlane<uint32_t, 2>(src, dst + 2 * n, n);
+        if (planes >= 2)
+            bytePlane<uint32_t, 1>(src, dst + n, n);
+        bytePlane<uint32_t, 0>(src, dst, n);
+        std::memset(dst + planes * n, 0, (8 - planes) * n);
+        auto &c = column();
+        c.dataEncoding = 9;
+        page(c, values, n, 9);
+    }
+
+    void dictionaryIndices(std::string &out, size_t n) {
+        out.push_back(8);
+        if (!n)
+            return;
+        const size_t groups = (n + 7) / 8;
+        varint(out, (groups << 1) | 1);
+        out.append(indices.data(), n);
+        out.append(groups * 8 - n, '\0');
+    }
+    void categories(const uint32_t *ids, size_t n, const std::vector<Key> &keys) {
+        if (keys.empty() || keys.size() > 256 || n < 256) {
+            strings<true>(n, [&](size_t i) { return ids[i] == UINT32_MAX ? nullptr : &keys[ids[i]]; });
+            return;
+        }
+        values.clear();
+        for (const Key &key : keys) {
+            Key::Buffer tmp;
+            auto v = key.view(tmp);
+            if (v.size() > targetPage || values.size() + v.size() + 4 > targetPage) {
+                strings<true>(n,
+                              [&](size_t i) { return ids[i] == UINT32_MAX ? nullptr : &keys[ids[i]]; });
+                return;
+            }
+            appendU32(values, v.size());
+            values.append(v);
+        }
+        auto &c = column();
+        page(c, values, keys.size(), plain, true);
+        size_t bytes = (n + 7) / 8;
+        combined.clear();
+        appendU32(combined, 0);
+        varint(combined, (bytes << 1) | 1);
+        const size_t start = combined.size();
+        combined.resize(start + bytes);
+        const uint32_t length = static_cast<uint32_t>(combined.size() - 4);
+        std::memcpy(combined.data(), &length, 4);
+        indices.resize(n);
+        size_t nonnull = 0;
+        for (size_t i = 0; i < n; i += 8) {
+            uint32_t mask = 0;
+            if (i + 8 <= n) {
+                auto v = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(ids + i));
+                auto missing = _mm256_cmpeq_epi32(v, _mm256_set1_epi32(-1));
+                mask = (~_mm256_movemask_ps(_mm256_castsi256_ps(missing))) & 255;
+            } else
+                for (size_t j = i; j < n; ++j)
+                    mask |= uint32_t(ids[j] != UINT32_MAX) << (j - i);
+            combined[start + i / 8] = static_cast<char>(mask);
+            while (mask) {
+                auto j = std::countr_zero(mask);
+                mask &= mask - 1;
+                indices[nonnull++] = static_cast<char>(ids[i + j]);
+            }
+        }
+        dictionaryIndices(combined, nonnull);
+        page(c, combined, n, 8);
     }
     template<bool nullable, class F> void strings(size_t n,F keyAt) {
         auto& c = column();

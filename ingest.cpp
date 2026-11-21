@@ -38,6 +38,11 @@ int pairValue(const char* p) {
 
 bool digit(char c) { return static_cast<unsigned>(c - '0') < 10; }
 
+inline bool hourTooLarge(const char *hour) {
+    uint16_t word;
+    std::memcpy(&word, hour, 2);
+    return __builtin_bswap16(word) > 0x3233;
+}
 // The cache key contains every date digit. Its two omitted separators are
 // guaranteed on ingest timestamps and checked by the public timestamp parser.
 [[gnu::noinline]] int64_t calendarMidnight(const char* p) {
@@ -81,7 +86,8 @@ template<bool Check> inline int clockSeconds(const char* p) {
     const auto digits = _mm_sub_epi8(raw, _mm_cvtsi64_si128(0x30303a30303a3030LL));
     if constexpr (Check) {
         const auto excess = _mm_subs_epu8(digits, _mm_cvtsi64_si128(0x0905000905000902LL));
-        if (!_mm_testz_si128(excess,excess) || (p[0]=='2' && p[1]>'3')) return -1;
+        if (!_mm_testz_si128(excess, excess) || hourTooLarge(p))
+            return -1;
     }
     const auto fields = _mm_shuffle_epi8(digits,
         _mm_setr_epi8(0,1,3,4,6,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1));
@@ -154,7 +160,31 @@ template<class F> void chunkLines(const InputChunk& chunk, F&& visit) {
     };
     size_t scan = pos;
     while (pos < chunk.end) {
-        if (scan + 64 <= fileEnd) {
+        // Collect offsets from a small tile before row decoding. The common
+        // zero/one newline case advances the compact list without a branch.
+        constexpr unsigned tileBytes = 1024;
+        if (scan + tileBytes <= fileEnd) {
+            uint16_t ends[tileBytes + 1];
+            unsigned count = 0;
+            for (unsigned k = 0; k < tileBytes; k += 64) {
+                uint64_t mask = newlinesIn(bytes + scan + k);
+                ends[count] = k + std::countr_zero(mask);
+                count += mask != 0;
+                mask &= mask - 1;
+                while (mask) {
+                    ends[count++] = k + std::countr_zero(mask);
+                    mask &= mask - 1;
+                }
+            }
+            for (unsigned k = 0; k < count; k++) {
+                const size_t end = scan + ends[k];
+                visit(std::string_view(bytes + pos, end - pos));
+                pos = end + 1;
+                if (pos >= chunk.end)
+                    return;
+            }
+            scan += tileBytes;
+        } else if (scan + 64 <= fileEnd) {
             uint64_t found = newlinesIn(bytes + scan);
             while (found) {
                 const size_t end = scan + std::countr_zero(found);
@@ -308,7 +338,8 @@ public:
 // The low word carries the bucket and row index; its high bit selects one
 // of the exact fallbacks. The high word is the biased arrival in milliseconds.
 constexpr unsigned refBits = 40;
-constexpr uint32_t indexLimit = 1u << 23;
+constexpr unsigned indexBits = 21;
+constexpr uint32_t indexLimit = 1u << indexBits;
 constexpr uint32_t sourceTag = 0x80000000u, invalidArrivalTag = 0xa0000000u, slowTag = 0xc0000000u;
 struct IdRecord { Key id; uint64_t info; };
 struct Extended { int64_t arrival; uint32_t bucket,index; };
@@ -335,7 +366,7 @@ uint64_t relativeArrival(int64_t arrival, int64_t origin) {
 uint64_t location(Reader& reader, int64_t arrival, int64_t origin, uint32_t bucket, uint32_t index) {
     const uint64_t relative = relativeArrival(arrival,origin);
     if (relative <= UINT32_MAX && index < indexLimit)
-        return (relative << 32) | (bucket << 23) | index;
+        return (relative << 32) | (bucket << indexBits) | index;
     const auto offset = reader.slow.size();
     reader.slow.push_back({arrival,bucket,index});
     return special(offset,slowTag);
@@ -366,7 +397,8 @@ inline bool pairedClocks(const char* event, const char* ingest,
     const auto raw = _mm_unpacklo_epi64(a,b);
     const auto digits = _mm_sub_epi8(raw,_mm_set1_epi64x(0x30303a30303a3030LL));
     const auto excess = _mm_subs_epu8(digits,_mm_set_epi64x(-1,0x0905000905000902LL));
-    if (!_mm_testz_si128(excess,excess) || (event[0]=='2' && event[1]>'3')) return false;
+    if (!_mm_testz_si128(excess, excess) || hourTooLarge(event))
+        return false;
     const auto packed = _mm_shuffle_epi8(digits,
         _mm_setr_epi8(0,1,3,4,6,7,-1,-1,8,9,11,12,14,15,-1,-1));
     const auto pairs = _mm_maddubs_epi16(packed,_mm_set1_epi16(0x010a));
@@ -377,10 +409,27 @@ inline bool pairedClocks(const char* event, const char* ingest,
     return true;
 }
 
-inline bool eventTimes(std::string_view event, std::string_view arrival, const Context& ctx,
-                       int64_t& ts, int64_t& ingest) {
+[[gnu::always_inline]] inline bool eventTimes(std::string_view event, std::string_view arrival,
+                                              const Context &ctx, int64_t &ts, int64_t &ingest) {
     const char* e = event.data();
     const char* a = arrival.data();
+    if (event.size() == 13 && arrival.size() == 20) {
+        // There are at least three more bytes in this CSV row beyond the epoch field.
+        const auto raw = _mm_loadu_si128(reinterpret_cast<const __m128i *>(e));
+        const auto digits = _mm_sub_epi8(raw, _mm_set1_epi8('0'));
+        const auto padded = _mm_slli_si128(digits, 3);
+        const auto excess = _mm_subs_epu8(padded, _mm_set1_epi8(9));
+        if (!_mm_testz_si128(excess, excess))
+            return false;
+        const auto pairs = _mm_maddubs_epi16(padded, _mm_set1_epi16(0x010a));
+        const auto quads = _mm_madd_epi16(pairs, _mm_set1_epi32(0x00010064));
+        const auto chunks = _mm_madd_epi16(_mm_packs_epi32(quads, quads), _mm_set1_epi32(0x00012710));
+        ts = int64_t(_mm_cvtsi128_si32(chunks)) * 100000000 + _mm_extract_epi32(chunks, 1);
+        if (ts < ctx.start || ts >= ctx.end)
+            return false;
+        ingest = validIngest(a);
+        return ingest - dayMs <= ts;
+    }
     if (arrival.size() == 20 && (event.size() == 20 || event.size() == 25) && e[4]=='-') {
         if (e[7]!='-' || e[10]!='T') return false;
         int offset = 0;
@@ -413,7 +462,7 @@ inline bool eventTimes(std::string_view event, std::string_view arrival, const C
 
 // Malformed lines and empty IDs never take part in deduplication. Every other
 // copy does, valid or not: an invalid earliest copy suppresses later ones.
-inline bool parseEvent(std::string_view line, const Context& ctx, ParsedEvent& out) {
+[[gnu::noinline]] bool genericEvent(std::string_view line, const Context &ctx, ParsedEvent &out) {
     std::array<std::string_view,7> f;
     if (!eventFields(line, f) || f[0].empty()) return false;
     out.id = Key::from(f[0]);
@@ -428,7 +477,9 @@ inline bool parseEvent(std::string_view line, const Context& ctx, ParsedEvent& o
         auto [end, error] = std::from_chars(f[6].data(), priceEnd, price);
         if (error != std::errc{} || end != priceEnd || price == 0 || price > 10'000'000)
             return true;
-        category = ctx.category(Key::from(f[5]));
+        category = ctx.products.lookup(f[5], line.data() + line.size());
+        if (category == UINT32_MAX)
+            category = ctx.unknown;
     } else if (f[4] != "view" && f[4] != "cart") {
         return true;
     }
@@ -437,21 +488,172 @@ inline bool parseEvent(std::string_view line, const Context& ctx, ParsedEvent& o
     out.valid = true;
     return true;
 }
+inline Key inlineAsciiKey(const char *p, unsigned n) {
+    if (n == 9 || n == 8) {
+        uint64_t word;
+        std::memcpy(&word, p, 8);
+        if ((word & ~Key::asciiMask) == 0) {
+            if (n == 8)
+                return {Key::eightTag | _pext_u64(word, Key::asciiMask)};
+            auto tail = static_cast<unsigned char>(p[8]);
+            if (tail < 128)
+                return {(_pext_u64(__builtin_bswap64(word), Key::asciiMask) << 7) | tail};
+        }
+    }
+    return Key::from({p, n});
+}
+struct HeadLayout {
+    uint64_t tag{};
+    uint8_t id, idLen, user, userLen, event, quoted;
+};
+struct TailLayout {
+    uint64_t tag{};
+    uint8_t arrivalEnd, quoted, kind, kindLen, product, productLen, price, priceLen;
+};
+[[gnu::noinline]] bool decodeHead(CsvMask m, uint64_t tag, HeadLayout &e) {
+    if (std::popcount(m.comma) != 2 || (m.comma & 0x20000001u))
+        return false;
+    uint32_t start = (m.comma << 1) | 1, end = m.comma >> 1;
+    unsigned q = _pext_u32(m.quote, start);
+    if ((q & 3) != _pext_u32(m.quote, end) || (m.quote & ~(start ^ end)))
+        return false;
+    unsigned c0 = std::countr_zero(m.comma), c1 = 31u - std::countl_zero(m.comma);
+    e.id = q & 1;
+    e.idLen = c0 - 2 * e.id;
+    e.user = c0 + 1 + (q >> 1 & 1);
+    e.userLen = c1 - c0 - 1 - 2 * (q >> 1 & 1);
+    e.quoted = q >> 2;
+    e.event = c1 + 1 + e.quoted;
+    e.tag = tag;
+    return true;
+}
+[[gnu::noinline]] bool decodeTail(CsvMask m, uint64_t tag, TailLayout &e) {
+    if (std::popcount(m.comma) != 3 || (m.comma & 1))
+        return false;
+    uint32_t start = m.comma << 1, end = (m.comma >> 1) | 0x20000000u;
+    unsigned q = _pext_u32(m.quote, start), closed = _pext_u32(m.quote, end);
+    if (q != (closed >> 1) || (m.quote & ~(start ^ end)))
+        return false;
+    unsigned a = std::countr_zero(m.comma), b = std::countr_zero(m.comma & (m.comma - 1)),
+             c = 31u - std::countl_zero(m.comma);
+    e.quoted = closed & 1;
+    e.arrivalEnd = a - e.quoted;
+    e.kind = a + 1 + (q & 1);
+    e.kindLen = b - a - 1 - 2 * (q & 1);
+    e.product = b + 1 + (q >> 1 & 1);
+    e.productLen = c - b - 1 - 2 * (q >> 1 & 1);
+    e.price = c + 1 + (q >> 2);
+    e.priceLen = 30 - c - 1 - 2 * (q >> 2);
+    e.tag = tag;
+    return true;
+}
+inline bool parseEvent(std::string_view s, const Context &ctx, ParsedEvent &out) {
+    const size_t n = s.size();
+    if (n <= 60 || n > 92)
+        return genericEvent(s, ctx, out);
+    const char *p = s.data();
+    auto mh = classify32(p), mm = classify32(p + 30), mt = classify32(p + n - 32);
+    mh.comma &= 0x3fffffffu;
+    mh.quote &= 0x3fffffffu;
+    mt.comma >>= 2;
+    mt.quote >>= 2;
+    static thread_local std::array<HeadLayout, 256> heads{};
+    static thread_local std::array<TailLayout, 2048> tails{};
+    uint64_t ht = mh.comma | (uint64_t(mh.quote) << 32), tt = mt.comma | (uint64_t(mt.quote) << 32);
+    auto &h = heads[_mm_crc32_u64(0, ht) & 255];
+    auto &t = tails[_mm_crc32_u64(0, tt) & 2047];
+    if ((h.tag != ht || !ht) && !decodeHead(mh, ht, h))
+        return genericEvent(s, ctx, out);
+    if ((t.tag != tt || !tt) && !decodeTail(mt, tt, t))
+        return genericEvent(s, ctx, out);
+    const unsigned width = n - 60;
+    uint32_t mc = _bzhi_u32(mm.comma, width), mq = _bzhi_u32(mm.quote, width);
+    if (!std::has_single_bit(mc) || (mc & ((1u << (width - 1)) | 1u)))
+        return genericEvent(s, ctx, out);
+    if (mq != ((mc >> 1) * h.quoted | (mc << 1) * t.quoted))
+        return false;
+    if (!h.idLen)
+        return false;
+    out.id = inlineAsciiKey(p + h.id, h.idLen);
+    out.valid = false;
+    out.arrival = invalidTime;
+    if (!t.productLen || !h.userLen)
+        return true;
+    unsigned e2 = 30u + std::countr_zero(mc), a = e2 + 1 + t.quoted;
+    const char *tail = p + n - 30;
+    int64_t ts;
+    if (!eventTimes({p + h.event, e2 - h.event - h.quoted}, {p + a, n - 30 + t.arrivalEnd - a}, ctx, ts,
+                    out.arrival))
+        return true;
+    uint32_t price = 0, category = 0;
+    if (t.kindLen == 4) {
+        uint32_t word;
+        std::memcpy(&word, tail + t.kind, 4);
+        if (word != 0x77656976u && word != 0x74726163u)
+            return true;
+    } else if (t.kindLen == 8 && !std::memcmp(tail + t.kind, "purchase", 8)) {
+        const char *end = tail + t.price + t.priceLen;
+        auto [stop, ec] = std::from_chars(tail + t.price, end, price);
+        if (ec != std::errc{} || stop != end || !price || price > 10000000)
+            return true;
+        category = ctx.products.lookup({tail + t.product, t.productLen}, p + n);
+        if (category == UINT32_MAX)
+            category = ctx.unknown;
+    } else
+        return true;
+    out.user = inlineAsciiKey(p + h.user, h.userLen);
+    out.row = {ts, price, category};
+    out.valid = true;
+    return true;
+}
 inline int64_t ingestTime(std::string_view text) {
     return text.size() == 20 ? validIngest(text.data()) : timestamp(text);
 }
 
-inline bool parseClick(std::string_view line, const Context& ctx, Click& row) {
+[[gnu::noinline]] bool otherClick(std::string_view line, const Context &ctx, Click &row) {
     std::array<std::string_view,4> f;
     if (!csv(line, f) || f[0].empty() || f[1].empty()) return false;
     const auto ts = timestamp(f[3]);
     if (ts < ctx.start - 7 * dayMs || ts >= ctx.end) return false;
-    const auto campaign = ctx.campaign(Key::from(f[2]));
+    const auto campaign = ctx.campaigns.lookup(f[2], line.data() + line.size());
     if (campaign == UINT32_MAX) return false;
     row = {Key::from(f[1]), Key::from(f[0]), ts, campaign};
     return true;
 }
 
+inline bool parseClick(std::string_view line, const Context &ctx, Click &row) {
+    size_t n = line.size();
+    if (n < 32 || n > 64)
+        return otherClick(line, ctx, row);
+    auto p = line.data();
+    auto first = classify32(p), last = classify32(p + n - 32);
+    uint64_t commas = first.comma | (uint64_t(last.comma) << (n - 32));
+    uint64_t quotes = first.quote | (uint64_t(last.quote) << (n - 32));
+    if (std::popcount(commas) != 3 || (commas & 1))
+        return false;
+    uint64_t starts = 1 | (commas << 1), ends = (commas >> 1) | (1ull << (n - 1));
+    unsigned trim = _pext_u64(quotes, starts);
+    if (trim != _pext_u64(quotes, ends) || (quotes & ~(starts ^ ends)))
+        return false;
+    unsigned e0 = std::countr_zero(commas), e1 = std::countr_zero(commas & (commas - 1)),
+             e2 = 63 - std::countl_zero(commas);
+    unsigned t0 = trim & 1, t1 = (trim >> 1) & 1, t2 = (trim >> 2) & 1, t3 = trim >> 3;
+    unsigned idLen = e0 - 2 * t0, userLen = e1 - e0 - 1 - 2 * t1;
+    if (!idLen || !userLen)
+        return false;
+    const char *tp = p + e2 + 1 + t3;
+    unsigned tn = n - e2 - 1 - 2 * t3;
+    int64_t ts = tn == 13 ? decimal13(tp) : timestamp({tp, tn});
+    if (ts < ctx.start - 7 * dayMs || ts >= ctx.end)
+        return false;
+    unsigned cn = e2 - e1 - 1 - 2 * t2;
+    const char *cp = p + e1 + 1 + t2;
+    auto campaign = ctx.campaigns.lookup({cp, cn}, p + n);
+    if (campaign == UINT32_MAX)
+        return false;
+    row = {inlineAsciiKey(p + e0 + 1 + t1, userLen), inlineAsciiKey(p + t0, idLen), ts, campaign};
+    return true;
+}
 struct Source {
     std::vector<InputChunk> spans;
     std::vector<uint64_t> starts;            // global offset of each event file
@@ -483,7 +685,7 @@ int64_t arrival(uint64_t info, const Reader& reader, const Source& source, int64
 void invalidate(uint64_t info, Reader& reader) {
     const uint32_t low = info;
     if (low < sourceTag) {
-        reader.events.at(low >> 23, low & (indexLimit-1)).person = Key{};
+        reader.events.at(low >> indexBits, low & (indexLimit - 1)).person = Key{};
     } else if (low >= slowTag) {
         const auto& row = reader.slow[specialValue(info)];
         reader.events.at(row.bucket,row.index).person = Key{};
@@ -498,6 +700,11 @@ size_t findWinner(const std::vector<Winner>& slots, uint64_t hash, const Key& id
     return pos;
 }
 
+inline uint32_t filterHash(Key id) {
+    if (id.external())
+        return static_cast<uint32_t>(id.hash());
+    return _mm_crc32_u64(0, id.bits);
+}
 void deduplicate(size_t shard, int64_t arrivalOrigin, const Source& source,
                  std::vector<std::unique_ptr<Reader>>& readers) {
     size_t count = 0;
@@ -511,7 +718,7 @@ void deduplicate(size_t shard, int64_t arrivalOrigin, const Source& source,
     for (auto& reader : readers)
         reader->ids.pieces(shard, [&](const IdRecord* rows,size_t n) {
             for (size_t i = 0; i < n; ++i) {
-                const size_t bit = (rows[i].id.hash() >> 32) & mask;
+                const size_t bit = filterHash(rows[i].id) & mask;
                 const uint64_t flag = uint64_t{1} << (bit%64);
                 auto& word = filter[bit/64];
                 word.repeated |= word.seen & flag;
@@ -528,9 +735,10 @@ void deduplicate(size_t shard, int64_t arrivalOrigin, const Source& source,
         reader->ids.pieces(shard, [&](const IdRecord* rows,size_t n) {
             for (size_t i = 0; i < n; ++i) {
                 const auto& row = rows[i];
+                const size_t bit = filterHash(row.id) & mask;
+                if (!((filter[bit / 64].repeated >> (bit % 64)) & 1))
+                    continue;
                 const uint64_t hash = row.id.hash();
-                const size_t bit = (hash >> 32) & mask;
-                if (!((filter[bit/64].repeated >> (bit%64)) & 1)) continue;
                 size_t pos = findWinner(slots,hash,row.id);
                 if (!slots[pos].reader) {
                     if (++used*10 >= slots.size()*8) {
@@ -638,7 +846,9 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     const int64_t arrivalOrigin = std::clamp<int64_t>(ctx.start, INT64_MIN + (int64_t{1} << 31),
                                                      INT64_MAX - INT32_MAX);
     const unsigned shift = 63 - std::countr_zero(parts);
-    const size_t idShards = std::clamp<size_t>(std::bit_ceil(bytes >> 24), 1, 1024);
+    // Use more ID partitions than user partitions so a worker's duplicate bitmap fits in cache.
+    const size_t idShards = std::clamp<size_t>(std::bit_ceil(bytes >> 21), 1, 1024);
+    const unsigned idShift = 32 - std::countr_zero(idShards);
     auto partOf = [&](uint64_t hash) { return static_cast<size_t>((hash >> 1) >> shift); };
 
     const unsigned readerCount = static_cast<unsigned>(std::min<size_t>(source.spans.size(), workers));
@@ -658,7 +868,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 chunkLines(span, [&](std::string_view line) {
                     if (!parseEvent(line, ctx, event)) return;
                     const uint64_t offset = base + reinterpret_cast<uintptr_t>(line.data());
-                    const uint64_t hash = event.id.hash();
+                    const size_t idShard = (uint64_t{filterHash(event.id)} >> idShift);
                     uint64_t info;
                     if (event.valid) {
                         const auto bucket = static_cast<uint32_t>(partOf(event.user.hash()));
@@ -669,7 +879,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                         info = event.arrival != invalidTime && relative <= UINT32_MAX
                              ? (relative << 32) | invalidArrivalTag : special(offset,sourceTag);
                     }
-                    reader.ids.add(hash & (idShards - 1), IdRecord{event.id,info});
+                    reader.ids.add(idShard, IdRecord{event.id, info});
                 });
             } else {
                 chunkLines(span, [&](std::string_view line) {
@@ -691,6 +901,14 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         recycled.give(spent);
     });
     lap("dedup");
+    // Drop the file-backed PTEs after the last source reread. Borrowed keys
+    // remain valid because the read-only mappings themselves stay in place.
+    std::jthread releaseInput([&] {
+        for (const auto *files : {&eventFiles, &clickFiles})
+            for (auto f : *files)
+                if (!f.empty())
+                    madvise(const_cast<char *>(f.data()), f.size(), MADV_DONTNEED);
+    });
     awaitIdentities();
     lap("await-links");
 
@@ -724,5 +942,6 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     // The blocks outlive this function: buckets point into them.
     for (auto& reader : readers) (void)reader.release();
     for (auto& router : routers) (void)router.release();
+    releaseInput.join();
     lap("route");
 }

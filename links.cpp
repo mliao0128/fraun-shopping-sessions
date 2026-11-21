@@ -28,6 +28,50 @@ std::vector<Batch> batches(const std::vector<SV>& files) {
     return out;
 }
 
+template <class F> void linkRows(SV file, F action) {
+
+    while (!file.empty()) {
+        std::array<SV, 2> fields;
+        size_t end;
+        bool valid;
+        const char *p = file.data();
+        uint32_t newlines = 0;
+        __m256i block{};
+        if (file.size() >= 32) {
+            block = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p));
+            newlines = _mm256_movemask_epi8(_mm256_cmpeq_epi8(block, _mm256_set1_epi8('\n')));
+        }
+        if (newlines) {
+            end = std::countr_zero(newlines);
+            // A short edge is typically entirely in this load. Mask the
+            // following row out before counting commas or validating quotes.
+            const uint32_t keep = (newlines & -newlines) - 1;
+            const uint32_t commas =
+                keep & _mm256_movemask_epi8(_mm256_cmpeq_epi8(block, _mm256_set1_epi8(',')));
+            valid = std::has_single_bit(commas);
+            if (valid) {
+                const size_t split = std::countr_zero(commas);
+                const bool left = split >= 2 && p[0] == '"' && p[split - 1] == '"';
+                const bool right = end - split >= 3 && p[split + 1] == '"' && p[end - 1] == '"';
+                const uint32_t quotes =
+                    keep & _mm256_movemask_epi8(_mm256_cmpeq_epi8(block, _mm256_set1_epi8('"')));
+                valid = std::popcount(quotes) == 2 * (left + right);
+                fields = {SV(p + left, split - 2 * left),
+                          SV(p + split + 1 + right, end - split - 1 - 2 * right)};
+            }
+        } else {
+            end = file.find('\n');
+            if (end == SV::npos)
+                end = file.size();
+            valid = csv(file.substr(0, end), fields);
+        }
+        if (valid && !fields[0].empty() && !fields[1].empty()) {
+            action(Key::from(fields[0]), Key::from(fields[1]));
+        }
+        file.remove_prefix(std::min(end + 1, file.size()));
+    }
+}
+
 void endpoints(Batch& batch) {
     SV file = batch.rows;
     batch.order.reserve(file.size() / 10);
@@ -108,7 +152,7 @@ void numberEndpoints(size_t s, std::vector<Batch>& input, Shard& shard) {
 }
 } // namespace
 
-void linkPeople(const std::vector<std::string_view>& files, Context& ctx, unsigned workers) {
+void fallbackLinks(const std::vector<std::string_view> &files, Context &ctx, unsigned workers) {
     auto input = batches(files);
     parallel(input.size(), workers, [&](size_t i) { endpoints(input[i]); });
     std::array<Shard, shards> groups;
@@ -187,6 +231,136 @@ void linkPeople(const std::vector<std::string_view>& files, Context& ctx, unsign
             dict.fingerprints[s * dict.shardSize + pos] |= Identities::fingerprint(hash);
             while (!table[pos].raw.empty()) pos = (pos + 1) & mask;
             table[pos] = {k, m};
+        }
+    });
+}
+
+void linkPeople(const std::vector<std::string_view> &files, Context &ctx, unsigned workers) {
+    auto chunks = batches(files);
+    size_t rows = 0;
+    for (const auto &b : chunks)
+        rows += std::count(b.rows.begin(), b.rows.end(), '\n') + 1;
+    if (!rows)
+        return;
+    const size_t cap = std::bit_ceil(std::max<size_t>(32, rows / shards * 2 + rows / shards / 4 + 64));
+    if (cap > UINT32_MAX / shards) {
+        fallbackLinks(files, ctx, workers);
+        return;
+    }
+    auto &dict = ctx.identities;
+    dict.shardSize = cap;
+    dict.slotShift = 64 - Identities::shardBits - std::countr_zero(cap);
+    dict.slots.resize(cap * shards);
+    std::atomic<bool> overflow = false;
+    const uint64_t empty = Key{}.bits;
+    auto intern = [&](Key key, uint64_t h) -> uint32_t {
+        const size_t base = Identities::shard(h) * cap;
+        size_t pos = dict.home(h);
+        for (size_t steps = 0; steps < cap; ++steps, pos = (pos + 1) & (cap - 1)) {
+            auto idx = base + pos;
+            auto slot = std::atomic_ref<uint64_t>(dict.slots[idx].raw.bits);
+            uint64_t existing = slot.load(std::memory_order_acquire);
+            if (existing == empty &&
+                slot.compare_exchange_strong(existing, key.bits, std::memory_order_acq_rel,
+                                             std::memory_order_acquire))
+                return static_cast<uint32_t>(idx);
+            if (Key{existing} == key)
+                return static_cast<uint32_t>(idx);
+        }
+        overflow.store(true, std::memory_order_relaxed);
+        return UINT32_MAX;
+    };
+    auto root = [&](uint32_t i) {
+        for (;;) {
+            auto cur = std::atomic_ref<uint64_t>(dict.slots[i].name.bits);
+            auto n = cur.load(std::memory_order_relaxed);
+            if (n == empty)
+                return i;
+            auto g = std::atomic_ref<uint64_t>(dict.slots[n].name.bits).load(std::memory_order_relaxed);
+            if (g != empty)
+                cur.compare_exchange_weak(n, g, std::memory_order_relaxed);
+            i = static_cast<uint32_t>(n);
+        }
+    };
+    auto merge = [&](uint32_t a, uint32_t b) {
+        if (a == UINT32_MAX || b == UINT32_MAX)
+            return;
+        while (a != b) {
+            a = root(a);
+            b = root(b);
+            if (a == b)
+                break;
+            Key ka{std::atomic_ref<uint64_t>(dict.slots[a].raw.bits).load(std::memory_order_acquire)};
+            Key kb{std::atomic_ref<uint64_t>(dict.slots[b].raw.bits).load(std::memory_order_acquire)};
+            if (kb < ka)
+                std::swap(a, b);
+            uint64_t expected = empty;
+            if (std::atomic_ref<uint64_t>(dict.slots[b].name.bits)
+                    .compare_exchange_weak(expected, a, std::memory_order_relaxed))
+                break;
+        }
+    };
+    parallel(chunks.size(), workers, [&](size_t i) {
+        struct Pair {
+            Key a, b;
+            uint64_t ha, hb;
+        };
+        std::array<Pair, 32> batch;
+        size_t used = 0;
+        auto flush = [&] {
+            for (size_t j = 0; j < used; ++j) {
+                const auto &e = batch[j];
+                merge(intern(e.a, e.ha), intern(e.b, e.hb));
+            }
+            used = 0;
+        };
+        linkRows(chunks[i].rows, [&](Key a, Key b) {
+            if (a == b || overflow.load(std::memory_order_relaxed))
+                return;
+            uint64_t ha = a.hash(), hb = b.hash();
+            __builtin_prefetch(&dict.slots[Identities::shard(ha) * cap + dict.home(ha)], 1);
+            __builtin_prefetch(&dict.slots[Identities::shard(hb) * cap + dict.home(hb)], 1);
+            batch[used++] = {a, b, ha, hb};
+            if (used == batch.size())
+                flush();
+        });
+        flush();
+    });
+    if (overflow.load(std::memory_order_relaxed)) {
+        dict.slots.clear();
+        fallbackLinks(files, ctx, workers);
+        return;
+    }
+    std::array<std::vector<Identities::Alias>, shards> aliases;
+    parallel(shards, workers, [&](size_t s) {
+        auto &out = aliases[s];
+        for (size_t i = s * cap; i < (s + 1) * cap; ++i) {
+            if (dict.slots[i].raw.empty())
+                continue;
+            auto r = root(static_cast<uint32_t>(i));
+            if (r != i)
+                out.push_back({dict.slots[i].raw, dict.slots[r].raw});
+        }
+    });
+    size_t biggest = 0;
+    for (auto &out : aliases)
+        biggest = std::max(biggest, out.size());
+    std::vector<Identities::Alias>().swap(dict.slots);
+    if (!biggest)
+        return;
+    dict.shardSize = std::bit_ceil(biggest + biggest / 2 + 1);
+    dict.slotShift = 64 - Identities::shardBits - std::countr_zero(dict.shardSize);
+    dict.slots.resize(shards * dict.shardSize);
+    dict.fingerprints.resize(dict.slots.size());
+    parallel(shards, workers, [&](size_t s) {
+        const size_t base = s * dict.shardSize, mask = dict.shardSize - 1;
+        for (auto x : aliases[s]) {
+            auto h = x.raw.hash();
+            auto pos = dict.home(h);
+            dict.fingerprints[base + pos] |= Identities::fingerprint(h);
+            while (!dict.slots[base + pos].raw.empty())
+                pos = (pos + 1) & mask;
+            dict.slots[base + pos] = x;
         }
     });
 }

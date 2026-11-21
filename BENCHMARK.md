@@ -1,5 +1,7 @@
 # Shopping Sessions benchmark
 
+The [partitioned ingest benchmark](benchmarks/partitioned-ingest/benchmark.md) compares this pipeline with the 0.84 s submission on three 20M-event inputs and one 60M-event input.
+
 The [Intel event parser benchmark](benchmarks/intel-event-parser/benchmark.md) compares independent CSV delimiter decoding with commit `64e6b93` on six Intel cores. [Raw measurements](benchmarks/intel-event-parser/measurements.json)
 
 The [previous benchmark](benchmarks/after-084/benchmark.md) compares this candidate with the submitted 0.84 s build. The [previous comparison](benchmarks/sub70/benchmark.md) measured that build against our 0.87 s submission.

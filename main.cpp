@@ -13,6 +13,43 @@
 namespace fs = std::filesystem;
 using SV = std::string_view;
 
+void DimensionIndex::finish() {
+    families = {};
+    std::array<size_t, 8> counts{};
+    visit([&](Key k, uint32_t) {
+        unsigned n = group(k);
+        if (n >= families.size())
+            return;
+        auto &f = families[n];
+        if (!counts[n]++)
+            f.fixed = k.bits;
+        f.variable |= f.fixed ^ k.bits;
+    });
+    size_t total = 0;
+    for (unsigned n = 0; n < families.size(); n++) {
+        auto &f = families[n];
+        unsigned bits = std::popcount(f.variable);
+        if (!counts[n] || bits > 20)
+            continue;
+        size_t slots = size_t{1} << bits;
+        if (slots > counts[n] * 32)
+            continue;
+        f.fixedMask = _bzhi_u64(UINT64_MAX, n * 8) & ~f.variable;
+        f.fixed &= f.fixedMask;
+        f.base = static_cast<uint32_t>(total);
+        total += slots;
+    }
+    values.assign(total, UINT32_MAX);
+    visit([&](Key k, uint32_t value) {
+        unsigned n = group(k);
+        if (n >= families.size())
+            return;
+        auto &f = families[n];
+        if (f.base != UINT32_MAX)
+            values[f.base + _pext_u64(k.bits, f.variable)] = value;
+    });
+    ready = true;
+}
 void Index::reserve(size_t needed) {
     size_t capacity = std::bit_ceil(std::max<size_t>(16, needed + needed / 2 + 1));
     if (capacity <= slots.size()) return;
@@ -127,6 +164,8 @@ void dimensions(const fs::path& data, Inputs& inputs, Context& ctx, unsigned wor
         ctx.channels.push_back(Key::from(f[1]));
         ctx.campaigns.insert(ctx.campaignNames.back(), i);
     });
+    ctx.products.finish();
+    ctx.campaigns.finish();
 }
 const char* env(const char* name, const char* fallback) {
     const char* value = std::getenv(name);
@@ -165,7 +204,7 @@ int main(int argc, char** argv) try {
     for (auto e : events) bytes += e.size();
     // More buckets balance large people across workers. Keep small datasets
     // compact, since each active bucket accumulates its own campaign totals.
-    size_t bucketCount = std::clamp(std::bit_ceil(bytes / (4u << 20)), size_t{1}, size_t{256});
+    size_t bucketCount = std::clamp(std::bit_ceil(bytes / (1u << 20)), size_t{1}, size_t{512});
     std::vector<Bucket> buckets(bucketCount);
     stage("dimensions");
     try {

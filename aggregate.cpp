@@ -95,7 +95,7 @@ struct Grouped {
     std::vector<OwnedTime> pending;
     std::vector<uint32_t> times, clickOwner;
     std::vector<int64_t> wideTimes;
-    bool wide = false;
+    bool wide = false, circular = false;
 };
 
 void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
@@ -118,13 +118,17 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
         if (row.price) { ++groups[g].purchaseEnd; out.purchases.push_back({row.ts,row.price,row.category,g}); }
     });
     out.wide = usedBits > UINT32_MAX;
+    uint64_t clickBits = 0;
     out.clickOwner.resize(bucket.clicks.size);
     at = 0;
-    bucket.clicks.each([&](const Click& c) {
+    bucket.clicks.each([&](const Click &c) {
+        clickBits |= uint64_t(c.ts) - uint64_t(origin) + 7 * dayMs;
         const uint32_t g = index.lookup(c.person);
         out.clickOwner[at++] = g;
-        if (g!=absent) ++groups[g].clickEnd;
+        if (g!=absent)
+            ++groups[g].clickEnd;
     });
+    out.circular = ((usedBits | clickBits) < (uint64_t{1} << 31));
     uint32_t nEvents=0, nClicks=0;
     for(auto& g : groups) {
         uint32_t ne=g.eventEnd, nc=g.clickEnd;
@@ -188,28 +192,26 @@ void exactSessions(T* times,size_t n,int64_t origin,F emit) {
     emit(origin+int64_t(times[start]),origin+int64_t(times[n-1]),uint32_t(n-start));
 }
 
-struct TimeCell { uint32_t first=0,last=0,count=0; };
+struct TimeCell {
+    uint32_t first = UINT32_MAX, last = 0, count = 0;
+};
 class CellTable {
-    static constexpr unsigned shift=20;
-    static_assert((1u<<shift)<=maxGap);
-    // Each worker handles one person at a time. Reuse the same direct table
-    // across people and clear exactly the occupied cells after consuming them.
-    std::array<TimeCell,1u<<(32-shift)> cells{};
-    std::array<uint64_t,64> occupied{};
-public:
+    static constexpr size_t binCount = UINT32_MAX / maxGap + 1;
+    static constexpr size_t wordCount = (binCount + 63) / 64;
+    static_assert(wordCount <= 64);
+    std::array<TimeCell, binCount> cells{};
+    std::array<uint64_t, wordCount> occupied{};
+
+  public:
     template<class F> void sessions(const uint32_t* times,size_t n,int64_t origin,F emit) {
         uint64_t words=0;
         for (size_t i=0; i<n; ++i) {
-            const uint32_t ts=times[i], bin=ts>>shift;
+            const uint32_t ts = times[i], bin = ts / uint32_t(maxGap);
             auto& c=cells[bin];
-            if (!c.count) {
-                words|=uint64_t{1}<<(bin/64);
-                occupied[bin/64]|=uint64_t{1}<<(bin%64);
-                c.first=c.last=ts;
-            } else {
-                c.first=std::min(c.first,ts);
-                c.last=std::max(c.last,ts);
-            }
+            c.first = std::min(c.first, ts);
+            c.last = std::max(c.last, ts);
+            words |= uint64_t{1} << (bin / 64);
+            occupied[bin / 64] |= uint64_t{1} << (bin % 64);
             ++c.count;
         }
         // All times in one cell are connected. The earliest time in the next
@@ -230,46 +232,10 @@ public:
                 }
                 count+=c.count;
                 last=c.last;
-                c.count=0;
+                c = TimeCell{};
             }
         }
         emit(origin+first,origin+last,count);
-    }
-};
-
-class ClickWindow {
-    std::vector<uint32_t> count, position, active;
-    size_t first = 0, next = 0;
-
-public:
-    explicit ClickWindow(size_t campaigns) : count(campaigns), position(campaigns) {}
-
-    void begin(size_t firstClick) {
-        for (uint32_t c : active) count[c] = 0;
-        active.clear();
-        first = next = firstClick;
-    }
-
-    uint32_t attribute(const std::vector<TimedClick>& clicks, size_t end, int64_t start,
-                       std::vector<CampaignStats>& daily) {
-        while (next < end && clicks[next].ts <= start) {
-            uint32_t c = clicks[next++].campaign;
-            if (count[c]++ == 0) {
-                position[c] = static_cast<uint32_t>(active.size());
-                active.push_back(c);
-            }
-        }
-        while (first < next && clicks[first].ts < start - 7 * dayMs) {
-            uint32_t c = clicks[first++].campaign;
-            if (--count[c] == 0) {
-                const uint32_t last = active.back();
-                active[position[c]] = last;
-                position[last] = position[c];
-                active.pop_back();
-            }
-        }
-        for (uint32_t c : active) ++daily[c].assists;
-        return first == next ? 0 : clicks[next - 1].campaign;
     }
 };
 
@@ -290,7 +256,6 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
     const auto& clicks = grouped.clicks;
     static thread_local CellTable cells;
 
-    ClickWindow window(campaignCount);
     std::vector<int64_t> categoryRevenue(categoryCount);
     std::vector<uint32_t> touched;
     size_t i = 0, p = 0, clickBegin = 0;
@@ -305,17 +270,141 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
         return slot.stats;
     };
 
+    struct Session {
+        int64_t start, last;
+        uint32_t count, dayIndex;
+    };
+    // Each click assists a contiguous range of starts. Keep per-day ends so
+    // an entire run of sessions can be credited with one update.
+    struct DayRange {
+        std::vector<CampaignStats> *daily;
+        unsigned end;
+    };
+    struct Coverage {
+        unsigned owner = absent, end = 0;
+    };
+    std::vector<Coverage> covered(campaignCount);
+    static thread_local std::vector<DayRange> spans;
+    static thread_local std::vector<Session> sessions;
+    constexpr unsigned maxSessions = 256;
+    using WordSet = std::array<uint64_t, maxSessions / 64>;
+    std::vector<WordSet> coverage(campaignCount);
+    std::vector<uint64_t> narrowMask(campaignCount);
+    alignas(32) std::array<uint32_t, 64> relStarts{};
+
+    std::vector<uint32_t> touchedClicks;
+    static thread_local std::array<uint16_t, 4096> firstInBin;
+    std::array<const TimedClick *, maxSessions> latest;
+    auto rangeWords = [](unsigned lo, unsigned hi, auto apply) {
+        unsigned w = lo / 64, end = (hi - 1) / 64;
+        if (w == end) {
+            apply(w, (UINT64_MAX << (lo % 64)) & (UINT64_MAX >> (63 - (hi - 1) % 64)));
+            return;
+        }
+        apply(w, UINT64_MAX << (lo % 64));
+        while (++w < end)
+            apply(w, UINT64_MAX);
+        apply(end, UINT64_MAX >> (63 - (hi - 1) % 64));
+    };
+
     for (uint32_t g = 0; g < groups.size(); ++g) {
         const Group& group = groups[g];
-        sortSpan(grouped.clicks.begin() + clickBegin, grouped.clicks.begin() + group.clickEnd,
-                 [](const auto& a, const auto& b) {
-                      // The last click at a tied timestamp must have the smallest ID.
-                      return a.ts != b.ts ? a.ts < b.ts : b.id < a.id;
-                  });
-        window.begin(clickBegin);
-        std::vector<CampaignStats>* daily = nullptr;
+        std::vector<CampaignStats> *daily = nullptr;
         UserRow row{};
-        auto emit = [&](int64_t start,int64_t last,uint32_t eventCount) {
+        const size_t firstOutput = result.users.days.size();
+        sessions.clear();
+        auto emit = [&](int64_t first, int64_t last, uint32_t count) {
+            sessions.push_back({first, last, count});
+        };
+        const size_t count = group.eventEnd - i;
+        if (grouped.wide)
+            exactSessions(grouped.wideTimes.data() + i, count, 0, emit);
+        else if (count <= 8)
+            exactSessions(grouped.times.data() + i, count, origin, emit);
+        else
+            cells.sessions(grouped.times.data() + i, count, origin, emit);
+        const unsigned n = sessions.size();
+        const uint64_t span = uint64_t(sessions.back().start) - uint64_t(sessions.front().start);
+        constexpr unsigned shortLimit = 64;
+        bool narrow = grouped.circular && n <= shortLimit && group.clickEnd - clickBegin >= 1;
+        const bool bitset =
+            (group.clickEnd - clickBegin >= 32 && n <= maxSessions && span <= UINT32_MAX);
+        if (narrow) {
+            const int64_t base = sessions.front().start;
+            std::fill_n(latest.begin(), n, nullptr);
+            for (unsigned j = 0; j < n; ++j)
+                relStarts[j] = uint32_t(sessions[j].start);
+            const uint64_t all = UINT64_MAX >> (64 - n);
+            for (size_t j = clickBegin; j < group.clickEnd; ++j) {
+                const auto &click = clicks[j];
+                uint64_t mask = 0;
+                auto t = _mm256_set1_epi32(uint32_t(click.ts));
+                const auto length = _mm256_set1_epi32(7 * dayMs);
+                for (unsigned k = 0; k < n; k += 8) {
+                    const auto v = _mm256_load_si256((const __m256i *)(relStarts.data() + k));
+                    const auto delta = _mm256_sub_epi32(v, t);
+                    const auto valid = _mm256_cmpeq_epi32(_mm256_max_epu32(delta, length), length);
+                    mask |= uint64_t(unsigned(_mm256_movemask_ps(_mm256_castsi256_ps(valid)))) << k;
+                }
+                mask &= all;
+                if (!mask)
+                    continue;
+                auto &covered = narrowMask[click.campaign];
+                if (!covered)
+                    touchedClicks.push_back(click.campaign);
+                covered |= mask;
+                const unsigned at = std::countr_zero(mask);
+                const TimedClick *old = latest[at];
+                if (!old || old->ts < click.ts || (old->ts == click.ts && click.id < old->id))
+                    latest[at] = &click;
+            }
+        } else if (bitset) {
+            std::fill_n(latest.begin(), n, nullptr);
+            const auto first = sessions.front().start, last = sessions.back().start;
+            size_t begin = 0;
+            for (unsigned k = 0; k < n; ++k) {
+                const unsigned end = ((uint64_t(sessions[k].start) - uint64_t(first)) >> 20) + 1;
+                std::fill(firstInBin.begin() + begin, firstInBin.begin() + end, k);
+                begin = end;
+            }
+            auto bound = [&](int64_t t, bool inclusive) -> unsigned {
+                if (t < first)
+                    return 0;
+                if (t > last)
+                    return n;
+                const unsigned k = firstInBin[(uint64_t(t) - uint64_t(first)) >> 20];
+                return k + (inclusive ? sessions[k].start <= t : sessions[k].start < t);
+            };
+            for (size_t j = clickBegin; j < group.clickEnd; ++j) {
+                const auto &click = clicks[j];
+                unsigned lo = bound(click.ts, false);
+                unsigned hi = click.ts > INT64_MAX - 7 * dayMs ? n : bound(click.ts + 7 * dayMs, true);
+                if (lo == hi)
+                    continue;
+                auto &mask = coverage[click.campaign];
+                bool fresh = !(mask[0] | mask[1] | mask[2] | mask[3]);
+                if (fresh)
+                    touchedClicks.push_back(click.campaign);
+                rangeWords(lo, hi, [&](unsigned w, uint64_t newBits) { mask[w] |= newBits; });
+                const auto *old = latest[lo];
+                if (!old || old->ts < click.ts || (old->ts == click.ts && click.id < old->id))
+                    latest[lo] = &click;
+            }
+        } else {
+            sortSpan(grouped.clicks.begin() + clickBegin, grouped.clicks.begin() + group.clickEnd,
+                     [](const auto &a, const auto &b) {
+                         // The last click at a tied timestamp must have the smallest ID.
+                         return a.ts != b.ts ? a.ts < b.ts : b.id < a.id;
+                     });
+        }
+        const TimedClick *winnerClick = nullptr;
+        const bool hasClicks = clickBegin < group.clickEnd;
+        size_t nextClick = clickBegin;
+        spans.clear();
+        uint32_t nStarts = 0;
+        for (auto &session : sessions) {
+            const auto start = session.start, last = session.last;
+            const uint32_t eventCount = session.count;
             const int32_t day = utcDay(start);
             if (daily == nullptr || row.day != day) {
                 if (daily) result.users.append(row);
@@ -323,9 +412,11 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
                 touched.clear();
                 row = {group.person, day, 0, 0, 0, absent};
                 daily = dailyStats(day);
+                if (hasClicks)
+                    spans.push_back({daily, nStarts});
             }
             int64_t sessionRevenue = 0;
-            for (; p < purchases.size() && purchases[p].group == g && purchases[p].ts <= last; ++p) {
+            for (; p < group.purchaseEnd && purchases[p].ts <= last; ++p) {
                 const auto& e = purchases[p];
                 sessionRevenue += e.price;
                 const uint32_t c = e.category;
@@ -339,18 +430,83 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
             ++row.sessions;
             row.events += eventCount;
             row.revenue += sessionRevenue;
-            uint32_t winner = window.attribute(clicks, group.clickEnd, start, *daily);
+            uint32_t winner = 0;
+            if (hasClicks) {
+                session.dayIndex = spans.size() - 1;
+                spans.back().end = ++nStarts;
+                if (bitset || narrow) {
+                    if (latest[nStarts - 1])
+                        winnerClick = latest[nStarts - 1];
+                    if (winnerClick && winnerClick->ts >= start - 7 * dayMs)
+                        winner = winnerClick->campaign;
+                } else {
+                    while (nextClick < group.clickEnd && clicks[nextClick].ts <= start)
+                        ++nextClick;
+                    if (nextClick != clickBegin && clicks[nextClick - 1].ts >= start - 7 * dayMs)
+                        winner = clicks[nextClick - 1].campaign;
+                }
+            }
             auto& credit = (*daily)[winner];
             ++credit.sessions;
             credit.purchasing += sessionRevenue != 0;
             credit.revenue += sessionRevenue;
-        };
-        const size_t count=group.eventEnd-i;
-        if (grouped.wide) exactSessions(grouped.wideTimes.data()+i,count,0,emit);
-        else if (count<=8) exactSessions(grouped.times.data()+i,count,origin,emit);
-        else cells.sessions(grouped.times.data()+i,count,origin,emit);
+        }
+        // A click assists a contiguous range of session starts. Once a prior
+        // click in this campaign covers part of that range, credit only its suffix.
+        if (narrow) {
+            unsigned lo = 0;
+            for (const auto &span : spans) {
+                const uint64_t dayMask = (UINT64_MAX << lo) & (UINT64_MAX >> (64 - span.end));
+                for (auto c : touchedClicks)
+                    (*span.daily)[c].assists += std::popcount(dayMask & narrowMask[c]);
+                lo = span.end;
+            }
+            for (auto c : touchedClicks)
+                narrowMask[c] = 0;
+            touchedClicks.clear();
+        } else if (bitset) {
+            unsigned lo = 0;
+            for (const auto &span : spans) {
+                for (auto c : touchedClicks) {
+                    unsigned count = 0;
+                    rangeWords(lo, span.end, [&](unsigned w, uint64_t bits) {
+                        count += std::popcount(coverage[c][w] & bits);
+                    });
+                    (*span.daily)[c].assists += count;
+                }
+                lo = span.end;
+            }
+            for (auto c : touchedClicks)
+                coverage[c].fill(0);
+            touchedClicks.clear();
+        } else if (hasClicks) {
+            uint32_t lower = 0, upper = 0;
+            for (size_t j = clickBegin; j < group.clickEnd; ++j) {
+                const auto &click = clicks[j];
+                while (lower < nStarts && sessions[lower].start < click.ts)
+                    ++lower;
+                if (upper < lower)
+                    upper = lower;
+                while (upper < nStarts && sessions[upper].start - 7 * dayMs <= click.ts)
+                    ++upper;
+                auto &state = covered[click.campaign];
+                uint32_t left = state.owner == g ? std::max(state.end, lower) : lower;
+                while (left < upper) {
+                    const auto &span = spans[sessions[left].dayIndex];
+                    const uint32_t end = std::min(upper, span.end);
+                    (*span.daily)[click.campaign].assists += end - left;
+                    left = end;
+                }
+                state = {g, upper};
+            }
+        }
         i=group.eventEnd;
-        if (daily) result.users.append(row);
+        if (daily) {
+            result.users.append(row);
+            result.users.people.push_back(group.person);
+            result.users.userCounts.push_back(
+                static_cast<uint32_t>(result.users.days.size() - firstOutput));
+        }
         clickBegin = group.clickEnd;
     }
 }
