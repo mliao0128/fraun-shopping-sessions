@@ -1,6 +1,6 @@
 #include <sys/mman.h>
 #include "shared.hpp"
-#include "event_fields.hpp"
+#include "event_prefixes.hpp"
 
 #include <algorithm>
 #include <array>
@@ -484,10 +484,10 @@ inline bool pairedClocks(const char* event, const char* ingest,
 
 // Malformed lines and empty IDs never take part in deduplication. Every other
 // copy does, valid or not: an invalid earliest copy suppresses later ones.
-[[gnu::noinline]] bool genericEvent(std::string_view line, const Context &ctx, ParsedEvent &out) {
+[[gnu::noinline]] bool genericEvent(std::string_view line, const Context &ctx, ParsedEvent &out, const EventPrefixes &prefixes) {
     std::array<std::string_view,7> f;
     if (!eventFields(line, f) || f[0].empty()) return false;
-    out.id = eventID(f[0]);
+    out.id = prefixes.encode(f[0]);
     out.valid = false;
     out.arrival = invalidTime;
     if (f[1].empty() || f[5].empty()) return true;
@@ -642,30 +642,30 @@ template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
         p = end + 1;
     }
 }
-inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, ParsedEvent &out) {
+inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, ParsedEvent &out, const EventPrefixes &prefixes) {
     auto s = packed.line;
     const size_t n = s.size();
     const char *p = s.data();
     if (!packed.head)
-        return genericEvent(s, ctx, out);
+        return genericEvent(s, ctx, out, prefixes);
     auto &h = *packed.head;
     auto &t = *packed.tail;
     auto ht = packed.ht, tt = packed.tt;
     CsvMask mh{uint32_t(ht), uint32_t(ht >> 32)}, mt{uint32_t(tt), uint32_t(tt >> 32)},
         mm{packed.commas, packed.quotes};
     if ((h.tag != ht || !ht) && !decodeHead(mh, ht, h))
-        return genericEvent(s, ctx, out);
+        return genericEvent(s, ctx, out, prefixes);
     if ((t.tag != tt || !tt) && !decodeTail(mt, tt, t))
-        return genericEvent(s, ctx, out);
+        return genericEvent(s, ctx, out, prefixes);
     const unsigned width = n - 60;
     uint32_t mc = _bzhi_u32(mm.comma, width), mq = _bzhi_u32(mm.quote, width);
     if (!std::has_single_bit(mc) || (mc & ((1u << (width - 1)) | 1u)))
-        return genericEvent(s, ctx, out);
+        return genericEvent(s, ctx, out, prefixes);
     if (mq != ((mc >> 1) * h.quoted | (mc << 1) * t.quoted))
         return false;
     if (!h.idLen)
         return false;
-    out.id = eventID({p + h.id, h.idLen});
+    out.id = prefixes.encode({p + h.id, h.idLen});
     out.valid = false;
     out.arrival = invalidTime;
     if (!t.productLen || !h.userLen)
@@ -1039,6 +1039,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     if (!std::has_single_bit(out.size())) throw std::logic_error("Bucket count must be a power of two");
     lap("start");
 
+    const EventPrefixes prefixes(eventFiles);
     Source source;
     source.files = eventFiles;
     size_t bytes = 0;
@@ -1089,7 +1090,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 unsigned cursor = 0;
                 auto emit = [&](PreparedMasks &m) {
                     auto line = m.line;
-                    if (!parsePrepared(m, ctx, event))
+                    if (!parsePrepared(m, ctx, event, prefixes))
                         return;
                     const uint64_t offset = base + reinterpret_cast<uintptr_t>(line.data());
                     uint64_t info;
