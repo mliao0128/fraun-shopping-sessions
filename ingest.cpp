@@ -347,30 +347,16 @@ struct EventToken {
     bool operator==(EventToken o) const { return bits == o.bits; }
     uint64_t hash() const { return (bits ^ (bits >> 27)) * 0x9e3779b97f4a7c15ull; }
 };
-EventToken encodeEventToken(Key k) {
-    if (__builtin_expect(!k.external(), true)) {
-        uint32_t h = _mm_crc32_u64(0, k.bits);
-        // The CRC-32C transformation of the low word is bijective for a fixed high word.
-        return {(k.bits & 0xffffffff00000000ull) | h};
-    }
-    struct Stripe {
-        std::mutex lock;
-        std::unordered_map<std::string_view, uint32_t> codes;
-    };
-    static Stripe groups[64];
-    static std::atomic<uint32_t> next{0};
-    uint32_t h = uint32_t(k.hash());
-    auto &g = groups[h >> 26];
-    std::lock_guard guard(g.lock);
-    auto [at, added] = g.codes.try_emplace(k.borrowed(), 0);
-    if (added) {
-        uint32_t number = next.fetch_add(1, std::memory_order_relaxed);
-        if (number >= 0x50000000u)
-            throw std::length_error("External event ID directory exceeds addressable capacity");
-        at->second = 0xb0000000u + number;
-    }
-    return {(uint64_t(at->second) << 32) | h};
+// Only inline IDs use this CRC transform. External IDs have an independent,
+// byte-exact table in their owning shard.
+EventToken inlineEventToken(Key k) {
+    const uint32_t hash = _mm_crc32_u64(0, k.bits);
+    return {(k.bits & 0xffffffff00000000ull) | hash};
 }
+struct ExternalIdRecord {
+    Key id;
+    uint64_t info;
+};
 struct IdRecord {
     EventToken id;
     uint64_t info;
@@ -384,6 +370,9 @@ struct Reader {
     Scatter<Click, 8> clicks;
     Scatter<IdRecord, 16> ids;
     std::vector<Extended> slow;
+    // Each parser owns these lists until the parse barrier. Key borrows bytes
+    // from the input maps, which stay alive throughout winner selection.
+    std::vector<std::vector<ExternalIdRecord>> externalIds;
     Reader(size_t parts, size_t idShards) : events(slab, parts), clicks(slab, parts), ids(slab, idShards) {}
 };
 
@@ -794,6 +783,20 @@ void invalidate(uint64_t info, Reader& reader) {
     }
 }
 
+// Whichever representation an ID uses, a rejected earlier event must still
+// invalidate a later usable copy. Tied arrivals keep the first equivalent row.
+bool keepEarlier(uint64_t info, Reader& reader, uint64_t oldInfo, Reader& oldReader,
+                 const Source& source, int64_t origin) {
+    const bool inlineTimes = (uint32_t(info) | uint32_t(oldInfo)) < sourceTag;
+    const bool earlier = inlineTimes ? (info >> 32) < (oldInfo >> 32)
+        : arrival(info, reader, source, origin) < arrival(oldInfo, oldReader, source, origin);
+    if (earlier)
+        invalidate(oldInfo, oldReader);
+    else
+        invalidate(info, reader);
+    return earlier;
+}
+
 struct Winner { IdRecord row; Reader* reader = nullptr; };
 size_t findWinner(const std::vector<Winner> &slots, uint64_t hash, const EventToken &id) {
     size_t pos = (hash >> 10) & (slots.size()-1);
@@ -851,16 +854,8 @@ void dedupOriginal(size_t shard, int64_t arrivalOrigin, const Source &source,
                     continue;
                 }
                 Winner& old = slots[pos];
-                const bool inlineTimes = (uint32_t(row.info) | uint32_t(old.row.info)) < sourceTag;
-                const bool earlier = inlineTimes ? (row.info >> 32) < (old.row.info >> 32)
-                    : arrival(row.info,*reader,source,arrivalOrigin) <
-                      arrival(old.row.info,*old.reader,source,arrivalOrigin);
-                if (earlier) {
-                    invalidate(old.row.info,*old.reader);
-                    old = {row,reader.get()};
-                } else {
-                    invalidate(row.info,*reader);
-                }
+                if (keepEarlier(row.info, *reader, old.row.info, *old.reader, source, arrivalOrigin))
+                    old = {row, reader.get()};
             }
         });
 }
@@ -888,15 +883,7 @@ struct RecordDirectory {
         const auto &a = blocks[newer >> rowBits];
         const auto &b = blocks[prior >> rowBits];
         const uint64_t ia = a.rows[newer & within].info, ib = b.rows[prior & within].info;
-        const bool before =
-            (uint32_t(ia) | uint32_t(ib)) < sourceTag
-                ? (ia >> 32) < (ib >> 32)
-                : arrival(ia, *a.owner, source, origin) < arrival(ib, *b.owner, source, origin);
-        if (before)
-            invalidate(ib, *b.owner);
-        else
-            invalidate(ia, *a.owner);
-        return before;
+        return keepEarlier(ia, *a.owner, ib, *b.owner, source, origin);
     }
 };
 // One cache line holds membership tags and row locations for sixteen IDs.
@@ -912,6 +899,36 @@ struct alignas(64) FingerGroup {
     }
 };
 static_assert(sizeof(FingerGroup) == 64);
+template<class Hash>
+void deduplicateExternal(size_t shard, int64_t origin, const Source& source,
+                         std::vector<std::unique_ptr<Reader>>& readers, Hash hash) {
+    size_t count = 0;
+    for (const auto& reader : readers)
+        if (!reader->externalIds.empty())
+            count += reader->externalIds[shard].size();
+    if (count < 2)
+        return;
+
+    struct Slot {
+        const ExternalIdRecord* row = nullptr;
+        Reader* owner = nullptr;
+    };
+    static thread_local std::vector<Slot> slots;
+    slots.assign(std::bit_ceil(count + count / 2 + 1), Slot{});
+    const size_t mask = slots.size() - 1;
+    for (auto& reader : readers) {
+        if (reader->externalIds.empty()) continue;
+        for (const auto& row : reader->externalIds[shard]) {
+            size_t pos = hash(row.id) & mask;
+            while (slots[pos].row && !(slots[pos].row->id == row.id))
+                pos = (pos + 1) & mask;
+            auto& slot = slots[pos];
+            if (!slot.row || keepEarlier(row.info, *reader, slot.row->info, *slot.owner, source, origin))
+                slot = {&row, reader.get()};
+        }
+    }
+}
+
 void deduplicate(size_t shard, int64_t origin, const Source &source,
                  std::vector<std::unique_ptr<Reader>> &readers) {
     static thread_local RecordDirectory dir;
@@ -1075,8 +1092,6 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     if (!parsePrepared(m, ctx, event))
                         return;
                     const uint64_t offset = base + reinterpret_cast<uintptr_t>(line.data());
-                    const auto token = encodeEventToken(event.id);
-                    const size_t idShard = (uint64_t{filterHash(token)} >> idShift);
                     uint64_t info;
                     if (event.valid) {
                         auto rawHash = event.user.hash();
@@ -1089,7 +1104,15 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                         info = event.arrival != invalidTime && relative <= UINT32_MAX
                              ? (relative << 32) | invalidArrivalTag : special(offset,sourceTag);
                     }
-                    reader.ids.add(idShard, IdRecord{token, info});
+                    if (__builtin_expect(!event.id.external(), true)) {
+                        const auto token = inlineEventToken(event.id);
+                        const size_t shard = uint64_t{filterHash(token)} >> idShift;
+                        reader.ids.add(shard, IdRecord{token, info});
+                    } else {
+                        if (reader.externalIds.empty()) reader.externalIds.resize(idShards);
+                        const size_t shard = uint64_t{uint32_t(event.id.hash())} >> idShift;
+                        reader.externalIds[shard].push_back({event.id, info});
+                    }
                 };
                 eventLines(span, [&]() -> PreparedMasks & {
                     auto &m = queue[cursor % ahead];
@@ -1110,9 +1133,14 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     const size_t clicks = source.spans.size() - source.eventSpans;
     auto processShard = [&](size_t shard) {
         deduplicate(shard, arrivalOrigin, source, readers);
+        deduplicateExternal(shard, arrivalOrigin, source, readers,
+                            [](Key id) { return id.hash(); });
         std::vector<void*> spent;
-        for (auto &reader : readers)
+        for (auto &reader : readers) {
             reader->ids.release(shard, spent);
+            if (!reader->externalIds.empty())
+                std::vector<ExternalIdRecord>().swap(reader->externalIds[shard]);
+        }
         recycled.give(spent);
     };
     auto processClicks = [&](size_t part, Reader &reader) {
