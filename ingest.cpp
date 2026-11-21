@@ -351,7 +351,12 @@ struct EventToken {
     bool operator==(EventToken o) const { return bits == o.bits; }
     uint64_t hash() const { return (bits ^ (bits >> 27)) * 0x9e3779b97f4a7c15ull; }
 };
+constexpr uint64_t numericEventTag = uint64_t{0x90} << 56;
+constexpr uint64_t numericMask = (uint64_t{1} << 40) - 1;
+inline bool isNumericEvent(uint64_t bits) { return (bits >> 56) == (numericEventTag >> 56); }
+
 EventToken encodeEventToken(Key k) {
+    if (isNumericEvent(k.bits)) return {k.bits};
     if (__builtin_expect(!k.external(), true)) {
         uint32_t h = _mm_crc32_u64(0, k.bits);
         // The CRC-32C transformation of the low word is bijective for a fixed high word.
@@ -522,7 +527,45 @@ inline bool isoTimes(const char* event, const char* arrival, const Context& ctx,
 
 // Event IDs are only compared to other event IDs. A common prefix can
 // therefore be implicit without imposing a lexical order on this domain.
+// Canonical lowercase base-36 spellings have an exact 40-bit witness.
+inline uint64_t checkedBase36(std::string_view raw) {
+    const size_t length = raw.size();
+    if (length < 2 || length > 9 || raw[0] != 'e' || (length > 2 && raw[1] == '0'))
+        return UINT64_MAX;
+
+    uint64_t bytes = UINT64_C(0x3030303030303030);
+    if (length == 9) {
+        std::memcpy(&bytes, raw.data() + 1, 8);
+    } else if (length == 8) {
+        std::memcpy(&bytes, raw.data(), 8);
+        bytes = (bytes & ~uint64_t{255}) | '0';
+    } else {
+        std::memcpy(reinterpret_cast<char*>(&bytes) + 9 - length, raw.data() + 1, length - 1);
+    }
+    const auto ascii = _mm_cvtsi64_si128(bytes);
+    const auto digit = _mm_sub_epi8(ascii, _mm_set1_epi8('0'));
+    const auto alpha = _mm_sub_epi8(ascii, _mm_set1_epi8('a'));
+    const auto excess = _mm_min_epu8(_mm_subs_epu8(digit, _mm_set1_epi8(9)),
+                                      _mm_subs_epu8(alpha, _mm_set1_epi8(25)));
+    if ((_mm_movemask_epi8(_mm_cmpeq_epi8(excess, _mm_setzero_si128())) & 255) != 255)
+        return UINT64_MAX;
+    const auto digits = _mm_min_epu8(digit, _mm_adds_epu8(alpha, _mm_set1_epi8(10)));
+    const auto pairs = _mm_maddubs_epi16(digits, _mm_set1_epi16(0x0124));
+    const auto quads = _mm_madd_epi16(pairs, _mm_set1_epi32(0x10510));
+    const uint64_t value = uint64_t(_mm_cvtsi128_si32(quads)) * 1679616 + uint32_t(_mm_extract_epi32(quads, 1));
+    return value <= numericMask ? value : UINT64_MAX;
+}
 inline Key eventID(std::string_view s) {
+    const uint64_t value = checkedBase36(s);
+    if (value != UINT64_MAX) {
+        // Reverse only the two fixed operations at the end of the public
+        // identifier format. This bijection preserves complete key equality.
+        constexpr uint64_t inverse = UINT64_C(0xa0905881e9);
+        static_assert(((inverse * UINT64_C(0xd6e8feb86659)) & numericMask) == 1);
+        const uint64_t y = (value * inverse) & numericMask;
+        return {numericEventTag | (y ^ (y >> 17) ^ (y >> 34))};
+    }
+
     if (s.size() != 9)
         return Key::from(s);
     uint64_t tail;
@@ -840,7 +883,9 @@ size_t findWinner(const std::vector<Winner> &slots, uint64_t hash, const EventTo
     return pos;
 }
 
-inline uint32_t filterHash(EventToken id) { return static_cast<uint32_t>(id.bits); }
+inline uint32_t filterHash(EventToken id) {
+    return static_cast<uint32_t>(isNumericEvent(id.bits) ? id.bits >> 9 : id.bits);
+}
 void dedupOriginal(size_t shard, int64_t arrivalOrigin, const Source &source,
                    std::vector<std::unique_ptr<Reader>> &readers) {
     size_t count = 0;
@@ -959,6 +1004,47 @@ void deduplicate(size_t shard, int64_t origin, const Source &source,
     if (dir.blocks.size() > (1u << 24) / rowsPerBlock<IdRecord>) {
         dedupOriginal(shard, origin, source, readers);
         return;
+    }
+    unsigned observed = 0, numeric = 0;
+    for (const auto& block : dir.blocks) {
+        const size_t n = std::min<size_t>(block.count, 32 - observed);
+        for (size_t i = 0; i < n; ++i) numeric += isNumericEvent(block.rows[i].id.bits);
+        observed += static_cast<unsigned>(n);
+        if (observed == 32) break;
+    }
+    if (numeric * 2 >= observed) {
+        const unsigned shardBits = std::countr_zero(readers.front()->ids.blocks.size());
+        const size_t capacity = std::bit_ceil(dir.count);
+        static thread_local std::vector<uint32_t> primary;
+        static thread_local std::unordered_map<uint64_t, uint32_t> overflow;
+        primary.assign(capacity, 0);
+        overflow.clear();
+        size_t visited = 0;
+        for (unsigned b = 0; b < dir.blocks.size(); ++b) {
+            const auto& block = dir.blocks[b];
+            for (unsigned j = 0; j < block.count; ++j) {
+                const uint32_t ref = (b << dir.rowBits) | j;
+                const uint64_t key = block.rows[j].id.bits;
+                if (isNumericEvent(key)) {
+                    auto& winner = primary[(key >> shardBits) & (capacity - 1)];
+                    if (!winner) {
+                        winner = ref + 1;
+                        continue;
+                    }
+                    if (dir.get(winner - 1).id.bits == key) {
+                        if (dir.earlier(ref, winner - 1, source, origin)) winner = ref + 1;
+                        continue;
+                    }
+                }
+                auto [at, added] = overflow.try_emplace(key, ref);
+                if (!added && dir.earlier(ref, at->second, source, origin)) at->second = ref;
+            }
+            visited += block.count;
+            // A poor projection may be abandoned. The general index replays
+            // the identical record order and retains the same earliest ties.
+            if (overflow.size() > 8 + visited / 80) break;
+        }
+        if (visited == dir.count) return;
     }
     static thread_local std::vector<FingerGroup> groups;
     const size_t cap = std::max<size_t>(16, std::bit_ceil(dir.count + dir.count / 4 + 1));
@@ -1114,7 +1200,9 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                         return;
                     const uint64_t offset = base + reinterpret_cast<uintptr_t>(line.data());
                     const auto token = encodeEventToken(event.id);
-                    const size_t idShard = (uint64_t{filterHash(token)} >> idShift);
+                    const size_t idShard = isNumericEvent(token.bits)
+                                             ? token.bits & (idShards - 1)
+                                             : uint64_t{filterHash(token)} >> idShift;
                     uint64_t info;
                     if (event.valid) {
                         auto rawHash = event.user.hash();
