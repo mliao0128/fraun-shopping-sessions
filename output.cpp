@@ -58,10 +58,11 @@ void writeOutputs(const fs::path& root, const Context& ctx, std::vector<Result>&
     for (const auto& result : results) for (const auto& [day, stats] : result.byDay) {
         auto& daily = totals.try_emplace(day, stats.size()).first->second;
         for (size_t i = 0; i < stats.size(); ++i) {
-            daily[i].sessions += stats[i].sessions;
-            daily[i].purchasing += stats[i].purchasing;
-            daily[i].revenue += stats[i].revenue;
-            daily[i].assists += stats[i].assists;
+            const auto value = stats.total(i);
+            daily[i].sessions += value.sessions;
+            daily[i].purchasing += value.purchasing;
+            daily[i].revenue += value.revenue;
+            daily[i].assists += value.assists;
         }
     }
     std::vector<CampaignRow> rows;

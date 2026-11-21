@@ -1,5 +1,7 @@
 # Shopping Sessions benchmark
 
+The [campaign counter comparison](benchmarks/campaign-counters/benchmark.md) covers six Intel seeds and the release-image correctness checks.
+
 The [combined routing and session comparison](benchmarks/combined-routing/benchmark.md) measures the verified candidate against the 0.64 s submission on six Intel inputs.
 
 The [overnight Intel comparison](benchmarks/overnight-intel/benchmark.md) measures this candidate against the official 0.64 s commit on four practice inputs and two final-size inputs.

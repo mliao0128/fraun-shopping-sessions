@@ -470,6 +470,56 @@ template<class T> struct Pieces {
 struct Bucket { Pieces<Event> events; Pieces<Click> clicks; };
 struct UserRow { Key person; int32_t day; uint32_t sessions, events; int64_t revenue; uint32_t top; };
 struct CampaignStats { int64_t sessions=0, purchasing=0, revenue=0, assists=0; };
+struct DayCounters {
+    struct Credit {
+        uint32_t sessions = 0, purchasing = 0;
+        int64_t revenue = 0;
+    };
+    std::vector<Credit> credits;
+    std::vector<uint32_t> assists;
+    // Revenue is already 64-bit. Only the bounded counters need a carry.
+    struct Carried {
+        int64_t sessions = 0, purchasing = 0, assists = 0;
+    };
+    std::vector<Carried> carried;
+    explicit DayCounters(size_t n) : credits(n), assists(n) {}
+    size_t size() const { return assists.size(); }
+    void credit(size_t id, int64_t rev) {
+        auto &c = credits[id];
+        ++c.sessions;
+        if (rev) {
+            ++c.purchasing;
+            c.revenue += rev;
+        }
+    }
+    void addAssists(size_t id, uint32_t n) { assists[id] += n; }
+    CampaignStats local(size_t i) const {
+        auto &c = credits[i];
+        return {c.sessions, c.purchasing, c.revenue, assists[i]};
+    }
+    CampaignStats total(size_t i) const {
+        CampaignStats r = local(i);
+        if (!carried.empty()) {
+            r.sessions += carried[i].sessions;
+            r.purchasing += carried[i].purchasing;
+            r.assists += carried[i].assists;
+        }
+        return r;
+    }
+    void carryCounts() {
+        if (carried.empty())
+            carried.resize(size());
+        for (size_t i = 0; i < size(); ++i) {
+            auto r = local(i);
+            carried[i].sessions += r.sessions;
+            carried[i].purchasing += r.purchasing;
+            carried[i].assists += r.assists;
+            credits[i].sessions = credits[i].purchasing = 0;
+            assists[i] = 0;
+        }
+    }
+};
+
 // Numeric buffers are kept in their output order through aggregation so the
 // Parquet worker can pass them directly to WriteBatch.
 struct UserColumns {
@@ -528,7 +578,18 @@ struct UserColumns {
 };
 struct Result {
     UserColumns users;
-    std::unordered_map<int32_t, std::vector<CampaignStats>> byDay;
+    std::unordered_map<int32_t, DayCounters> byDay;
+    uint64_t eventsSinceCarry = 0;
+    // Each campaign receives at most one credit and one assist per session.
+    // The event total bounds each counter even for a single enormous shopper.
+    void startBucket(uint64_t events) {
+        if (events > UINT32_MAX - eventsSinceCarry) {
+            for (auto &item : byDay)
+                item.second.carryCounts();
+            eventsSinceCarry = 0;
+        }
+        eventsSinceCarry += events;
+    }
 };
 
 void linkPeople(const std::vector<std::string_view>&, Context&, unsigned);

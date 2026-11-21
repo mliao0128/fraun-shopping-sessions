@@ -325,6 +325,7 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
     // it spares the allocator and the kernel a round trip per bucket.
     static thread_local Grouped grouped;
     groupRows(bucket, grouped, origin);
+    result.startBucket(bucket.events.size);
     const auto &groups = grouped.groups;
     result.users.prepare(groups.size());
     const auto& purchases = grouped.purchases;
@@ -334,7 +335,10 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
     std::vector<int64_t> categoryRevenue(categoryCount);
     std::vector<uint32_t> touched;
     size_t i = 0, p = 0, clickBegin = 0;
-    struct DaySlot { int32_t day; std::vector<CampaignStats>* stats; };
+    struct DaySlot {
+        int32_t day;
+        DayCounters *stats;
+    };
     std::array<DaySlot, 64> dayCache{};
     auto dailyStats = [&](int32_t day) {
         auto& slot = dayCache[static_cast<uint32_t>(day) % dayCache.size()];
@@ -352,7 +356,7 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
     // Each click assists a contiguous range of starts. Keep per-day ends so
     // an entire run of sessions can be credited with one update.
     struct DayRange {
-        std::vector<CampaignStats> *daily;
+        DayCounters *daily;
         unsigned end;
     };
     struct Coverage {
@@ -384,7 +388,7 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
 
     for (uint32_t g = 0; g < groups.size(); ++g) {
         const Group& group = groups[g];
-        std::vector<CampaignStats> *daily = nullptr;
+        DayCounters *daily = nullptr;
         UserRow row{};
         const size_t firstOutput = result.users.days.size();
         sessions.clear();
@@ -523,10 +527,7 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
                         winner = clicks[nextClick - 1].campaign;
                 }
             }
-            auto& credit = (*daily)[winner];
-            ++credit.sessions;
-            credit.purchasing += sessionRevenue != 0;
-            credit.revenue += sessionRevenue;
+            daily->credit(winner, sessionRevenue);
         }
         // A click assists a contiguous range of session starts. Once a prior
         // click in this campaign covers part of that range, credit only its suffix.
@@ -535,7 +536,7 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
             for (const auto &span : spans) {
                 const uint64_t dayMask = (UINT64_MAX << lo) & (UINT64_MAX >> (64 - span.end));
                 for (auto c : touchedClicks)
-                    (*span.daily)[c].assists += std::popcount(dayMask & narrowMask[c]);
+                    span.daily->addAssists(c, std::popcount(dayMask & narrowMask[c]));
                 lo = span.end;
             }
             for (auto c : touchedClicks)
@@ -549,7 +550,7 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
                     rangeWords(lo, span.end, [&](unsigned w, uint64_t bits) {
                         count += std::popcount(coverage[c][w] & bits);
                     });
-                    (*span.daily)[c].assists += count;
+                    span.daily->addAssists(c, count);
                 }
                 lo = span.end;
             }
@@ -571,7 +572,7 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
                 while (left < upper) {
                     const auto &span = spans[sessions[left].dayIndex];
                     const uint32_t end = std::min(upper, span.end);
-                    (*span.daily)[click.campaign].assists += end - left;
+                    span.daily->addAssists(click.campaign, end - left);
                     left = end;
                 }
                 state = {g, upper};
