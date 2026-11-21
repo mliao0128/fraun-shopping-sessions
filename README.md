@@ -4,7 +4,7 @@ A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the moun
 
 ## Build and run
 
-The default build targets Intel Cascade Lake on Linux x86-64. Run it on a compatible CPU with eight available logical CPUs and 24 GiB of memory. For an AVX2/BMI2 machine without AVX-512, build with the Docker build argument ARCH_FLAGS=-march=haswell. Run from the repository root. On a compatible build machine, GCC collects an execution profile on synthetic CSVs and uses it for the final compilation. A builder without the default target CPU features skips profiling and cross-compiles the scoring binary. The runtime image contains the executable and its shared libraries.
+The default build targets Intel Cascade Lake on Linux x86-64. Run it on a compatible CPU with eight available logical CPUs and 24 GiB of memory. For an AVX2/BMI2 machine without AVX-512, build with the Docker build argument ARCH_FLAGS=-march=haswell. Run from the repository root. On a compatible build machine, GCC collects an execution profile on synthetic CSVs and uses it for the final compilation. With the default settings, an x86-64-v3 builder that lacks the Cascade Lake features trains and ships an x86-64-v3 binary. An older builder cross-compiles the Cascade Lake binary without profiling. The runtime image contains the executable and its shared libraries.
 
 ```sh
 docker build --platform linux/amd64 -t shopping-sessions:latest .
