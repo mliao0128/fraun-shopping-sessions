@@ -192,23 +192,29 @@ public:
         blocks.insert(blocks.end(), more.begin(), more.end());
         available.store(blocks.size(), std::memory_order_relaxed);
     }
-    void* take() {
-        if (!available.load(std::memory_order_relaxed)) return nullptr;
+    size_t takeBatch(void** dest, size_t limit) {
+        if (!available.load(std::memory_order_relaxed)) return 0;
         std::lock_guard guard(lock);
-        if (blocks.empty()) return nullptr;
-        void* block = blocks.back();
-        blocks.pop_back();
-        available.store(blocks.size(), std::memory_order_relaxed);
-        return block;
+        size_t n = std::min(limit,blocks.size());
+        if (n) {
+            std::copy_n(blocks.end()-n,n,dest);
+            blocks.resize(blocks.size()-n);
+            available.store(blocks.size(),std::memory_order_relaxed);
+        }
+        return n;
     }
 } recycled;
 
 class Slab {
+    // Each router draws a batch from the common pool under one lock.
+    std::array<void*,32> local;
+    size_t left = 0;
     char* next = nullptr;
     char* end = nullptr;
 public:
     void* take() {
-        if (void* block = recycled.take()) return block;
+        if (!left) left = recycled.takeBatch(local.data(),local.size());
+        if (left) return local[--left];
         if (next == end) {
             constexpr size_t huge = 2u << 20;
             void* raw = mmap(nullptr, extentBytes + huge, PROT_READ | PROT_WRITE,
@@ -235,19 +241,27 @@ template<class T, size_t Group> class Scatter {
     struct alignas(64) Buffer { T rows[Group]; };
     Slab& slab;
     std::vector<Buffer> buffers;
+    // Keep the active block address by the row count. Most group flushes
+    // can now reach their cache line without traversing the block chain.
+    struct Cursor { T* active = nullptr; uint32_t count = 0; };
+    std::vector<Cursor> cursors;
     T* destination(size_t part, size_t start) {
         const size_t offset = start % rowsPerBlock<T>;
-        if (!offset) blocks[part].push_back(static_cast<T*>(slab.take()));
-        return blocks[part].back() + offset;
+        auto& cursor = cursors[part];
+        if (!offset) {
+            cursor.active = static_cast<T*>(slab.take());
+            blocks[part].push_back(cursor.active);
+        }
+        return cursor.active + offset;
     }
 public:
-    std::vector<uint32_t> counts;
+    uint32_t count(size_t part) const { return cursors[part].count; }
     std::vector<std::vector<T*>> blocks;
-    Scatter(Slab& slab, size_t parts) : slab(slab), buffers(parts), counts(parts), blocks(parts) {}
+    Scatter(Slab& slab, size_t parts) : slab(slab), buffers(parts), cursors(parts), blocks(parts) {}
 
     // Returns the row's position in its partition's chain.
     uint32_t add(size_t part, const T& row) {
-        const uint32_t index = counts[part]++;
+        const uint32_t index = cursors[part].count++;
         const size_t slot = index % Group;
         Buffer& buffer = buffers[part];
         buffer.rows[slot] = row;
@@ -267,9 +281,9 @@ public:
         return index;
     }
     void finish() {
-        for (size_t part = 0; part < counts.size(); ++part) {
-            const size_t rest = counts[part] % Group;
-            if (rest) std::memcpy(destination(part, counts[part] - rest), &buffers[part], rest * sizeof(T));
+        for (size_t part = 0; part < cursors.size(); ++part) {
+            const size_t rest = cursors[part].count % Group;
+            if (rest) std::memcpy(destination(part, cursors[part].count - rest), &buffers[part], rest * sizeof(T));
         }
         _mm_sfence();
         std::vector<Buffer>().swap(buffers);
@@ -279,7 +293,7 @@ public:
     }
     T& at(size_t part, size_t index) { return blocks[part][index / rowsPerBlock<T>][index % rowsPerBlock<T>]; }
     template<class F> void pieces(size_t part, F&& visit) {
-        size_t remaining = counts[part];
+        size_t remaining = cursors[part].count;
         for (T* block : blocks[part]) {
             const size_t count = std::min(remaining, rowsPerBlock<T>);
             visit(block, count);
@@ -301,9 +315,9 @@ static_assert(sizeof(IdRecord) == 16);
 
 struct Reader {
     Slab slab;
-    Scatter<Event, 8> events;
-    Scatter<Click, 4> clicks;
-    Scatter<IdRecord, 4> ids;
+    Scatter<Event, 16> events;
+    Scatter<Click, 8> clicks;
+    Scatter<IdRecord, 16> ids;
     std::vector<Extended> slow;
     Reader(size_t parts, size_t idShards) : events(slab, parts), clicks(slab, parts), ids(slab, idShards) {}
 };
@@ -328,8 +342,8 @@ uint64_t location(Reader& reader, int64_t arrival, int64_t origin, uint32_t buck
 
 struct Router {
     Slab slab;
-    Scatter<Event, 8> events;
-    Scatter<Click, 4> clicks;
+    Scatter<Event, 16> events;
+    Scatter<Click, 8> clicks;
     explicit Router(size_t buckets) : events(slab, buckets), clicks(slab, buckets) {}
 };
 
@@ -486,7 +500,7 @@ size_t findWinner(const std::vector<Winner>& slots, uint64_t hash, const Key& id
 void deduplicate(size_t shard, int64_t arrivalOrigin, const Source& source,
                  std::vector<std::unique_ptr<Reader>>& readers) {
     size_t count = 0;
-    for (auto& r : readers) count += r->ids.counts[shard];
+    for (auto& r : readers) count += r->ids.count(shard);
     if (count < 2) return;
     const size_t bits = std::clamp<size_t>(std::bit_ceil(count)*16,64,1u<<23);
     const size_t mask = bits-1;

@@ -1,6 +1,6 @@
 # Shopping Sessions
 
-A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the mounted CSV files, resolves identities, and writes `user_daily` and `campaign_daily` as Parquet. See the [paired comparison against the official 0.87 s build](benchmarks/sub70/benchmark.md) for the tested environment, correctness checks, and timings.
+A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the mounted CSV files, resolves identities, and writes `user_daily` and `campaign_daily` as Parquet. See the [paired comparison against the official 0.84 s build](benchmarks/after-084/benchmark.md) for the tested environment, correctness checks, and timings.
 
 ## Build and run
 
@@ -36,6 +36,7 @@ From the tooling directory, set `SOLUTION` to the absolute path of this reposito
 ```sh
 generator/target/release/generate --seed 42 --events 20000000 --clicks 5000000 --output practice
 generator/target/release/generate --seed 314159 --events 20000000 --clicks 5000000 --output holdout
+generator/target/release/generate --seed 807154 --events 20000000 --clicks 5000000 --output independent-practice
 generator/target/release/generate --seed 73 --events 60000000 --clicks 15000000 --output final
 cc -O2 -static "$SOLUTION/tools/time_exec.c" -o time-exec
 python3 "$SOLUTION/tools/benchmark.py" "$IMAGE" practice measured-practice --clock ./time-exec --runs 3
@@ -60,7 +61,7 @@ To check a generated seed with an independent implementation, install DuckDB 2.0
 - Parsing overlaps identity linking. Readers pack events into buckets using a hash of the raw user ID and group event IDs into separate shards. A bit filter identifies possible duplicate IDs in each shard. Exact ID and arrival-time comparisons decide which copy survives, including when an earlier invalid copy suppresses a later valid one.
 - An ordinary duplicate record stores the arrival time and the staged event location in 16 bytes. Long time spans and large bucket indices take a full-width path. Losing copies are marked directly. After identity linking, workers keep unaliased events in place and move aliases to the bucket for their canonical user.
 - The timestamp parser decodes paired event and arrival clocks together when possible. A shared date is converted once. Other supported timestamp forms retain their own conversion paths.
-- Each person’s events and valid clicks are sorted by time. Event gaps determine session boundaries. A moving seven-day window tracks the last eligible click and the distinct campaigns present. Identical click copies enter and expire together, so the winner and the set of assists are invariant to their multiplicity.
+- Workers collect event times per shopper. For shoppers with many events in a window that fits 32-bit millisecond offsets, a bitmap enumerates occupied time intervals. Each interval is shorter than the 30-minute session gap, so its first event, last event and count are sufficient to recover exact session boundaries. Small groups and wide time windows use a full timestamp sort. Workers group purchases by shopper and sort within each shopper's span. Clicks are also sorted per shopper. A moving seven-day window tracks the last eligible click and the distinct campaigns present. Identical click copies enter and expire together, so the winner and the set of assists are invariant to their multiplicity.
 - Workers write completed user columns in batches and reuse their buffers for subsequent buckets. A writer for the two flat Parquet schemas emits plain data pages with LZ4_RAW compression and nullable definition levels. Workers merge campaign totals before writing the campaign table. Every run derives its time window, identities, product categories and campaign metadata from the mounted data.
 
 ## Dependencies and license

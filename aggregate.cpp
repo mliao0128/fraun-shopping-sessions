@@ -19,6 +19,7 @@ struct Group {
     Key person;
     uint32_t eventEnd = 0;
     uint32_t clickEnd = 0;
+    uint32_t purchaseEnd = 0;
 };
 
 // Sessions need only the times. The few purchases travel separately.
@@ -86,54 +87,15 @@ public:
     }
 };
 
-// Least-significant-digit radix sort of the low `bits` bits; higher bits are zero.
-void sortKeys(std::vector<uint64_t>& keys, unsigned bits) {
-    const size_t count = keys.size();
-    if (count < 64) {
-        std::sort(keys.begin(), keys.end());
-        return;
-    }
-    constexpr unsigned digitBits = 11, digits = 1u << digitBits, maxPasses = 6;
-    const unsigned passes = (bits + digitBits - 1) / digitBits;
-    static thread_local std::vector<uint64_t> spare;
-    static thread_local std::vector<uint32_t> starts;
-    spare.resize(count);
-    starts.assign(size_t{passes} * digits, 0);
-    for (uint64_t key : keys)
-        for (unsigned pass = 0; pass < passes; ++pass)
-            ++starts[pass * digits + ((key >> (pass * digitBits)) & (digits - 1))];
-    uint64_t* from = keys.data();
-    uint64_t* to = spare.data();
-    static_assert(maxPasses * digitBits >= 64);
-    for (unsigned pass = 0; pass < passes; ++pass) {
-        uint32_t* start = starts.data() + pass * digits;
-        const unsigned shift = pass * digitBits;
-        // A digit shared by every key needs no pass.
-        if (start[(from[0] >> shift) & (digits - 1)] == count) continue;
-        uint32_t total = 0;
-        for (unsigned d = 0; d < digits; ++d) {
-            const uint32_t n = start[d];
-            start[d] = total;
-            total += n;
-        }
-        for (size_t i = 0; i < count; ++i)
-            to[start[(from[i] >> shift) & (digits - 1)]++] = from[i];
-        std::swap(from, to);
-    }
-    if (from != keys.data()) keys.swap(spare);
-}
-
-// Events become one sorted array of (person, time) keys: a person's events are
-// contiguous and ordered, and the gap between neighbours is a plain subtraction.
-// Clicks are counted and scattered into per-person spans.
+struct OwnedTime { uint32_t group, offset; };
 struct Grouped {
     std::vector<Group> groups;
-    std::vector<uint64_t> keys;       // group << timeBits | (ts - origin)
-    std::vector<Purchase> purchases;  // ordered by group, then time
+    std::vector<Purchase> purchases;
     std::vector<TimedClick> clicks;
-    std::vector<uint32_t> owners;
-    int64_t origin = 0;
-    unsigned timeBits = 0;
+    std::vector<OwnedTime> pending;
+    std::vector<uint32_t> times, clickOwner;
+    std::vector<int64_t> wideTimes;
+    bool wide = false;
 };
 
 void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
@@ -142,54 +104,138 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
     auto& groups = out.groups;
     groups.clear();
     out.purchases.clear();
-    PersonIndex index(groups, bucket.events.size);
-    out.keys.resize(bucket.events.size);
-    out.owners.resize(std::max(bucket.events.size, bucket.clicks.size));
-    int64_t low = INT64_MAX, high = INT64_MIN;
+    PersonIndex index(groups,bucket.events.size);
+    out.pending.resize(bucket.events.size);
+    uint64_t usedBits = 0;
     size_t at = 0;
     bucket.events.each([&](const Event& e) {
-        const uint32_t g = index.add(e.person);
+        uint32_t g = index.add(e.person);
         const EventData row = e.unpack(origin);
-        out.owners[at] = g;
-        out.keys[at++] = static_cast<uint64_t>(row.ts);
+        const uint64_t delta = uint64_t(row.ts)-uint64_t(origin);
+        usedBits |= delta;
+        out.pending[at++] = {g,static_cast<uint32_t>(delta)};
         ++groups[g].eventEnd;
-        low = std::min(low, row.ts);
-        high = std::max(high, row.ts);
-        if (row.price) out.purchases.push_back({row.ts, row.price, row.category, g});
+        if (row.price) { ++groups[g].purchaseEnd; out.purchases.push_back({row.ts,row.price,row.category,g}); }
     });
-    out.origin = low;
-    out.timeBits = std::bit_width(static_cast<uint64_t>(high) - static_cast<uint64_t>(low));
-    const unsigned bits = out.timeBits + std::bit_width(groups.size() - 1);
-    if (bits > 64) throw std::runtime_error("Timestamps span too wide a range");
-    for (size_t i = 0; i < at; ++i)
-        out.keys[i] = (out.timeBits == 64 ? 0 : uint64_t{out.owners[i]} << out.timeBits)
-                      | (out.keys[i] - static_cast<uint64_t>(low));
-    sortKeys(out.keys, bits);
-    std::sort(out.purchases.begin(), out.purchases.end(), [](const Purchase& a, const Purchase& b) {
-        return a.group != b.group ? a.group < b.group : a.ts < b.ts;
-    });
-
+    out.wide = usedBits > UINT32_MAX;
+    out.clickOwner.resize(bucket.clicks.size);
     at = 0;
     bucket.clicks.each([&](const Click& c) {
         const uint32_t g = index.lookup(c.person);
-        out.owners[at++] = g;
-        if (g != absent) ++groups[g].clickEnd;
+        out.clickOwner[at++] = g;
+        if (g!=absent) ++groups[g].clickEnd;
     });
-    uint32_t nEvents = 0, nClicks = 0;
-    for (auto& g : groups) {
-        const uint32_t clickCount = g.clickEnd;
-        nEvents += g.eventEnd;
-        g.eventEnd = nEvents;
-        g.clickEnd = nClicks;
-        nClicks += clickCount;
+    uint32_t nEvents=0, nClicks=0;
+    for(auto& g : groups) {
+        uint32_t ne=g.eventEnd, nc=g.clickEnd;
+        g.eventEnd=nEvents; g.clickEnd=nClicks;
+        nEvents+=ne; nClicks+=nc;
+    }
+    if (!out.wide) {
+        out.times.resize(nEvents);
+        for (auto row : out.pending)
+            out.times[groups[row.group].eventEnd++] = row.offset;
+    } else {
+        // Revisit immutable rows only if at least one offset needs more than
+        // 32 bits. All full-width event times are preserved in this path.
+        out.wideTimes.resize(nEvents);
+        at=0;
+        bucket.events.each([&](const Event& e) {
+            uint32_t g=out.pending[at++].group;
+            out.wideTimes[groups[g].eventEnd++] = e.unpack(origin).ts;
+        });
     }
     out.clicks.resize(nClicks);
-    at = 0;
+    at=0;
     bucket.clicks.each([&](const Click& c) {
-        const uint32_t g = out.owners[at++];
-        if (g != absent) out.clicks[groups[g].clickEnd++] = {c.ts, c.campaign, c.id};
+        uint32_t g=out.clickOwner[at++];
+        if (g!=absent) out.clicks[groups[g].clickEnd++] = {c.ts,c.campaign,c.id};
     });
+    // Group purchases with a counting scatter. Only purchases by the
+    // same person need time ordering, and most such spans are short.
+    uint32_t cursor = 0;
+    for (Group& group : groups) {
+        const uint32_t count = group.purchaseEnd;
+        group.purchaseEnd = cursor;
+        cursor += count;
+    }
+    static thread_local std::vector<Purchase> ordered;
+    ordered.resize(out.purchases.size());
+    for (const Purchase& row : out.purchases) ordered[groups[row.group].purchaseEnd++] = row;
+    out.purchases.swap(ordered);
+    size_t first = 0;
+    for (const Group& group : groups) {
+        if (group.purchaseEnd - first > 1) {
+            sortSpan(out.purchases.begin()+first,out.purchases.begin()+group.purchaseEnd,
+                     [](const Purchase& a,const Purchase& b) { return a.ts < b.ts; });
+        }
+        first = group.purchaseEnd;
+    }
+
 }
+
+// Sorting a few timestamps is cheaper than setting up an occupancy bitmap.
+// This is also the general fallback for windows wider than 32 offset bits.
+template<class T,class F>
+void exactSessions(T* times,size_t n,int64_t origin,F emit) {
+    sortSpan(times,times+n,std::less<T>{});
+    size_t start=0;
+    for (size_t i=1; i<n; ++i) {
+        if (uint64_t(times[i])-uint64_t(times[i-1])<=uint64_t(maxGap)) continue;
+        emit(origin+int64_t(times[start]),origin+int64_t(times[i-1]),uint32_t(i-start));
+        start=i;
+    }
+    emit(origin+int64_t(times[start]),origin+int64_t(times[n-1]),uint32_t(n-start));
+}
+
+struct TimeCell { uint32_t first=0,last=0,count=0; };
+class CellTable {
+    static constexpr unsigned shift=20;
+    static_assert((1u<<shift)<=maxGap);
+    // Each worker handles one person at a time. Reuse the same direct table
+    // across people and clear exactly the occupied cells after consuming them.
+    std::array<TimeCell,1u<<(32-shift)> cells{};
+    std::array<uint64_t,64> occupied{};
+public:
+    template<class F> void sessions(const uint32_t* times,size_t n,int64_t origin,F emit) {
+        uint64_t words=0;
+        for (size_t i=0; i<n; ++i) {
+            const uint32_t ts=times[i], bin=ts>>shift;
+            auto& c=cells[bin];
+            if (!c.count) {
+                words|=uint64_t{1}<<(bin/64);
+                occupied[bin/64]|=uint64_t{1}<<(bin%64);
+                c.first=c.last=ts;
+            } else {
+                c.first=std::min(c.first,ts);
+                c.last=std::max(c.last,ts);
+            }
+            ++c.count;
+        }
+        // All times in one cell are connected. The earliest time in the next
+        // occupied cell and the latest in the previous cell give the exact gap.
+        uint32_t first=0,last=0,count=0;
+        while (words) {
+            unsigned w=std::countr_zero(words);
+            uint64_t bins=occupied[w];
+            words&=words-1;
+            occupied[w]=0;
+            while (bins) {
+                auto& c=cells[w*64+std::countr_zero(bins)];
+                bins&=bins-1;
+                if (!count || c.first-last>maxGap) {
+                    if (count) emit(origin+first,origin+last,count);
+                    first=c.first;
+                    count=0;
+                }
+                count+=c.count;
+                last=c.last;
+                c.count=0;
+            }
+        }
+        emit(origin+first,origin+last,count);
+    }
+};
 
 class ClickWindow {
     std::vector<uint32_t> count, position, active;
@@ -240,10 +286,9 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
     static thread_local Grouped grouped;
     groupRows(bucket, grouped, origin);
     const auto& groups = grouped.groups;
-    const auto& keys = grouped.keys;
     const auto& purchases = grouped.purchases;
     const auto& clicks = grouped.clicks;
-    const uint64_t timeMask = grouped.timeBits == 64 ? ~uint64_t{0} : (uint64_t{1} << grouped.timeBits) - 1;
+    static thread_local CellTable cells;
 
     ClickWindow window(campaignCount);
     std::vector<int64_t> categoryRevenue(categoryCount);
@@ -270,8 +315,7 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
         window.begin(clickBegin);
         std::vector<CampaignStats>* daily = nullptr;
         UserRow row{};
-        while (i < group.eventEnd) {
-            const int64_t start = static_cast<int64_t>(keys[i] & timeMask) + grouped.origin;
+        auto emit = [&](int64_t start,int64_t last,uint32_t eventCount) {
             const int32_t day = utcDay(start);
             if (daily == nullptr || row.day != day) {
                 if (daily) result.users.append(row);
@@ -280,11 +324,6 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
                 row = {group.person, day, 0, 0, 0, absent};
                 daily = dailyStats(day);
             }
-            // Within one person the keys differ exactly as the timestamps do.
-            const size_t sessionBegin = i++;
-            while (i < group.eventEnd && keys[i] - keys[i - 1] <= uint64_t{maxGap}) ++i;
-            // Earlier purchases went to earlier sessions, so these are this session's.
-            const int64_t last = static_cast<int64_t>(keys[i - 1] & timeMask) + grouped.origin;
             int64_t sessionRevenue = 0;
             for (; p < purchases.size() && purchases[p].group == g && purchases[p].ts <= last; ++p) {
                 const auto& e = purchases[p];
@@ -298,14 +337,19 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
             }
 
             ++row.sessions;
-            row.events += static_cast<uint32_t>(i - sessionBegin);
+            row.events += eventCount;
             row.revenue += sessionRevenue;
             uint32_t winner = window.attribute(clicks, group.clickEnd, start, *daily);
             auto& credit = (*daily)[winner];
             ++credit.sessions;
             credit.purchasing += sessionRevenue != 0;
             credit.revenue += sessionRevenue;
-        }
+        };
+        const size_t count=group.eventEnd-i;
+        if (grouped.wide) exactSessions(grouped.wideTimes.data()+i,count,0,emit);
+        else if (count<=8) exactSessions(grouped.times.data()+i,count,origin,emit);
+        else cells.sessions(grouped.times.data()+i,count,origin,emit);
+        i=group.eventEnd;
         if (daily) result.users.append(row);
         clickBegin = group.clickEnd;
     }
