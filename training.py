@@ -1,5 +1,5 @@
 """Generate a deterministic workload for compiler instrumentation during the image build."""
-import csv
+from datetime import datetime, timedelta, timezone
 import json
 import random
 import sys
@@ -20,24 +20,37 @@ def write(name, header, rows):
 def user():
     return f'u{randomizer.randrange(18000):08x}'
 
+# Exercise the runtime decoder across numeric, UTC and offset forms. These
+# rows exist only in the compiler instrumentation pass.
+start = datetime(2027, 3, 1, tzinfo=timezone.utc)
+epoch_ms = int(start.timestamp()) * 1000
+users = [user() for _ in range(24000)]
+
+def stamp(second, form):
+    if form == 0:
+        return str(epoch_ms + second * 1000 + randomizer.randrange(1000))
+    if form == 1:
+        return (start + timedelta(seconds=second)).strftime('%Y-%m-%dT%H:%M:%SZ')
+    offset = randomizer.choice([-540,-315,120,330,570])
+    local = start + timedelta(seconds=second, minutes=offset)
+    return local.strftime('%Y-%m-%dT%H:%M:%S') + f"{'+' if offset>=0 else '-'}{abs(offset)//60:02d}:{abs(offset)%60:02d}"
+
 def event_rows():
-    for i in range(120000):
-        ident = f'e{i:08x}'
-        person = user()
-        day = randomizer.randrange(14)+1
-        hour = randomizer.randrange(23)
-        clock = f'2027-03-{day:02d}T{hour:02d}:07:13'
-        ingest = clock+'Z'
-        time = randomizer.choice([str((1803859200+(day-1)*86400+hour*3600+433)*1000),clock+'Z',clock+'+03:00'])
-        row = [ident,person,time,ingest,randomizer.choice(['view','view','view','cart','purchase']),f'p{i%129}',i%60000+1]
+    for i in range(300000):
+        second = randomizer.randrange(14*86400)
+        event_type = randomizer.choice(['view','view','view','cart','purchase'])
+        arrival = stamp(second + randomizer.randrange(0,1200) + (86400 if i%71==0 else 0),1)
+        row = [f'e{randomizer.getrandbits(32):08x}', randomizer.choice(users),
+               stamp(second,randomizer.randrange(3)), arrival,event_type,
+               f'p{randomizer.randrange(8000)}',randomizer.randrange(1,100000) if event_type=='purchase' or i%5==0 else '']
         yield row
-        if i % 13 == 0:
+        if i%23==0:
             yield row
-        if i % 97 == 0:
-            yield ['bad',person,'bad time',ingest,'bad','p1','']
+        if i%97==0:
+            yield ['bad',row[1],'bad time',arrival,'bad','p1','']
 
 write('events/part.csv','event_id,user_id,ts,ingest_ts,event_type,product_id,price_cents',event_rows())
-write('links/part.csv','user_id_a,user_id_b',((user(),user()) for _ in range(2200)))
-write('products.csv','product_id,category',((f'p{i}',f'cat{i%11}') for i in range(129)))
-write('campaigns.csv','campaign_id,channel',((f'c{i}','search') for i in range(83)))
-write('clicks/part.csv','click_id,user_id,campaign_id,ts',((f'k{i:08x}',user(),f'c{i%83}',f'2027-03-{1+i%13:02d}T09:12:21Z') for i in range(28000)))
+write('links/part.csv','user_id_a,user_id_b',((user(),user()) for _ in range(4500)))
+write('products.csv','product_id,category',((f'p{i}',f'cat{i%11}') for i in range(8000)))
+write('campaigns.csv','campaign_id,channel',((f'c{i}','search') for i in range(350)))
+write('clicks/part.csv','click_id,user_id,campaign_id,ts',((f'k{i:08x}',user(),f'c{i%350}',stamp(randomizer.randrange(14*86400),randomizer.randrange(3))) for i in range(75000)))

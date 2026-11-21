@@ -1,6 +1,6 @@
 # Shopping Sessions
 
-A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the mounted CSV files, resolves identities, and writes `user_daily` and `campaign_daily` as Parquet. See [benchmark results](BENCHMARK.md) for the tested environment, correctness checks, and timings.
+A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the mounted CSV files, resolves identities, and writes `user_daily` and `campaign_daily` as Parquet. See the [paired comparison against the official 0.87 s build](benchmarks/sub70/benchmark.md) for the tested environment, correctness checks, and timings.
 
 ## Build and run
 
@@ -57,11 +57,12 @@ To check a generated seed with an independent implementation, install DuckDB 2.0
 
 - CSV files are memory-mapped. Each reader scans a byte range and consumes the lines that start in it. AVX2 delimiter scans and BMI2 bit extraction check quoting and locate fields, preserving spaces and carriage returns. Long records use the general parser.
 - A union-find over valid link edges computes connected components. A read-only hash table maps aliases to the bytewise smallest ID in each component, including IDs appearing only in link files.
-- Parsing overlaps identity linking. Readers stage events by raw user and keep duplicate candidates in ID shards. Eight- and nine-byte ASCII identifiers have exact 64-bit encodings. Other strings retain exact byte comparisons. A bit filter finds possible duplicates. Two radix passes group candidates before exact event ID and arrival-time comparisons select the surviving row. After linking, a fingerprint table skips unnecessary alias probes while routing events to the canonical user.
-- Routed events occupy 16 bytes in the common case. Values outside the inline time, price, or category range use a full-width record.
+- Parsing overlaps identity linking. Readers pack events into buckets using a hash of the raw user ID and group event IDs into separate shards. A bit filter identifies possible duplicate IDs in each shard. Exact ID and arrival-time comparisons decide which copy survives, including when an earlier invalid copy suppresses a later valid one.
+- An ordinary duplicate record stores the arrival time and the staged event location in 16 bytes. Long time spans and large bucket indices take a full-width path. Losing copies are marked directly. After identity linking, workers keep unaliased events in place and move aliases to the bucket for their canonical user.
+- The timestamp parser decodes paired event and arrival clocks together when possible. A shared date is converted once. Other supported timestamp forms retain their own conversion paths.
 - Each person’s events and valid clicks are sorted by time. Event gaps determine session boundaries. A moving seven-day window tracks the last eligible click and the distinct campaigns present. Identical click copies enter and expire together, so the winner and the set of assists are invariant to their multiplicity.
-- Workers accumulate user metrics in column buffers ready for Parquet and merge campaign totals in memory. Apache Parquet writes Snappy-compressed user files in parallel and emits the final campaign table. Every run derives its time window, identities, product categories and campaign metadata from the mounted data.
+- Workers write completed user columns in batches and reuse their buffers for subsequent buckets. A writer for the two flat Parquet schemas emits plain data pages with LZ4_RAW compression and nullable definition levels. Workers merge campaign totals before writing the campaign table. Every run derives its time window, identities, product categories and campaign metadata from the mounted data.
 
 ## Dependencies and license
 
-This build extends the Fraun pipeline and [Jerry Hu's staged-scatter and radix implementation](https://github.com/Jerryh127/fraun-shopping-sessions/commit/e315a0296ecc6f9c05c31d57309dc308f6a549b9). It uses GCC, the C++ standard library, Linux memory mapping, and the Apache Arrow and Parquet C++ libraries distributed in the PyArrow 20.0.0 wheel. The Python benchmark runner uses the standard library. The official generator, checker, fixtures and expected outputs are external test inputs. The submission code is released under the [MIT License](LICENSE).
+This build extends the Fraun pipeline and [Jerry Hu's staged-scatter and radix implementation](https://github.com/Jerryh127/fraun-shopping-sessions/commit/e315a0296ecc6f9c05c31d57309dc308f6a549b9). It uses GCC, the C++ standard library, Linux memory mapping, and the LZ4 runtime library supplied by Debian bookworm. The Python benchmark runner uses the standard library. The official generator, checker, fixtures and expected outputs are external test inputs. The submission code is released under the [MIT License](LICENSE).

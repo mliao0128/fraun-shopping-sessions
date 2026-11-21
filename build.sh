@@ -1,14 +1,12 @@
 #!/bin/sh
 set -eu
-arrow_dir=${ARROW_DIR:-$(python3 -c 'import os, pyarrow; print(os.path.dirname(pyarrow.__file__))')}
 arch_flags=${ARCH_FLAGS:--march=cascadelake -mtune=cascadelake}
 output=${1:-shopping-sessions}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 compile() {
   ${CXX:-g++} -std=c++20 -O3 -DNDEBUG $arch_flags -flto=auto -pthread "$@" \
-    -I"$arrow_dir/include" main.cpp links.cpp ingest.cpp aggregate.cpp output.cpp \
-    -L"$arrow_dir" -Wl,-rpath,"$arrow_dir" -l:libparquet.so.2000 -l:libarrow.so.2000 -o "$output"
+    main.cpp links.cpp ingest.cpp aggregate.cpp output.cpp -l:liblz4.so.1 -o "$output"
 }
 # A build host with an older CPU can still cross-compile the scorer binary.
 case "$arch_flags" in

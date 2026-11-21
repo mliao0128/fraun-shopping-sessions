@@ -1,6 +1,8 @@
 # Shopping Sessions benchmark
 
-The [release benchmark](benchmarks/subsecond/benchmark.md) compares the current build with Jerry Hu's official 1.19 s entry.
+The [current benchmark](benchmarks/sub70/benchmark.md) compares this candidate with our 0.87 s submission.
+
+The [previous release benchmark](benchmarks/subsecond/benchmark.md) compares the submitted 0.87 s build with Jerry Hu's official 1.19 s entry.
 
 The [earlier leaderboard comparison](benchmarks/leaderboard-comparison.md) tests the updated pipeline on two practice seeds, a final-size dataset, and cold inputs at four storage speeds. The measurements below document commit `b78bed7`.
 

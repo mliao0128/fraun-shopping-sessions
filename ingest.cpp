@@ -175,8 +175,9 @@ template<class F> void chunkLines(const InputChunk& chunk, F&& visit) {
 // ---- Block storage -------------------------------------------------------
 // Every row stream is a chain of equally sized, cache-line-aligned blocks cut
 // from large per-thread extents. Nothing is freed: the process exits first.
-constexpr size_t blockBytes = 61440;                 // 960 cache lines
-constexpr size_t extentBytes = 512 * blockBytes;     // 30 MB, a multiple of 2 MB
+constexpr size_t blockBytes = 16u << 10;
+constexpr size_t extentBytes = 8u << 20;
+static_assert(extentBytes % blockBytes == 0 && extentBytes % (2u << 20) == 0);
 // Blocks whose rows have been consumed are handed to later writers. They
 // are written with non-temporal stores, so a cold block costs nothing extra
 // and the kernel has no fresh page to supply.
@@ -288,38 +289,43 @@ public:
 };
 
 // ---- Rows ----------------------------------------------------------------
-// A parsed event waits under its raw user ID until identities are known.
-// Non-purchases can reuse their zero price and category payload for exact dedup.
-struct StagedEvent {
-    Key user;
-    int64_t ts;
-    uint64_t payload, origin;
-    static constexpr uint64_t inlineId = uint64_t{1} << 63;
-    static constexpr uint64_t timeMask = (uint64_t{1} << 49) - 1;
-
-    void remember(const Key& id, int64_t ingest) {
-        if (payload || ingest < -(int64_t{1} << 48) || ingest >= (int64_t{1} << 48)) return;
-        origin = id.bits;
-        payload = inlineId | (static_cast<uint64_t>(ingest) & timeMask);
-    }
-    uint32_t price() const { return payload & inlineId ? 0 : static_cast<uint32_t>(payload >> 32); }
-    uint32_t category() const { return payload & inlineId ? 0 : static_cast<uint32_t>(payload); }
-};
-static_assert(sizeof(StagedEvent) == 32 && sizeof(Event) == 16 && sizeof(Click) == 32);
-
-// Dedup record: 23 hash bits, then either the line's offset or the staged row.
-constexpr unsigned refBits = 40, indexBits = 26, partBitsMax = 10, readerBitsMax = 4;
-constexpr uint64_t stagedFlag = uint64_t{1} << refBits;
-constexpr unsigned tagShift = refBits + 1;
-static_assert(indexBits + partBitsMax + readerBitsMax == refBits);
+// Each ID and its arrival/locator fit in 16 bytes for ordinary windows.
+// The low word carries the bucket and row index; its high bit selects one
+// of the exact fallbacks. The high word is the biased arrival in milliseconds.
+constexpr unsigned refBits = 40;
+constexpr uint32_t indexLimit = 1u << 23;
+constexpr uint32_t sourceTag = 0x80000000u, invalidArrivalTag = 0xa0000000u, slowTag = 0xc0000000u;
+struct IdRecord { Key id; uint64_t info; };
+struct Extended { int64_t arrival; uint32_t bucket,index; };
+static_assert(sizeof(IdRecord) == 16);
 
 struct Reader {
     Slab slab;
-    Scatter<StagedEvent, 8> events;
+    Scatter<Event, 8> events;
     Scatter<Click, 4> clicks;
-    Scatter<uint64_t, 8> ids;
+    Scatter<IdRecord, 4> ids;
+    std::vector<Extended> slow;
     Reader(size_t parts, size_t idShards) : events(slab, parts), clicks(slab, parts), ids(slab, idShards) {}
 };
+
+uint64_t special(uint64_t value, uint32_t tag) {
+    return (value << 32) | (value >> 32) | tag;
+}
+uint64_t specialValue(uint64_t info) {
+    return (info >> 32) | ((info & 0x1fffffffu) << 32);
+}
+uint64_t relativeArrival(int64_t arrival, int64_t origin) {
+    return uint64_t(arrival) - uint64_t(origin) + (uint64_t{1} << 31);
+}
+uint64_t location(Reader& reader, int64_t arrival, int64_t origin, uint32_t bucket, uint32_t index) {
+    const uint64_t relative = relativeArrival(arrival,origin);
+    if (relative <= UINT32_MAX && index < indexLimit)
+        return (relative << 32) | (bucket << 23) | index;
+    const auto offset = reader.slow.size();
+    reader.slow.push_back({arrival,bucket,index});
+    return special(offset,slowTag);
+}
+
 struct Router {
     Slab slab;
     Scatter<Event, 8> events;
@@ -330,9 +336,65 @@ struct Router {
 struct ParsedEvent {
     Key id;
     bool valid = false;
-    StagedEvent row;
-    std::string_view ingest;
+    int64_t arrival;
+    Key user;
+    EventData row;
 };
+
+// HH:MM:SS fits in eight bytes. Decode both clocks as six decimal pairs in
+// one SIMD register. The event clock is untrusted, whereas a twenty-byte
+// ingest field has the same input guarantee used by validIngest.
+inline bool pairedClocks(const char* event, const char* ingest,
+                         int& eventSeconds, int& ingestSeconds) {
+    const auto a = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(event));
+    const auto b = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(ingest));
+    const auto raw = _mm_unpacklo_epi64(a,b);
+    const auto digits = _mm_sub_epi8(raw,_mm_set1_epi64x(0x30303a30303a3030LL));
+    const auto excess = _mm_subs_epu8(digits,_mm_set_epi64x(-1,0x0905000905000902LL));
+    if (!_mm_testz_si128(excess,excess) || (event[0]=='2' && event[1]>'3')) return false;
+    const auto packed = _mm_shuffle_epi8(digits,
+        _mm_setr_epi8(0,1,3,4,6,7,-1,-1,8,9,11,12,14,15,-1,-1));
+    const auto pairs = _mm_maddubs_epi16(packed,_mm_set1_epi16(0x010a));
+    const auto sums = _mm_madd_epi16(pairs,_mm_setr_epi16(3600,60,1,0,3600,60,1,0));
+    const auto seconds = _mm_add_epi32(sums,_mm_srli_si128(sums,4));
+    eventSeconds = _mm_cvtsi128_si32(seconds);
+    ingestSeconds = _mm_extract_epi32(seconds,2);
+    return true;
+}
+
+inline bool eventTimes(std::string_view event, std::string_view arrival, const Context& ctx,
+                       int64_t& ts, int64_t& ingest) {
+    const char* e = event.data();
+    const char* a = arrival.data();
+    if (arrival.size() == 20 && (event.size() == 20 || event.size() == 25) && e[4]=='-') {
+        if (e[7]!='-' || e[10]!='T') return false;
+        int offset = 0;
+        if (event.size() == 20) {
+            if (e[19]!='Z') return false;
+        } else {
+            if ((e[19]!='+' && e[19]!='-') || e[22]!=':' || !digit(e[20]) ||
+                !digit(e[21]) || !digit(e[23]) || !digit(e[24])) return false;
+            int h=pairValue(e+20), m=pairValue(e+23);
+            if (h>23 || m>59) return false;
+            offset=(e[19]=='+'?1:-1)*(3600*h+60*m);
+        }
+        int eventSeconds, ingestSeconds;
+        if (!pairedClocks(e+11,a+11,eventSeconds,ingestSeconds)) return false;
+        const auto date = midnight(e);
+        if (date == invalidTime) return false;
+        ts = date + 1000LL*(eventSeconds-offset);
+        if (ts < ctx.start || ts >= ctx.end) return false;
+        // ISO timestamps often share the exact same calendar date. Reuse the
+        // validated midnight even when an offset changes the event's UTC day.
+        const auto ingestDate = !std::memcmp(e,a,10) ? date : midnight(a);
+        ingest = ingestDate + 1000LL*ingestSeconds;
+    } else {
+        ts=timestamp(event);
+        if (ts < ctx.start || ts >= ctx.end) return false;
+        ingest=arrival.size()==20 ? validIngest(a) : timestamp(arrival);
+    }
+    return ingest-dayMs <= ts;
+}
 
 // Malformed lines and empty IDs never take part in deduplication. Every other
 // copy does, valid or not: an invalid earliest copy suppresses later ones.
@@ -340,13 +402,11 @@ inline bool parseEvent(std::string_view line, const Context& ctx, ParsedEvent& o
     std::array<std::string_view,7> f;
     if (!csv(line, f) || f[0].empty()) return false;
     out.id = Key::from(f[0]);
-    out.ingest = f[3];
     out.valid = false;
+    out.arrival = invalidTime;
     if (f[1].empty() || f[5].empty()) return true;
-    const auto ts = timestamp(f[2]);
-    if (ts < ctx.start || ts >= ctx.end) return true;
-    const int64_t ingest = f[3].size() == 20 ? validIngest(f[3].data()) : timestamp(f[3]);
-    if (ingest - dayMs > ts) return true;
+    int64_t ts;
+    if (!eventTimes(f[2], f[3], ctx, ts, out.arrival)) return true;
     uint32_t price = 0, category = 0;
     if (f[4] == "purchase") {
         auto priceEnd = f[6].data() + f[6].size();
@@ -357,8 +417,8 @@ inline bool parseEvent(std::string_view line, const Context& ctx, ParsedEvent& o
     } else if (f[4] != "view" && f[4] != "cart") {
         return true;
     }
-    out.row = {Key::from(f[1]), ts, (uint64_t{price} << 32) | category, 0};
-    out.row.remember(out.id, ingest);
+    out.user = Key::from(f[1]);
+    out.row = {ts, price, category};
     out.valid = true;
     return true;
 }
@@ -389,162 +449,119 @@ struct Source {
     }
 };
 
-// One ID shard: find the hash tags that occur more than once, then settle
-// those few rows exactly from their source lines.
-void deduplicate(size_t shard, const Context& ctx, const Source& source,
+// Only invalid copies that were rejected before parsing their arrivals need
+// a source reread, and only after their complete IDs test equal.
+int64_t arrival(uint64_t info, const Reader& reader, const Source& source, int64_t origin) {
+    const uint32_t low = info;
+    if (low < sourceTag || low == invalidArrivalTag)
+        return static_cast<int64_t>(uint64_t(origin) + (info >> 32) - (uint64_t{1} << 31));
+    const uint64_t ref = specialValue(info);
+    if (low >= slowTag) return reader.slow[ref].arrival;
+    auto [line,limit] = source.locate(ref);
+    auto newline = static_cast<const char*>(std::memchr(line,'\n',limit-line));
+    std::array<std::string_view,7> fields;
+    if (!csv(std::string_view(line,(newline ? newline : limit)-line), fields))
+        throw std::logic_error("Source line changed");
+    return ingestTime(fields[3]);
+}
+
+void invalidate(uint64_t info, Reader& reader) {
+    const uint32_t low = info;
+    if (low < sourceTag) {
+        reader.events.at(low >> 23, low & (indexLimit-1)).person = Key{};
+    } else if (low >= slowTag) {
+        const auto& row = reader.slow[specialValue(info)];
+        reader.events.at(row.bucket,row.index).person = Key{};
+    }
+}
+
+struct Winner { IdRecord row; Reader* reader = nullptr; };
+size_t findWinner(const std::vector<Winner>& slots, uint64_t hash, const Key& id) {
+    size_t pos = (hash >> 10) & (slots.size()-1);
+    while (slots[pos].reader && !(slots[pos].row.id == id))
+        pos = (pos+1) & (slots.size()-1);
+    return pos;
+}
+
+void deduplicate(size_t shard, int64_t arrivalOrigin, const Source& source,
                  std::vector<std::unique_ptr<Reader>>& readers) {
     size_t count = 0;
     for (auto& r : readers) count += r->ids.counts[shard];
     if (count < 2) return;
-    // The compact filters conservatively nominate collisions. Sorting by the
-    // full tag below separates unrelated IDs before any source-line reread.
-    const size_t bits = std::min<size_t>(1u << (64 - tagShift),
-        std::max<size_t>(64, std::bit_ceil(count) * 16));
-    const size_t mask = bits - 1;
+    const size_t bits = std::clamp<size_t>(std::bit_ceil(count)*16,64,1u<<23);
+    const size_t mask = bits-1;
     struct Word { uint64_t seen, repeated; };
     static thread_local std::vector<Word> filter;
-    filter.assign(bits / 64, Word{});
-    for (auto& r : readers)
-        r->ids.pieces(shard, [&](const uint64_t* records, size_t n) {
+    filter.assign(bits/64, Word{});
+    for (auto& reader : readers)
+        reader->ids.pieces(shard, [&](const IdRecord* rows,size_t n) {
             for (size_t i = 0; i < n; ++i) {
-                const size_t bit = (records[i] >> tagShift) & mask;
-                const uint64_t flag = uint64_t{1} << (bit % 64);
-                Word& word = filter[bit / 64];
+                const size_t bit = (rows[i].id.hash() >> 32) & mask;
+                const uint64_t flag = uint64_t{1} << (bit%64);
+                auto& word = filter[bit/64];
                 word.repeated |= word.seen & flag;
                 word.seen |= flag;
             }
         });
-    static thread_local std::vector<uint64_t> suspects, scratch;
-    suspects.clear();
-    for (auto& r : readers)
-        r->ids.pieces(shard, [&](const uint64_t* records, size_t n) {
+    static thread_local std::vector<Winner> slots;
+    size_t repeated = 0;
+    for (auto word : filter) repeated += std::popcount(word.repeated);
+    if (!repeated) return;
+    slots.assign(std::bit_ceil(repeated*3+1),Winner{});
+    size_t used = 0;
+    for (auto& reader : readers)
+        reader->ids.pieces(shard, [&](const IdRecord* rows,size_t n) {
             for (size_t i = 0; i < n; ++i) {
-                const size_t bit = (records[i] >> tagShift) & mask;
-                if ((filter[bit / 64].repeated >> (bit % 64)) & 1)
-                    suspects.push_back(records[i]);
-            }
-        });
-    if (suspects.size() < 512) {
-        std::sort(suspects.begin(), suspects.end());
-    } else {
-        // Only the high 23 tag bits group potential copies. Two stable radix
-        // passes discard the unnecessary ordering by source or staged offset.
-        std::array<size_t,2048> low{};
-        std::array<size_t,4096> high{};
-        for (uint64_t x : suspects) {
-            ++low[(x >> tagShift) & 2047];
-            ++high[x >> (tagShift + 11)];
-        }
-        auto offsets = [](auto& counts) {
-            size_t offset = 0;
-            for (size_t& n : counts) {
-                size_t previous = offset;
-                offset += n;
-                n = previous;
-            }
-        };
-        offsets(low);
-        offsets(high);
-        scratch.resize(suspects.size());
-        for (uint64_t x : suspects)
-            scratch[low[(x >> tagShift) & 2047]++] = x;
-        for (uint64_t x : scratch)
-            suspects[high[x >> (tagShift + 11)]++] = x;
-    }
-    size_t kept = 0;
-    for (size_t begin = 0; begin < suspects.size();) {
-        size_t end = begin + 1;
-        while (end < suspects.size() && (suspects[end] >> tagShift) == (suspects[begin] >> tagShift)) ++end;
-        if (end - begin > 1) {
-            for (size_t i = begin; i < end; ++i) suspects[kept++] = suspects[i];
-        }
-        begin = end;
-    }
-    suspects.resize(kept);
-    if (suspects.empty()) return;
-
-    // The suspects' staged rows and source lines are scattered through memory.
-    // Resolve them in waves so those cache misses overlap.
-    struct Copy { Key id; int64_t ingest; StagedEvent* staged; };
-    static thread_local std::vector<Copy> copies;
-    copies.resize(suspects.size());
-    constexpr size_t wave = 64;
-    for (size_t base = 0; base < suspects.size(); base += wave) {
-        std::array<const char*, wave> lines{}, limits;
-        const size_t stop = std::min(suspects.size(), base + wave);
-        for (size_t i = base; i < stop; ++i) {
-            const uint64_t record = suspects[i];
-            const uint64_t ref = record & (stagedFlag - 1);
-            copies[i].staged = nullptr;
-            if (record & stagedFlag) {
-                const size_t reader = ref >> (indexBits + partBitsMax);
-                const size_t part = (ref >> indexBits) & ((1u << partBitsMax) - 1);
-                copies[i].staged = &readers[reader]->events.at(part, ref & ((1u << indexBits) - 1));
-                __builtin_prefetch(copies[i].staged);
-                __builtin_prefetch(reinterpret_cast<const char*>(copies[i].staged) + sizeof(StagedEvent)-1);
-            } else {
-                std::tie(lines[i-base], limits[i-base]) = source.locate(ref);
-                __builtin_prefetch(lines[i-base]);
-                __builtin_prefetch(lines[i-base] + 64);
-            }
-        }
-        for (size_t i = base; i < stop; ++i)
-            if (copies[i].staged) {
-                const StagedEvent& row = *copies[i].staged;
-                if (row.payload & StagedEvent::inlineId) {
-                    copies[i].id = Key{row.origin};
-                    copies[i].ingest = static_cast<int64_t>(row.payload << 15) >> 15;
+                const auto& row = rows[i];
+                const uint64_t hash = row.id.hash();
+                const size_t bit = (hash >> 32) & mask;
+                if (!((filter[bit/64].repeated >> (bit%64)) & 1)) continue;
+                size_t pos = findWinner(slots,hash,row.id);
+                if (!slots[pos].reader) {
+                    if (++used*10 >= slots.size()*8) {
+                        std::vector<Winner> larger(slots.size()*2);
+                        for (auto& old : slots)
+                            if (old.reader)
+                                larger[findWinner(larger,old.row.id.hash(),old.row.id)] = old;
+                        slots.swap(larger);
+                        pos = findWinner(slots,hash,row.id);
+                    }
+                    slots[pos] = {row,reader.get()};
                     continue;
                 }
-                std::tie(lines[i-base], limits[i-base]) = source.locate(row.origin);
-                __builtin_prefetch(lines[i-base]);
-                __builtin_prefetch(lines[i-base] + 64);
+                Winner& old = slots[pos];
+                const bool inlineTimes = (uint32_t(row.info) | uint32_t(old.row.info)) < sourceTag;
+                const bool earlier = inlineTimes ? (row.info >> 32) < (old.row.info >> 32)
+                    : arrival(row.info,*reader,source,arrivalOrigin) <
+                      arrival(old.row.info,*old.reader,source,arrivalOrigin);
+                if (earlier) {
+                    invalidate(old.row.info,*old.reader);
+                    old = {row,reader.get()};
+                } else {
+                    invalidate(row.info,*reader);
+                }
             }
-        for (size_t i = base; i < stop; ++i) {
-            std::array<std::string_view,7> f;
-            const char* start = lines[i-base];
-            if (!start) continue;
-            const void* newline = std::memchr(start, '\n', limits[i-base] - start);
-            const char* stop = newline ? static_cast<const char*>(newline) : limits[i-base];
-            if (!csv(std::string_view(start, stop - start), f)) throw std::logic_error("Source line changed");
-            copies[i].id = Key::from(f[0]);
-            copies[i].ingest = ingestTime(f[3]);
+        });
+}
+template<class T, size_t N, class Reject>
+void correct(T* rows, size_t count, size_t bucket, unsigned shift,
+             const Identities& identities, Scatter<T,N>& moved, Pieces<T>& kept, Reject reject) {
+    // Swap an excluded row with the tail. Retained non-aliases incur no write.
+    size_t i = 0;
+    while (i < count) {
+        T& row = rows[i];
+        if (!reject(row)) {
+            uint64_t hash = row.person.hash();
+            const Key canonical = identities.person(row.person, hash);
+            if (canonical.bits == row.person.bits) { ++i; continue; }
+            row.person = canonical;
+            const size_t target = (hash >> 1) >> shift;
+            if (target == bucket) { ++i; continue; }
+            moved.add(target,row);
         }
+        if (--count != i) rows[i] = rows[count];
     }
-    // Within each exact ID the earliest ingest survives. Copies that tie are identical.
-    auto before = [](const Copy& a, const Copy& b) {
-        return a.id != b.id ? a.id < b.id : a.ingest < b.ingest;
-    };
-    for (size_t begin = 0; begin < suspects.size();) {
-        size_t end = begin + 1;
-        while (end < suspects.size() && suspects[end] >> tagShift == suspects[begin] >> tagShift) ++end;
-        if (end == begin + 2) {
-            // Most repeated IDs have just two copies. A differing full ID
-            // is a tag collision and leaves both rows untouched.
-            auto& a = copies[begin];
-            auto& b = copies[begin + 1];
-            if (a.id == b.id) {
-                StagedEvent* loser = a.ingest <= b.ingest ? b.staged : a.staged;
-                if (loser) loser->ts = invalidTime;
-            }
-            begin = end;
-            continue;
-        }
-        if (end - begin <= 16) {
-            for (size_t i = begin + 1; i < end; ++i) {
-                Copy value = copies[i];
-                size_t hole = i;
-                for (; hole > begin && before(value, copies[hole - 1]); --hole) copies[hole] = copies[hole - 1];
-                copies[hole] = value;
-            }
-        } else {
-            std::stable_sort(copies.begin() + begin, copies.begin() + end, before);
-        }
-        for (size_t i = begin + 1; i < end; ++i)
-            if (copies[i].id == copies[i - 1].id && copies[i].staged)
-                copies[i].staged->ts = invalidTime;
-        begin = end;
-    }
+    if (count) kept.add(rows,count);
 }
 } // namespace
 
@@ -580,7 +597,6 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
             unsigned workers, const std::function<void()>& awaitIdentities) {
     if (!std::has_single_bit(out.size())) throw std::logic_error("Bucket count must be a power of two");
     lap("start");
-    workers = std::min(workers, 1u << readerBitsMax);
 
     Source source;
     source.files = eventFiles;
@@ -601,14 +617,14 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         spanStart[i] = source.starts[f];
     }
 
-    // Staging partitions follow the top hash bits, like the identity table, so
-    // one partition later probes one slice of it. ID shards use the low bits.
-    size_t clickBytes = 0;
-    for (auto file : clickFiles) clickBytes += file.size();
-    const unsigned partBits = std::clamp<int>(std::bit_width((bytes + clickBytes) >> 23), 0, 9);
-    const size_t parts = size_t{1} << partBits;
-    const size_t idShards = std::clamp<size_t>(std::bit_ceil(bytes >> 22), 1, 1024);
-    auto partOf = [&](uint64_t hash) { return static_cast<size_t>((hash >> 1) >> (63 - partBits)); };
+    // Raw and canonical buckets share high hash bits, so most rows can stay
+    // in their original blocks while a worker probes its identity-table slice.
+    const size_t parts = out.size();
+    const int64_t arrivalOrigin = std::clamp<int64_t>(ctx.start, INT64_MIN + (int64_t{1} << 31),
+                                                     INT64_MAX - INT32_MAX);
+    const unsigned shift = 63 - std::countr_zero(parts);
+    const size_t idShards = std::clamp<size_t>(std::bit_ceil(bytes >> 24), 1, 1024);
+    auto partOf = [&](uint64_t hash) { return static_cast<size_t>((hash >> 1) >> shift); };
 
     const unsigned readerCount = static_cast<unsigned>(std::min<size_t>(source.spans.size(), workers));
     std::vector<std::unique_ptr<Reader>> readers(readerCount);
@@ -628,17 +644,17 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     if (!parseEvent(line, ctx, event)) return;
                     const uint64_t offset = base + reinterpret_cast<uintptr_t>(line.data());
                     const uint64_t hash = event.id.hash();
-                    uint64_t record = offset;
+                    uint64_t info;
                     if (event.valid) {
-                        if (!(event.row.payload & StagedEvent::inlineId)) event.row.origin = offset;
-                        const size_t part = partOf(event.row.user.hash());
-                        const uint64_t index = reader.events.add(part, event.row);
-                        if (index >> indexBits) throw std::runtime_error("Too many rows in one partition");
-                        record = stagedFlag | (uint64_t(r) << (indexBits + partBitsMax)) |
-                                 (uint64_t(part) << indexBits) | index;
+                        const auto bucket = static_cast<uint32_t>(partOf(event.user.hash()));
+                        const uint32_t index = reader.events.add(bucket,Event::pack(event.user,ctx.start,event.row));
+                        info = location(reader,event.arrival,arrivalOrigin,bucket,index);
+                    } else {
+                        const uint64_t relative = relativeArrival(event.arrival,arrivalOrigin);
+                        info = event.arrival != invalidTime && relative <= UINT32_MAX
+                             ? (relative << 32) | invalidArrivalTag : special(offset,sourceTag);
                     }
-                    record |= (hash >> 32) << tagShift;
-                    reader.ids.add(hash & (idShards - 1), record);
+                    reader.ids.add(hash & (idShards - 1), IdRecord{event.id,info});
                 });
             } else {
                 chunkLines(span, [&](std::string_view line) {
@@ -654,7 +670,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     lap("parse");
 
     parallel(idShards, workers, [&](size_t shard) {
-        deduplicate(shard, ctx, source, readers);
+        deduplicate(shard, arrivalOrigin, source, readers);
         std::vector<void*> spent;
         for (auto& reader : readers) reader->ids.release(shard, spent);
         recycled.give(spent);
@@ -663,42 +679,24 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     awaitIdentities();
     lap("await-links");
 
-    // Route every surviving row to its person's bucket. A partition's lookups
-    // stay within one slice of the identity table.
     std::vector<std::unique_ptr<Router>> routers(workers);
     std::atomic<size_t> nextPart = 0;
-    const size_t bucketMask = out.size() - 1;
     parallel(workers, workers, [&](size_t w) {
         routers[w] = std::make_unique<Router>(out.size());
         Router& router = *routers[w];
-        std::vector<void*> spent;
         for (;;) {
             const size_t p = nextPart.fetch_add(1, std::memory_order_relaxed);
             if (p >= parts) break;
-            spent.clear();
             for (auto& reader : readers) {
-                reader->events.pieces(p, [&](const StagedEvent* rows, size_t n) {
-                    for (size_t i = 0; i < n; ++i) {
-                        const StagedEvent& row = rows[i];
-                        if (row.ts == invalidTime) continue;
-                        uint64_t personHash = row.user.hash();
-                        const Key person = ctx.identities.person(row.user, personHash);
-                        router.events.add(personHash & bucketMask,
-                                          Event::pack(person, ctx.start, {row.ts, row.price(), row.category()}));
-                    }
+                reader->events.pieces(p, [&](Event* rows, size_t n) {
+                    correct(rows,n,p,shift,ctx.identities,router.events,out[p].events,
+                            [](const Event& row) { return row.person.empty(); });
                 });
-                reader->clicks.pieces(p, [&](const Click* rows, size_t n) {
-                    for (size_t i = 0; i < n; ++i) {
-                        Click click = rows[i];
-                        uint64_t personHash = click.person.hash();
-                        click.person = ctx.identities.person(click.person, personHash);
-                        router.clicks.add(personHash & bucketMask, click);
-                    }
+                reader->clicks.pieces(p, [&](Click* rows, size_t n) {
+                    correct(rows,n,p,shift,ctx.identities,router.clicks,out[p].clicks,
+                            [](const Click&) { return false; });
                 });
-                reader->events.release(p, spent);
-                reader->clicks.release(p, spent);
             }
-            recycled.give(spent);
         }
         router.events.finish();
         router.clicks.finish();

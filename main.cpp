@@ -152,7 +152,7 @@ int main(int argc, char** argv) try {
     auto links = inputs.folder(data / "links");
     std::exception_ptr linkError;
     std::thread linker([&] {
-        try { linkPeople(links, ctx, std::min(workers, 2u)); }
+        try { linkPeople(links, ctx, std::max(1u, workers / 2)); }
         catch (...) { linkError = std::current_exception(); }
     });
     auto awaitIdentities = [&] {
@@ -184,21 +184,15 @@ int main(int argc, char** argv) try {
     });
     const unsigned aggregators = static_cast<unsigned>(std::min<size_t>(workers, bucketCount));
     std::vector<Result> results(aggregators);
-    // About one output row per nine events; reserving spares regrowth copies.
-    size_t surviving = 0;
-    for (const auto& b : buckets) surviving += b.events.size;
-    for (auto& r : results) r.users.reserve(surviving / aggregators / 4 + 1024);
+    for (auto& r : results) r.users.reserve(32768);
     std::atomic<size_t> nextBucket{0};
-    parallel(aggregators, aggregators, [&](size_t w) {
-        for (;;) {
-            const size_t i = nextBucket.fetch_add(1, std::memory_order_relaxed);
-            if (i >= bucketCount) break;
-            aggregate(buckets[order[i]], results[w], ctx.categories.size(), ctx.campaignNames.size(), ctx.start);
-        }
+    writeOutputs(output,ctx,results,workers,[&](size_t w) {
+        const size_t i=nextBucket.fetch_add(1,std::memory_order_relaxed);
+        if (i >= bucketCount) return false;
+        aggregate(buckets[order[i]],results[w],ctx.categories.size(),ctx.campaignNames.size(),ctx.start);
+        return true;
     });
-    stage("aggregate");
-    writeOutputs(output, ctx, results, workers);
-    stage("parquet");
+    stage("aggregate-output");
     // Everything is written and closed. Skip unmapping gigabytes on the way out.
     std::cerr.flush();
     _exit(0);

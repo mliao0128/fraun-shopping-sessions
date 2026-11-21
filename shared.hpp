@@ -413,4 +413,4 @@ int64_t timestamp(std::string_view value);
 void ingest(const Context&, const std::vector<std::string_view>&, const std::vector<std::string_view>&,
             std::vector<Bucket>&, unsigned, const std::function<void()>& awaitIdentities);
 void aggregate(Bucket&, Result&, size_t categoryCount, size_t campaignCount, int64_t origin);
-void writeOutputs(const std::filesystem::path&, const Context&, const std::vector<Result>&, unsigned);
+void writeOutputs(const std::filesystem::path&, const Context&, std::vector<Result>&, unsigned, const std::function<bool(size_t)>&);
