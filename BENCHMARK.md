@@ -1,6 +1,8 @@
 # Shopping Sessions benchmark
 
-The [latest leaderboard comparison](benchmarks/leaderboard-comparison.md) tests the updated pipeline on two practice seeds, a final-size dataset, and cold inputs at four storage speeds. The measurements below document commit `b78bed7`.
+The [release benchmark](benchmarks/subsecond/benchmark.md) compares the current build with Jerry Hu's official 1.19 s entry.
+
+The [earlier leaderboard comparison](benchmarks/leaderboard-comparison.md) tests the updated pipeline on two practice seeds, a final-size dataset, and cold inputs at four storage speeds. The measurements below document commit `b78bed7`.
 
 On the generated final-size input, the optimized container finished in **4.68 seconds median** over five warm runs. The executable itself took **4.30 seconds median**. With all input pages evicted from the Linux page cache, one run took **6.18 seconds container time** and **5.72 seconds executable time**. These are local measurements on an AMD Ryzen 9 9950X. The official scorer runs on Intel Xeon hardware and hidden seeds.
 

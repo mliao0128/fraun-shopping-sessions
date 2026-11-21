@@ -123,7 +123,9 @@ void linkPeople(const std::vector<std::string_view>& files, Context& ctx, unsign
     if (!mostAliases) return;
     auto& dict = ctx.identities;
     dict.shardSize = std::bit_ceil(mostAliases + mostAliases / 2 + 1);
+    dict.slotShift = 64 - Identities::shardBits - std::countr_zero(dict.shardSize);
     dict.slots.resize(dict.shardSize * shards);
+    dict.fingerprints.resize(dict.slots.size());
     parallel(shards, workers, [&](size_t s) {
         auto* table = dict.slots.data() + s * dict.shardSize;
         const auto& names = groups[s].names;
@@ -132,7 +134,9 @@ void linkPeople(const std::vector<std::string_view>& files, Context& ctx, unsign
             const Key& k = names[i];
             const Key& m = minimum[parent[(i << Identities::shardBits) | s]];
             if (k == m) continue;
-            size_t pos = k.hash() & mask;
+            const uint64_t hash = k.hash();
+            size_t pos = dict.home(hash);
+            dict.fingerprints[s * dict.shardSize + pos] |= Identities::fingerprint(hash);
             while (!table[pos].raw.empty()) pos = (pos + 1) & mask;
             table[pos] = {k, m};
         }

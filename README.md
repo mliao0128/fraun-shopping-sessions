@@ -4,14 +4,14 @@ A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the moun
 
 ## Build and run
 
-Use a Linux x86-64 machine with AVX2, eight available logical CPUs and 24 GiB of memory. Run from the repository root.
+The default build targets Intel Cascade Lake on Linux x86-64. Run it on a compatible CPU with eight available logical CPUs and 24 GiB of memory. For an AVX2/BMI2 machine without AVX-512, build with the Docker build argument ARCH_FLAGS=-march=haswell. Run from the repository root. On a compatible build machine, GCC collects an execution profile on synthetic CSVs and uses it for the final compilation. A builder without the default target CPU features skips profiling and cross-compiles the scoring binary. The runtime image contains the executable and its shared libraries.
 
 ```sh
 docker build --platform linux/amd64 -t shopping-sessions:latest .
 python3 tools/benchmark.py shopping-sessions:latest /absolute/path/to/data ./sample --runs 1
 ```
 
-The runner creates a new output directory for every sample. Its default CPU set is `0-7`. Use `--cpuset` to select eight available hardware threads on a different host. `--profile` prints time spent on the four pipeline stages. An ordinary scoring container takes no arguments and uses `DATA_DIR`, `OUTPUT_DIR`, and `NCPU` from the environment.
+The runner creates a new output directory for every sample. Its default CPU set is `0-7`. Use `--cpuset` to select eight available hardware threads on a different host. `--profile` prints time spent on each pipeline stage. An ordinary scoring container takes no arguments and uses `DATA_DIR`, `OUTPUT_DIR`, and `NCPU` from the environment.
 
 ## Verify with the organizer's files
 
@@ -31,10 +31,11 @@ sh starter-polars/scripts/docker_run.sh dev dev-output
 
 ## Benchmark other sizes
 
-From the tooling directory, set `SOLUTION` to the absolute path of this repository. The two seeds below reproduce the local benchmark inputs.
+From the tooling directory, set `SOLUTION` to the absolute path of this repository. The following seeds reproduce the local benchmark inputs.
 
 ```sh
 generator/target/release/generate --seed 42 --events 20000000 --clicks 5000000 --output practice
+generator/target/release/generate --seed 314159 --events 20000000 --clicks 5000000 --output holdout
 generator/target/release/generate --seed 73 --events 60000000 --clicks 15000000 --output final
 cc -O2 -static "$SOLUTION/tools/time_exec.c" -o time-exec
 python3 "$SOLUTION/tools/benchmark.py" "$IMAGE" practice measured-practice --clock ./time-exec --runs 3
@@ -56,10 +57,11 @@ To check a generated seed with an independent implementation, install DuckDB 2.0
 
 - CSV files are memory-mapped. Each reader scans a byte range and consumes the lines that start in it. AVX2 delimiter scans and BMI2 bit extraction check quoting and locate fields, preserving spaces and carriage returns. Long records use the general parser.
 - A union-find over valid link edges computes connected components. A read-only hash table maps aliases to the bytewise smallest ID in each component, including IDs appearing only in link files.
-- Workers resolve identities in batches of 32, prefetching independent lookups while they parse the next rows. They allocate temporary records from per-reader blocks and partition events by event ID. Exact comparisons select the earliest ingestion timestamp even when that record is invalid or names a different person.
+- Parsing overlaps identity linking. Readers stage events by raw user and keep duplicate candidates in ID shards. Eight- and nine-byte ASCII identifiers have exact 64-bit encodings. Other strings retain exact byte comparisons. A bit filter finds possible duplicates. Two radix passes group candidates before exact event ID and arrival-time comparisons select the surviving row. After linking, a fingerprint table skips unnecessary alias probes while routing events to the canonical user.
+- Routed events occupy 16 bytes in the common case. Values outside the inline time, price, or category range use a full-width record.
 - Each person’s events and valid clicks are sorted by time. Event gaps determine session boundaries. A moving seven-day window tracks the last eligible click and the distinct campaigns present. Identical click copies enter and expire together, so the winner and the set of assists are invariant to their multiplicity.
-- Workers aggregate user rows and campaign totals in memory. Apache Parquet writes Snappy-compressed user files in parallel and emits the final campaign table. Every run derives its time window, identities, product categories and campaign metadata from the mounted data.
+- Workers accumulate user metrics in column buffers ready for Parquet and merge campaign totals in memory. Apache Parquet writes Snappy-compressed user files in parallel and emits the final campaign table. Every run derives its time window, identities, product categories and campaign metadata from the mounted data.
 
 ## Dependencies and license
 
-The pipeline is original C++ code. It uses GCC, the C++ standard library, Linux memory mapping, and the Apache Arrow and Parquet C++ libraries distributed in the PyArrow 20.0.0 wheel. The Python benchmark runner uses the standard library. The official generator, checker, fixtures and expected outputs are external test inputs. The submission code is released under the [MIT License](LICENSE).
+This build extends the Fraun pipeline and [Jerry Hu's staged-scatter and radix implementation](https://github.com/Jerryh127/fraun-shopping-sessions/commit/e315a0296ecc6f9c05c31d57309dc308f6a549b9). It uses GCC, the C++ standard library, Linux memory mapping, and the Apache Arrow and Parquet C++ libraries distributed in the PyArrow 20.0.0 wheel. The Python benchmark runner uses the standard library. The official generator, checker, fixtures and expected outputs are external test inputs. The submission code is released under the [MIT License](LICENSE).

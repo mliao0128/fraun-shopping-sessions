@@ -20,73 +20,101 @@
 #include <utility>
 #include <vector>
 
-// Short IDs live in the key itself. Long IDs refer to the immutable input mapping.
-struct alignas(8) Key {
-    std::array<unsigned char, 16> data{};
-    static Key from(std::string_view value) {
-        Key key;
-        if (value.size() <= 15) {
-            size_t n = value.size();
-            const char* p = value.data();
-            uint64_t head = 0, tail = uint64_t(n) << 56;
-            if (n >= 8) {
-                uint64_t end;
-                std::memcpy(&head, p, 8);
-                std::memcpy(&end, p + n - 8, 8);
-                // The split shift also handles the eight-byte case without shifting by 64.
-                tail |= (end >> (127 - 8*n)) >> 1;
-            } else if (n >= 4) {
-                uint32_t first, last;
-                std::memcpy(&first, p, 4);
-                std::memcpy(&last, p + n - 4, 4);
-                head = uint64_t(first) | (uint64_t(last) << (8*(n-4)));
-            } else if (n) {
-                head = static_cast<unsigned char>(p[0]);
-                if (n >= 2) {
+// Nine ASCII bytes have 63 payload bits. Pack them in lexical order so
+// equality and tie-breaking avoid input reads. Up to seven raw bytes fit
+// inline with a length tag. Other keys borrow the immutable mapped input.
+struct Key {
+    using Buffer = std::array<char,9>;
+    static constexpr uint64_t shortTag = uint64_t{1} << 63;
+    static constexpr uint64_t referenceTag = uint64_t{3} << 62;
+    static constexpr uint64_t indirectTag = uint64_t{11} << 60;
+    static constexpr uint64_t pointerMask = (uint64_t{1} << 48) - 1;
+    static constexpr uint64_t asciiMask = 0x7f7f7f7f7f7f7f7fULL;
+    static constexpr uint64_t eightTag = uint64_t{0x88} << 56;
+    uint64_t bits = shortTag;
+    bool eightAscii() const { return (bits >> 56) == 0x88; }
+    bool needsDecoding() const { return nineAscii() || eightAscii(); }
+
+    static Key from(std::string_view s) {
+        if (s.size() == 9) {
+            uint64_t prefix;
+            std::memcpy(&prefix,s.data(),8);
+            const unsigned char last = static_cast<unsigned char>(s[8]);
+            if (!(prefix & ~asciiMask) && last < 128)
+                return {(_pext_u64(__builtin_bswap64(prefix),asciiMask) << 7) | last};
+        }
+        if (s.size() == 8) {
+            uint64_t bytes;
+            std::memcpy(&bytes, s.data(), 8);
+            if (!(bytes & ~asciiMask)) return {eightTag | _pext_u64(bytes, asciiMask)};
+        }
+        if (s.size() < 8) {
+            uint64_t value = 0;
+            if (s.size() >= 4) {
+                uint32_t first,last;
+                std::memcpy(&first,s.data(),4);
+                std::memcpy(&last,s.data()+s.size()-4,4);
+                value = uint64_t{first} | (uint64_t{last} << (8*(s.size()-4)));
+            } else if (!s.empty()) {
+                value = static_cast<unsigned char>(s[0]);
+                if (s.size() >= 2) {
                     uint16_t last;
-                    std::memcpy(&last, p+n-2, 2);
-                    head |= uint64_t(last) << (8*(n-2));
+                    std::memcpy(&last,s.data()+s.size()-2,2);
+                    value |= uint64_t{last} << (8*(s.size()-2));
                 }
             }
-            std::memcpy(key.data.data(), &head, 8);
-            std::memcpy(key.data.data()+8, &tail, 8);
-        } else {
-            const char* ptr = value.data();
-            const uint64_t taggedSize = value.size() | (uint64_t{1} << 63);
-            std::memcpy(key.data.data(), &ptr, 8);
-            std::memcpy(key.data.data() + 8, &taggedSize, 8);
+            return {shortTag | (uint64_t{s.size()} << 56) | value};
         }
-        return key;
+        const uintptr_t addr = reinterpret_cast<uintptr_t>(s.data());
+        if (s.size() < (1u<<14) && addr <= pointerMask)
+            return {referenceTag | (uint64_t{s.size()} << 48) | addr};
+        // Huge fields (or high virtual addresses) need the full pointer and
+        // length. Input mappings and these pages both live until process exit.
+        static thread_local std::string_view* page;
+        static thread_local unsigned used = 512;
+        if (used == 512) { page = new std::string_view[512]; used = 0; }
+        auto* saved = &page[used++];
+        *saved = s;
+        return {indirectTag | reinterpret_cast<uintptr_t>(saved)};
     }
-    bool empty() const { return data[15] == 0; }
-    bool isLong() const { return (data[15] & 128) != 0; }
-    std::string_view view() const {
-        if (!isLong()) return {reinterpret_cast<const char*>(data.data()), data[15]};
-        const char* ptr;
-        uint64_t size;
-        std::memcpy(&ptr, data.data(), 8);
-        std::memcpy(&size, data.data() + 8, 8);
-        return {ptr, size & ~(uint64_t{1} << 63)};
+    bool empty() const { return bits == shortTag; }
+    bool nineAscii() const { return !(bits & shortTag); }
+    bool external() const { return bits >= indirectTag; }
+    std::string_view borrowed() const {
+        if (bits >= referenceTag)
+            return {reinterpret_cast<const char*>(bits & pointerMask), (bits >> 48) & 0x3fff};
+        if (external())
+            return *reinterpret_cast<const std::string_view*>(bits & ((uint64_t{1}<<60)-1));
+        return {reinterpret_cast<const char*>(&bits), (bits >> 56) & 7};
+    }
+    std::string_view view(Buffer& buffer) const {
+        if (eightAscii()) {
+            uint64_t bytes = _pdep_u64(bits, asciiMask);
+            std::memcpy(buffer.data(), &bytes, 8);
+            return {buffer.data(), 8};
+        }
+        if (!nineAscii()) return borrowed();
+        uint64_t prefix = __builtin_bswap64(_pdep_u64(bits >> 7,asciiMask));
+        std::memcpy(buffer.data(),&prefix,8);
+        buffer[8]=static_cast<char>(bits & 127);
+        return {buffer.data(),9};
     }
     uint64_t hash() const {
-        if (isLong()) return std::hash<std::string_view>{}(view());
-        uint64_t a, b;
-        std::memcpy(&a, data.data(), 8);
-        std::memcpy(&b, data.data() + 8, 8);
-        const __uint128_t product = static_cast<__uint128_t>(a ^ 0xa0761d6478bd642fULL)
-                                     * (b ^ 0xe7037ed1a0b428dbULL);
+        if (external()) return std::hash<std::string_view>{}(borrowed());
+        const __uint128_t product = static_cast<__uint128_t>(bits ^ 0xa0761d6478bd642fULL)
+                                    * (bits ^ 0xe7037ed1a0b428dbULL);
         return static_cast<uint64_t>(product) ^ static_cast<uint64_t>(product >> 64);
     }
-    bool operator==(const Key& other) const {
-        if (!isLong()) return data == other.data;
-        return other.isLong() && view() == other.view();
+    bool operator==(const Key& o) const {
+        return bits == o.bits || (external() && o.external() && borrowed()==o.borrowed());
     }
-    bool operator<(const Key& other) const {
-        if (!isLong() && !other.isLong()) return std::memcmp(data.data(), other.data.data(), 16) < 0;
-        return view() < other.view();
+    bool operator<(const Key& o) const {
+        if (nineAscii() && o.nineAscii()) return bits < o.bits;
+        Buffer a,b;
+        return view(a) < o.view(b);
     }
 };
-static_assert(sizeof(Key) == 16 && std::endian::native == std::endian::little);
+static_assert(sizeof(Key)==8 && std::endian::native==std::endian::little);
 
 // Count all quotes, then account for the only two legal positions around each field.
 // SIMD searches for delimiters without treating CR, spaces or non-ASCII bytes specially.
@@ -267,16 +295,31 @@ struct Identities {
     static constexpr size_t shards = 1u << shardBits;
     struct Alias { Key raw, name; };
     std::vector<Alias> slots;
+    // Each home slot records every four-bit fingerprint inserted there,
+    // including keys ultimately displaced by linear probing. This compact
+    // directory can reject most missing keys without touching any Key.
+    std::vector<uint16_t> fingerprints;
+    static uint16_t fingerprint(uint64_t hash) {
+        return static_cast<uint16_t>(1u << (hash & 15));
+    }
     size_t shardSize = 0;
+    unsigned slotShift = 0;  // 64 - shardBits - log2(shardSize)
+    size_t home(uint64_t hash) const { return (hash >> slotShift) & (shardSize - 1); }
 
     static size_t shard(uint64_t hash) { return hash >> (64 - shardBits); }
-    Key person(const Key& raw) const {
+    // hash initially belongs to raw. Return the canonical key and its hash
+    // together so unlinked rows never hash their person twice.
+    Key person(const Key& raw, uint64_t& hash) const {
         if (slots.empty()) return raw;
-        uint64_t hash = raw.hash();
-        const Alias* table = slots.data() + shard(hash) * shardSize;
-        size_t mask = shardSize - 1, pos = hash & mask;
+        const size_t start = shard(hash) * shardSize;
+        size_t mask = shardSize - 1, pos = home(hash);
+        if (!(fingerprints[start + pos] & fingerprint(hash))) return raw;
+        const Alias* table = slots.data() + start;
         while (!table[pos].raw.empty()) {
-            if (table[pos].raw == raw) return table[pos].name;
+            if (table[pos].raw == raw) {
+                hash = table[pos].name.hash();
+                return table[pos].name;
+            }
             pos = (pos + 1) & mask;
         }
         return raw;
@@ -289,7 +332,6 @@ struct Context {
     Index products, campaigns;
     std::vector<Key> categories, campaignNames, channels;
     uint32_t unknown;
-    Key person(Key raw) const { return identities.person(raw); }
     uint32_t category(Key product) const {
         uint32_t value = products.find(product);
         return value == UINT32_MAX ? unknown : value;
@@ -297,19 +339,78 @@ struct Context {
     uint32_t campaign(Key id) const { return campaigns.find(id); }
 };
 
-struct Event { Key person; int64_t ts; uint32_t price, category; };
+struct EventData { int64_t ts; uint32_t price, category; };
+struct Event {
+    Key person;
+    uint64_t bits;
+    static constexpr uint64_t overflowFlag = uint64_t{1} << 63;
+    static Event pack(Key person, int64_t origin, EventData row) {
+        const uint64_t delta = uint64_t(row.ts) - uint64_t(origin);
+        if (delta <= UINT32_MAX && row.price < (1u << 24) && row.category < 128)
+            return {person, delta | (uint64_t{row.price} << 32) | (uint64_t{row.category} << 56)};
+        // Routers exit before aggregation. These overflow pages must outlive
+        // their threads, just like the mapped inputs and bulk row slabs.
+        static thread_local EventData* page;
+        static thread_local unsigned used = 1024;
+        if (used == 1024) { page = new EventData[1024]; used = 0; }
+        EventData* saved = &page[used++];
+        *saved = row;
+        return {person, overflowFlag | reinterpret_cast<uintptr_t>(saved)};
+    }
+    EventData unpack(int64_t origin) const {
+        if (bits & overflowFlag)
+            return *reinterpret_cast<const EventData*>(bits & ~overflowFlag);
+        return {origin + static_cast<uint32_t>(bits), static_cast<uint32_t>(bits >> 32) & 0xffffff,
+                static_cast<uint32_t>(bits >> 56)};
+    }
+};
 struct Click { Key person, id; int64_t ts; uint32_t campaign; };
-struct Bucket { std::vector<Event> events; std::vector<Click> clicks; };
+// A bucket's rows stay in the blocks the ingest wrote them to.
+template<class T> struct Pieces {
+    std::vector<std::pair<const T*, size_t>> spans;
+    size_t size = 0;
+    void add(const T* rows, size_t count) { spans.emplace_back(rows, count); size += count; }
+    template<class F> void each(F&& visit) const {
+        for (auto [rows, count] : spans)
+            for (size_t i = 0; i < count; ++i) visit(rows[i]);
+    }
+};
+struct Bucket { Pieces<Event> events; Pieces<Click> clicks; };
 struct UserRow { Key person; int32_t day; uint32_t sessions, events; int64_t revenue; uint32_t top; };
 struct CampaignStats { int64_t sessions=0, purchasing=0, revenue=0, assists=0; };
+// Numeric buffers are kept in their output order through aggregation so the
+// Parquet worker can pass them directly to WriteBatch.
+struct UserColumns {
+    std::vector<Key> people;
+    std::vector<int32_t> days;
+    std::vector<int64_t> sessions, events, revenue;
+    std::vector<uint32_t> top;
+    void reserve(size_t n) {
+        people.reserve(n);
+        days.reserve(n);
+        sessions.reserve(n);
+        events.reserve(n);
+        revenue.reserve(n);
+        top.reserve(n);
+    }
+    void append(const UserRow& row) {
+        people.push_back(row.person);
+        days.push_back(row.day);
+        sessions.push_back(row.sessions);
+        events.push_back(row.events);
+        revenue.push_back(row.revenue);
+        top.push_back(row.top);
+    }
+};
 struct Result {
-    std::vector<UserRow> users;
+    UserColumns users;
     std::unordered_map<int32_t, std::vector<CampaignStats>> byDay;
 };
 
 void linkPeople(const std::vector<std::string_view>&, Context&, unsigned);
+// Parsing does not need identities; they are awaited before rows are routed to people.
 int64_t timestamp(std::string_view value);
 void ingest(const Context&, const std::vector<std::string_view>&, const std::vector<std::string_view>&,
-            std::vector<Bucket>&, unsigned);
-void aggregate(Bucket&, Result&, size_t categoryCount, size_t campaignCount);
+            std::vector<Bucket>&, unsigned, const std::function<void()>& awaitIdentities);
+void aggregate(Bucket&, Result&, size_t categoryCount, size_t campaignCount, int64_t origin);
 void writeOutputs(const std::filesystem::path&, const Context&, const std::vector<Result>&, unsigned);

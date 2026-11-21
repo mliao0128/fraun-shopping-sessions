@@ -12,7 +12,18 @@
 #include <memory>
 #include <stdexcept>
 #include <string_view>
+#include <tuple>
 #include <vector>
+#include <chrono>
+#include <iostream>
+// Stage timings for SHOP_PROFILE=1, as in main.cpp.
+static void lap(const char* name) {
+    static const bool profiling = std::getenv("SHOP_PROFILE") != nullptr;
+    static auto previous = std::chrono::steady_clock::now();
+    const auto now = std::chrono::steady_clock::now();
+    if (profiling) std::cerr << "  " << name << " " << std::chrono::duration<double>(now - previous).count() << " s\n";
+    previous = now;
+}
 
 namespace {
 constexpr int64_t invalidTime = INT64_MIN;
@@ -26,20 +37,10 @@ int pairValue(const char* p) {
 
 bool digit(char c) { return static_cast<unsigned>(c - '0') < 10; }
 
-// A dataset usually spans only a few weeks. Cache validated dates, comparing
-// all ten input bytes so even malformed dates cannot alias a cached date.
-int64_t midnight(const char* p) {
-    struct Entry { uint64_t yearMonth; uint16_t day; int64_t ms; };
-    static thread_local std::array<Entry, 64> cache{};
-    uint64_t yearMonth;
-    uint16_t digits;
-    std::memcpy(&yearMonth, p, 8);
-    std::memcpy(&digits, p + 8, 2);
-    auto& entry = cache[((static_cast<unsigned>(p[8]) & 3) << 4)
-                        | (static_cast<unsigned>(p[9]) & 15)];
-    if (entry.yearMonth == yearMonth && entry.day == digits && yearMonth != 0)
-        return entry.ms;
-    if (p[4] != '-' || p[7] != '-' || !digit(p[0]) || !digit(p[1]) ||
+// The cache key contains every date digit. Its two omitted separators are
+// guaranteed on ingest timestamps and checked by the public timestamp parser.
+[[gnu::noinline]] int64_t calendarMidnight(const char* p) {
+    if (!digit(p[0]) || !digit(p[1]) ||
         !digit(p[2]) || !digit(p[3]) || !digit(p[5]) || !digit(p[6]) ||
         !digit(p[8]) || !digit(p[9]))
         return invalidTime;
@@ -56,14 +57,56 @@ int64_t midnight(const char* p) {
     const int yoe = year % 400;
     const int doy = (153 * (month + (month > 2 ? -3 : 9)) + 2) / 5 + day - 1;
     const int days = era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy - 719468;
-    entry = {yearMonth, digits, days * dayMs};
+    return days * dayMs;
+}
+
+inline int64_t midnight(const char* p) {
+    struct Entry { uint64_t digits; int64_t ms = invalidTime; };
+    static thread_local std::array<Entry,64> cache{};
+    const auto data = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p));
+    const auto packed = _mm_shuffle_epi8(data,
+        _mm_setr_epi8(0,1,2,3,5,6,8,9,-1,-1,-1,-1,-1,-1,-1,-1));
+    const uint64_t digits = _mm_cvtsi128_si64(packed);
+    const unsigned slot = ((uint8_t(p[8]) & 3) << 4) | (uint8_t(p[9]) & 15);
+    auto& entry = cache[slot];
+    if (entry.digits != digits) entry = {digits, calendarMidnight(p)};
     return entry.ms;
 }
 
-int64_t validIngest(const char* p) {
-    // The input contract guarantees a valid, whole-second UTC ingest_ts.
-    return midnight(p) + 1000LL * (3600 * pairValue(p + 11) +
-                                   60 * pairValue(p + 14) + pairValue(p + 17));
+// Convert all three clock pairs in one vector. For untrusted event times
+// validate the digit ranges and literal colons before returning the value.
+template<bool Check> inline int clockSeconds(const char* p) {
+    const auto raw = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p));
+    const auto digits = _mm_sub_epi8(raw, _mm_cvtsi64_si128(0x30303a30303a3030LL));
+    if constexpr (Check) {
+        const auto excess = _mm_subs_epu8(digits, _mm_cvtsi64_si128(0x0905000905000902LL));
+        if (!_mm_testz_si128(excess,excess) || (p[0]=='2' && p[1]>'3')) return -1;
+    }
+    const auto fields = _mm_shuffle_epi8(digits,
+        _mm_setr_epi8(0,1,3,4,6,7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1));
+    const auto pairs = _mm_maddubs_epi16(fields, _mm_set1_epi16(0x010a));
+    const auto weighted = _mm_madd_epi16(pairs, _mm_setr_epi16(3600,60,1,0,0,0,0,0));
+    return _mm_cvtsi128_si32(_mm_add_epi32(weighted, _mm_srli_si128(weighted,4)));
+}
+
+inline int64_t validIngest(const char* p) {
+    return midnight(p) + 1000LL * clockSeconds<false>(p+11);
+}
+
+// Parse 13 decimal digits with two bounded overlapping loads. Combining digit
+// pairs, then four-digit groups, leaves two eight-digit chunks for the scalar sum.
+int64_t decimal13(const char* p) {
+    const auto first = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p));
+    const auto last = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p+5));
+    const auto digits = _mm_sub_epi8(_mm_unpacklo_epi64(first,last), _mm_set1_epi8('0'));
+    const auto invalid = _mm_subs_epu8(digits, _mm_set1_epi8(9));
+    if (!_mm_testz_si128(invalid,invalid)) return invalidTime;
+    const auto padded = _mm_shuffle_epi8(digits,
+        _mm_setr_epi8(-1,-1,-1,0,1,2,3,4,5,6,7,11,12,13,14,15));
+    const auto pairs = _mm_maddubs_epi16(padded, _mm_set1_epi16(0x010a));
+    const auto quads = _mm_madd_epi16(pairs, _mm_set1_epi32(0x00010064));
+    const auto chunks = _mm_madd_epi16(_mm_packs_epi32(quads,quads), _mm_set1_epi32(0x00012710));
+    return int64_t(_mm_cvtsi128_si32(chunks)) * 100'000'000 + _mm_extract_epi32(chunks,1);
 }
 
 struct InputChunk {
@@ -83,8 +126,10 @@ std::vector<InputChunk> chunks(const std::vector<std::string_view>& files) {
 }
 
 template<class F> void chunkLines(const InputChunk& chunk, F&& visit) {
+    const char* bytes = chunk.file.data();
+    const size_t fileEnd = chunk.file.size();
     size_t pos = chunk.begin;
-    if (pos == 0 || chunk.file[pos - 1] != '\n') {
+    if (pos == 0 || bytes[pos - 1] != '\n') {
         // At offset zero skip the header. Other readers skip the previous
         // chunk's last line, searching at most as far as their own boundary.
         auto prefix = chunk.file.substr(pos, chunk.end - pos);
@@ -92,89 +137,216 @@ template<class F> void chunkLines(const InputChunk& chunk, F&& visit) {
         if (newline == prefix.npos) return;
         pos += newline + 1;
     }
+    // Newlines are found 64 bytes at a time; `pos` is the open line's start.
+    auto newlinesIn = [](const char* p) -> uint64_t {
+#ifdef __AVX512BW__
+        return _mm512_cmpeq_epi8_mask(_mm512_loadu_si512(reinterpret_cast<const void*>(p)),
+                                      _mm512_set1_epi8('\n'));
+#else   // local builds for emulators without AVX-512
+        const __m256i newline = _mm256_set1_epi8('\n');
+        const uint32_t a = _mm256_movemask_epi8(_mm256_cmpeq_epi8(
+            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p)), newline));
+        const uint32_t b = _mm256_movemask_epi8(_mm256_cmpeq_epi8(
+            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p + 32)), newline));
+        return a | (uint64_t{b} << 32);
+#endif
+    };
+    size_t scan = pos;
     while (pos < chunk.end) {
-        size_t newline = chunk.file.find('\n', pos);
-        size_t end = newline == chunk.file.npos ? chunk.file.size() : newline;
-        visit(chunk.file.substr(pos, end - pos));
-        pos = end + 1;
+        if (scan + 64 <= fileEnd) {
+            uint64_t found = newlinesIn(bytes + scan);
+            while (found) {
+                const size_t end = scan + std::countr_zero(found);
+                visit(std::string_view(bytes + pos, end - pos));
+                pos = end + 1;
+                if (pos >= chunk.end) return;
+                found &= found - 1;
+            }
+            scan += 64;
+        } else {
+            size_t end = chunk.file.find('\n', std::max(pos, scan));
+            if (end == chunk.file.npos) end = fileEnd;
+            visit(std::string_view(bytes + pos, end - pos));
+            pos = scan = end + 1;
+        }
     }
 }
 
-// No reallocation/copy of existing rows. Equal IDs route to the same
-// partition, irrespective of which file or raw user supplied the copy.
-constexpr size_t blockSize = 512;
-// A reader allocates blocks for all of its partitions from one arena. The
-// large contiguous extents reduce allocator calls and permit transparent huge
-// pages when the host supplies them. Rows are constructed only when appended.
-template<class T> class Arena {
-    static constexpr size_t rowsPerExtent = ((32u << 20) / sizeof(T) / blockSize) * blockSize;
-    struct Release {
-        void operator()(T* ptr) const { std::allocator<T>{}.deallocate(ptr, rowsPerExtent); }
-    };
-    std::vector<std::unique_ptr<T, Release>> extents;
-    size_t next = rowsPerExtent;
+// ---- Block storage -------------------------------------------------------
+// Every row stream is a chain of equally sized, cache-line-aligned blocks cut
+// from large per-thread extents. Nothing is freed: the process exits first.
+constexpr size_t blockBytes = 61440;                 // 960 cache lines
+constexpr size_t extentBytes = 512 * blockBytes;     // 30 MB, a multiple of 2 MB
+// Blocks whose rows have been consumed are handed to later writers. They
+// are written with non-temporal stores, so a cold block costs nothing extra
+// and the kernel has no fresh page to supply.
+class Recycled {
+    std::mutex lock;
+    std::vector<void*> blocks;
+    std::atomic<size_t> available{0};
 public:
-    T* takeBlock() {
-        static_assert(std::is_trivially_destructible_v<T>);
-        if (next == rowsPerExtent) {
-            auto p = std::unique_ptr<T, Release>(std::allocator<T>{}.allocate(rowsPerExtent));
-            constexpr uintptr_t page = 2u << 20;
-            auto first = reinterpret_cast<uintptr_t>(p.get());
-            auto begin = (first + page - 1) & ~(page - 1);
-            auto end = (first + sizeof(T) * rowsPerExtent) & ~(page - 1);
-            if (begin < end) madvise(reinterpret_cast<void*>(begin), end - begin, MADV_HUGEPAGE);
-            extents.push_back(std::move(p));
-            next = 0;
+    void give(const std::vector<void*>& more) {
+        if (more.empty()) return;
+        std::lock_guard guard(lock);
+        blocks.insert(blocks.end(), more.begin(), more.end());
+        available.store(blocks.size(), std::memory_order_relaxed);
+    }
+    void* take() {
+        if (!available.load(std::memory_order_relaxed)) return nullptr;
+        std::lock_guard guard(lock);
+        if (blocks.empty()) return nullptr;
+        void* block = blocks.back();
+        blocks.pop_back();
+        available.store(blocks.size(), std::memory_order_relaxed);
+        return block;
+    }
+} recycled;
+
+class Slab {
+    char* next = nullptr;
+    char* end = nullptr;
+public:
+    void* take() {
+        if (void* block = recycled.take()) return block;
+        if (next == end) {
+            constexpr size_t huge = 2u << 20;
+            void* raw = mmap(nullptr, extentBytes + huge, PROT_READ | PROT_WRITE,
+                             MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
+            if (raw == MAP_FAILED) throw std::bad_alloc();
+            next = reinterpret_cast<char*>((reinterpret_cast<uintptr_t>(raw) + huge - 1) & ~(huge - 1));
+            end = next + extentBytes;
+            madvise(next, extentBytes, MADV_HUGEPAGE);
         }
-        T* block = extents.back().get() + next;
-        next += blockSize;
+        void* block = next;
+        next += blockBytes;
         return block;
     }
 };
-template<class T> struct Blocks {
-    std::vector<T*> blocks;
-    size_t size = 0;
-    void add(Arena<T>& arena, const T& row) {
-        const size_t offset = size % blockSize;
-        if (!offset) blocks.push_back(arena.takeBlock());
-        std::construct_at(blocks.back() + offset, row);
-        ++size;
+
+template<class T> constexpr size_t rowsPerBlock = blockBytes / sizeof(T);
+
+// Radix scatter with software write combining: rows collect in a small
+// per-partition buffer and leave as whole cache lines with non-temporal
+// stores, so the destination is never read and the open set stays in L2.
+template<class T, size_t Group> class Scatter {
+    static_assert(std::is_trivially_copyable_v<T> && blockBytes % sizeof(T) == 0);
+    static_assert((Group * sizeof(T)) % 64 == 0 && rowsPerBlock<T> % Group == 0);
+    struct alignas(64) Buffer { T rows[Group]; };
+    Slab& slab;
+    std::vector<Buffer> buffers;
+    T* destination(size_t part, size_t start) {
+        const size_t offset = start % rowsPerBlock<T>;
+        if (!offset) blocks[part].push_back(static_cast<T*>(slab.take()));
+        return blocks[part].back() + offset;
     }
-    template<class F> void each(F&& visit) {
-        size_t remaining = size;
-        for (auto* block : blocks) {
-            const size_t count = std::min(remaining, blockSize);
-            for (size_t i = 0; i < count; ++i) visit(block[i]);
+public:
+    std::vector<uint32_t> counts;
+    std::vector<std::vector<T*>> blocks;
+    Scatter(Slab& slab, size_t parts) : slab(slab), buffers(parts), counts(parts), blocks(parts) {}
+
+    // Returns the row's position in its partition's chain.
+    uint32_t add(size_t part, const T& row) {
+        const uint32_t index = counts[part]++;
+        const size_t slot = index % Group;
+        Buffer& buffer = buffers[part];
+        buffer.rows[slot] = row;
+        if (slot == Group - 1) {
+#ifdef __AVX512F__
+            auto* from = reinterpret_cast<const __m512i*>(&buffer);
+            auto* to = reinterpret_cast<__m512i*>(destination(part, index - slot));
+            for (size_t i = 0; i < Group * sizeof(T) / 64; ++i)
+                _mm512_stream_si512(to + i, _mm512_load_si512(from + i));
+#else
+            auto* from = reinterpret_cast<const __m256i*>(&buffer);
+            auto* to = reinterpret_cast<__m256i*>(destination(part, index - slot));
+            for (size_t i = 0; i < Group * sizeof(T) / 32; ++i)
+                _mm256_stream_si256(to + i, _mm256_load_si256(from + i));
+#endif
+        }
+        return index;
+    }
+    void finish() {
+        for (size_t part = 0; part < counts.size(); ++part) {
+            const size_t rest = counts[part] % Group;
+            if (rest) std::memcpy(destination(part, counts[part] - rest), &buffers[part], rest * sizeof(T));
+        }
+        _mm_sfence();
+        std::vector<Buffer>().swap(buffers);
+    }
+    void release(size_t part, std::vector<void*>& to) {
+        to.insert(to.end(), blocks[part].begin(), blocks[part].end());
+    }
+    T& at(size_t part, size_t index) { return blocks[part][index / rowsPerBlock<T>][index % rowsPerBlock<T>]; }
+    template<class F> void pieces(size_t part, F&& visit) {
+        size_t remaining = counts[part];
+        for (T* block : blocks[part]) {
+            const size_t count = std::min(remaining, rowsPerBlock<T>);
+            visit(block, count);
             remaining -= count;
         }
     }
 };
-struct EventRow {
-    Key id;
-    int64_t ingest;
-    Event data;
-};
 
-struct PersonCache {
-    struct Entry { Key raw, canonical; };
-    std::vector<Entry> entries = std::vector<Entry>(1u << 14);
-    Key lookup(const Context& ctx, const Key& key) {
-        auto& entry = entries[key.hash() & (entries.size() - 1)];
-        if (!(entry.raw == key)) entry = {key, ctx.person(key)};
-        return entry.canonical;
+// ---- Rows ----------------------------------------------------------------
+// A parsed event waits under its raw user ID until identities are known.
+// Non-purchases can reuse their zero price and category payload for exact dedup.
+struct StagedEvent {
+    Key user;
+    int64_t ts;
+    uint64_t payload, origin;
+    static constexpr uint64_t inlineId = uint64_t{1} << 63;
+    static constexpr uint64_t timeMask = (uint64_t{1} << 49) - 1;
+
+    void remember(const Key& id, int64_t ingest) {
+        if (payload || ingest < -(int64_t{1} << 48) || ingest >= (int64_t{1} << 48)) return;
+        origin = id.bits;
+        payload = inlineId | (static_cast<uint64_t>(ingest) & timeMask);
     }
+    uint32_t price() const { return payload & inlineId ? 0 : static_cast<uint32_t>(payload >> 32); }
+    uint32_t category() const { return payload & inlineId ? 0 : static_cast<uint32_t>(payload); }
+};
+static_assert(sizeof(StagedEvent) == 32 && sizeof(Event) == 16 && sizeof(Click) == 32);
+
+// Dedup record: 23 hash bits, then either the line's offset or the staged row.
+constexpr unsigned refBits = 40, indexBits = 26, partBitsMax = 10, readerBitsMax = 4;
+constexpr uint64_t stagedFlag = uint64_t{1} << refBits;
+constexpr unsigned tagShift = refBits + 1;
+static_assert(indexBits + partBitsMax + readerBitsMax == refBits);
+
+struct Reader {
+    Slab slab;
+    Scatter<StagedEvent, 8> events;
+    Scatter<Click, 4> clicks;
+    Scatter<uint64_t, 8> ids;
+    Reader(size_t parts, size_t idShards) : events(slab, parts), clicks(slab, parts), ids(slab, idShards) {}
+};
+struct Router {
+    Slab slab;
+    Scatter<Event, 8> events;
+    Scatter<Click, 4> clicks;
+    explicit Router(size_t buckets) : events(slab, buckets), clicks(slab, buckets) {}
 };
 
-bool parseRow(std::string_view line, const Context& ctx, EventRow& row) {
+struct ParsedEvent {
+    Key id;
+    bool valid = false;
+    StagedEvent row;
+    std::string_view ingest;
+};
+
+// Malformed lines and empty IDs never take part in deduplication. Every other
+// copy does, valid or not: an invalid earliest copy suppresses later ones.
+inline bool parseEvent(std::string_view line, const Context& ctx, ParsedEvent& out) {
     std::array<std::string_view,7> f;
     if (!csv(line, f) || f[0].empty()) return false;
-    row.id = Key::from(f[0]);
-    row.ingest = f[3].size() == 20 ? validIngest(f[3].data()) : timestamp(f[3]);
-    row.data.ts = invalidTime;
-    // An invalid earliest copy must survive dedup and suppress later copies.
+    out.id = Key::from(f[0]);
+    out.ingest = f[3];
+    out.valid = false;
     if (f[1].empty() || f[5].empty()) return true;
-    auto ts = timestamp(f[2]);
-    if (ts < ctx.start || ts >= ctx.end || row.ingest - dayMs > ts) return true;
+    const auto ts = timestamp(f[2]);
+    if (ts < ctx.start || ts >= ctx.end) return true;
+    const int64_t ingest = f[3].size() == 20 ? validIngest(f[3].data()) : timestamp(f[3]);
+    if (ingest - dayMs > ts) return true;
     uint32_t price = 0, category = 0;
     if (f[4] == "purchase") {
         auto priceEnd = f[6].data() + f[6].size();
@@ -185,11 +357,16 @@ bool parseRow(std::string_view line, const Context& ctx, EventRow& row) {
     } else if (f[4] != "view" && f[4] != "cart") {
         return true;
     }
-    row.data = {Key::from(f[1]), ts, price, category};
+    out.row = {Key::from(f[1]), ts, (uint64_t{price} << 32) | category, 0};
+    out.row.remember(out.id, ingest);
+    out.valid = true;
     return true;
 }
+inline int64_t ingestTime(std::string_view text) {
+    return text.size() == 20 ? validIngest(text.data()) : timestamp(text);
+}
 
-bool parseRow(std::string_view line, const Context& ctx, Click& row) {
+inline bool parseClick(std::string_view line, const Context& ctx, Click& row) {
     std::array<std::string_view,4> f;
     if (!csv(line, f) || f[0].empty() || f[1].empty()) return false;
     const auto ts = timestamp(f[3]);
@@ -200,195 +377,190 @@ bool parseRow(std::string_view line, const Context& ctx, Click& row) {
     return true;
 }
 
-template<class F>
-void readLines(const std::vector<std::string_view>& files, unsigned workers, F visit) {
-    const auto spans = chunks(files);
-    if (spans.empty()) return;
-    const unsigned readers = std::min<size_t>(spans.size(), workers);
-    std::atomic<size_t> next = 0;
-    parallel(readers, readers, [&](size_t reader) {
-        PersonCache people;
-        for (;;) {
-            const size_t i = next.fetch_add(1, std::memory_order_relaxed);
-            if (i >= spans.size()) break;
-            chunkLines(spans[i], [&](std::string_view line) { visit(reader, people, line); });
-        }
-    });
-}
+struct Source {
+    std::vector<InputChunk> spans;
+    std::vector<uint64_t> starts;            // global offset of each event file
+    std::vector<std::string_view> files;
+    size_t eventSpans = 0;
+    // The line's first byte and the end of its file.
+    std::pair<const char*, const char*> locate(uint64_t offset) const {
+        const size_t f = std::upper_bound(starts.begin(), starts.end(), offset) - starts.begin() - 1;
+        return {files[f].data() + (offset - starts[f]), files[f].data() + files[f].size()};
+    }
+};
 
-// Parse ahead so independent identity lookups can overlap their memory requests.
-template<class Row, class Visit>
-void readRows(const Context& ctx, const std::vector<std::string_view>& files,
-              unsigned workers, Visit visit) {
-    constexpr size_t batchSize = 32;
-    struct Batch { std::array<Row, batchSize> rows; size_t used = 0; };
-    std::vector<Batch> batches(workers);
-    auto event = [](Row& row) -> auto& {
-        if constexpr (std::is_same_v<Row, EventRow>) return row.data;
-        else return row;
-    };
-    auto flush = [&](size_t reader, PersonCache& people) {
-        auto& batch = batches[reader];
-        for (size_t i = 0; i < batch.used; ++i) {
-            auto& row = batch.rows[i];
-            auto& item = event(row);
-            if (item.ts != invalidTime) item.person = people.lookup(ctx, item.person);
-            visit(reader, row);
+// One ID shard: find the hash tags that occur more than once, then settle
+// those few rows exactly from their source lines.
+void deduplicate(size_t shard, const Context& ctx, const Source& source,
+                 std::vector<std::unique_ptr<Reader>>& readers) {
+    size_t count = 0;
+    for (auto& r : readers) count += r->ids.counts[shard];
+    if (count < 2) return;
+    // The compact filters conservatively nominate collisions. Sorting by the
+    // full tag below separates unrelated IDs before any source-line reread.
+    const size_t bits = std::min<size_t>(1u << (64 - tagShift),
+        std::max<size_t>(64, std::bit_ceil(count) * 16));
+    const size_t mask = bits - 1;
+    struct Word { uint64_t seen, repeated; };
+    static thread_local std::vector<Word> filter;
+    filter.assign(bits / 64, Word{});
+    for (auto& r : readers)
+        r->ids.pieces(shard, [&](const uint64_t* records, size_t n) {
+            for (size_t i = 0; i < n; ++i) {
+                const size_t bit = (records[i] >> tagShift) & mask;
+                const uint64_t flag = uint64_t{1} << (bit % 64);
+                Word& word = filter[bit / 64];
+                word.repeated |= word.seen & flag;
+                word.seen |= flag;
+            }
+        });
+    static thread_local std::vector<uint64_t> suspects, scratch;
+    suspects.clear();
+    for (auto& r : readers)
+        r->ids.pieces(shard, [&](const uint64_t* records, size_t n) {
+            for (size_t i = 0; i < n; ++i) {
+                const size_t bit = (records[i] >> tagShift) & mask;
+                if ((filter[bit / 64].repeated >> (bit % 64)) & 1)
+                    suspects.push_back(records[i]);
+            }
+        });
+    if (suspects.size() < 512) {
+        std::sort(suspects.begin(), suspects.end());
+    } else {
+        // Only the high 23 tag bits group potential copies. Two stable radix
+        // passes discard the unnecessary ordering by source or staged offset.
+        std::array<size_t,2048> low{};
+        std::array<size_t,4096> high{};
+        for (uint64_t x : suspects) {
+            ++low[(x >> tagShift) & 2047];
+            ++high[x >> (tagShift + 11)];
         }
-        batch.used = 0;
-    };
-    readLines(files, workers, [&](size_t reader, PersonCache& people, std::string_view line) {
-        auto& batch = batches[reader];
-        auto& row = batch.rows[batch.used];
-        if (!parseRow(line, ctx, row)) return;
-        auto& item = event(row);
-        if (item.ts != invalidTime && !ctx.identities.slots.empty()) {
-            uint64_t h = item.person.hash();
-            __builtin_prefetch(&people.entries[h & (people.entries.size() - 1)]);
-            size_t span = ctx.identities.shardSize;
-            __builtin_prefetch(&ctx.identities.slots[Identities::shard(h)*span + (h & (span-1))]);
+        auto offsets = [](auto& counts) {
+            size_t offset = 0;
+            for (size_t& n : counts) {
+                size_t previous = offset;
+                offset += n;
+                n = previous;
+            }
+        };
+        offsets(low);
+        offsets(high);
+        scratch.resize(suspects.size());
+        for (uint64_t x : suspects)
+            scratch[low[(x >> tagShift) & 2047]++] = x;
+        for (uint64_t x : scratch)
+            suspects[high[x >> (tagShift + 11)]++] = x;
+    }
+    size_t kept = 0;
+    for (size_t begin = 0; begin < suspects.size();) {
+        size_t end = begin + 1;
+        while (end < suspects.size() && (suspects[end] >> tagShift) == (suspects[begin] >> tagShift)) ++end;
+        if (end - begin > 1) {
+            for (size_t i = begin; i < end; ++i) suspects[kept++] = suspects[i];
         }
-        if (++batch.used == batchSize) flush(reader, people);
-    });
-    PersonCache tail;
-    for (size_t r = 0; r < workers; ++r)
-        if (batches[r].used) flush(r, tail);
-}
+        begin = end;
+    }
+    suspects.resize(kept);
+    if (suspects.empty()) return;
 
-void ingestEvents(const Context& ctx, const std::vector<std::string_view>& files,
-                  std::vector<Bucket>& out, unsigned workers) {
-    std::vector<Arena<EventRow>> arenas(workers);
-    std::vector<std::array<Blocks<EventRow>, partitions>> records(workers);
-    readRows<EventRow>(ctx, files, workers, [&](size_t reader, const EventRow& row) {
-        records[reader][row.id.hash() & (partitions - 1)].add(arenas[reader], row);
-    });
-
-    std::vector<std::vector<size_t>> offsets(partitions, std::vector<size_t>(out.size()));
-    parallel(partitions, workers, [&](size_t shard) {
-        size_t count = 0;
-        for (auto& reader : records) count += reader[shard].size;
-        if (!count) return;
-        // Tags keep almost all probes in the small slot array. Every potential
-        // match compares the complete ID, even if the 64-bit hashes collide.
-        struct Slot { uint32_t tag, index; };
-        std::vector<Slot> slots(std::bit_ceil(count + count / 3 + 1));
-        const size_t mask = slots.size() - 1;
-        std::vector<EventRow*> blocks;
-        auto& sizes = offsets[shard];
-        for (auto& reader : records) {
-            auto& input = reader[shard];
-            size_t rem = input.size;
-            for (auto& block : input.blocks) {
-                const size_t base = blocks.size() * blockSize;
-                if (base + blockSize >= UINT32_MAX)
-                    throw std::runtime_error("Too many rows in one ID partition");
-                blocks.push_back(block);
-                const size_t n = std::min(rem, blockSize);
-                for (size_t i = 0; i < n; ++i) {
-                    EventRow& row = block[i];
-                    const Key id = row.id;
-                    const uint64_t hash = id.hash();
-                    const uint32_t tag = static_cast<uint32_t>(hash >> 32);
-                    size_t pos = (hash >> partitionBits) & mask;
-                    while (slots[pos].index) {
-                        auto slot = slots[pos];
-                        if (slot.tag == tag) {
-                            const size_t index = slot.index - 1;
-                            EventRow& kept = blocks[index / blockSize][index % blockSize];
-                            if (kept.id == id) {
-                                if (row.ingest < kept.ingest) {
-                                    kept.data.ts = invalidTime;
-                                    slots[pos].index = static_cast<uint32_t>(base + i + 1);
-                                } else {
-                                    row.data.ts = invalidTime;
-                                }
-                                break;
-                            }
-                        }
-                        pos = (pos + 1) & mask;
-                    }
-                    if (!slots[pos].index)
-                        slots[pos] = {tag, static_cast<uint32_t>(base + i + 1)};
+    // The suspects' staged rows and source lines are scattered through memory.
+    // Resolve them in waves so those cache misses overlap.
+    struct Copy { Key id; int64_t ingest; StagedEvent* staged; };
+    static thread_local std::vector<Copy> copies;
+    copies.resize(suspects.size());
+    constexpr size_t wave = 64;
+    for (size_t base = 0; base < suspects.size(); base += wave) {
+        std::array<const char*, wave> lines{}, limits;
+        const size_t stop = std::min(suspects.size(), base + wave);
+        for (size_t i = base; i < stop; ++i) {
+            const uint64_t record = suspects[i];
+            const uint64_t ref = record & (stagedFlag - 1);
+            copies[i].staged = nullptr;
+            if (record & stagedFlag) {
+                const size_t reader = ref >> (indexBits + partBitsMax);
+                const size_t part = (ref >> indexBits) & ((1u << partBitsMax) - 1);
+                copies[i].staged = &readers[reader]->events.at(part, ref & ((1u << indexBits) - 1));
+                __builtin_prefetch(copies[i].staged);
+                __builtin_prefetch(reinterpret_cast<const char*>(copies[i].staged) + sizeof(StagedEvent)-1);
+            } else {
+                std::tie(lines[i-base], limits[i-base]) = source.locate(ref);
+                __builtin_prefetch(lines[i-base]);
+                __builtin_prefetch(lines[i-base] + 64);
+            }
+        }
+        for (size_t i = base; i < stop; ++i)
+            if (copies[i].staged) {
+                const StagedEvent& row = *copies[i].staged;
+                if (row.payload & StagedEvent::inlineId) {
+                    copies[i].id = Key{row.origin};
+                    copies[i].ingest = static_cast<int64_t>(row.payload << 15) >> 15;
+                    continue;
                 }
-                rem -= n;
+                std::tie(lines[i-base], limits[i-base]) = source.locate(row.origin);
+                __builtin_prefetch(lines[i-base]);
+                __builtin_prefetch(lines[i-base] + 64);
             }
+        for (size_t i = base; i < stop; ++i) {
+            std::array<std::string_view,7> f;
+            const char* start = lines[i-base];
+            if (!start) continue;
+            const void* newline = std::memchr(start, '\n', limits[i-base] - start);
+            const char* stop = newline ? static_cast<const char*>(newline) : limits[i-base];
+            if (!csv(std::string_view(start, stop - start), f)) throw std::logic_error("Source line changed");
+            copies[i].id = Key::from(f[0]);
+            copies[i].ingest = ingestTime(f[3]);
         }
-        for (auto& reader : records)
-            reader[shard].each([&](const EventRow& row) {
-                if (row.data.ts != invalidTime)
-                    ++sizes[row.data.person.hash() & (out.size() - 1)];
-            });
-    });
-
-    parallel(out.size(), workers, [&](size_t b) {
-        auto& dst = out[b].events;
-        size_t total = dst.size();
-        for (auto& shard : offsets) {
-            const auto start = total;
-            total += shard[b];
-            shard[b] = start;
-        }
-        dst.resize(total);
-    });
-    parallel(partitions, workers, [&](size_t shard) {
-        auto& positions = offsets[shard];
-        for (auto& reader : records) {
-            auto& input = reader[shard];
-            input.each([&](const EventRow& row) {
-                if (row.data.ts == invalidTime) return;
-                const auto b = row.data.person.hash() & (out.size() - 1);
-                out[b].events[positions[b]++] = row.data;
-            });
-            input.blocks.clear();
-        }
-    });
-}
-
-void ingestClicks(const Context& ctx, const std::vector<std::string_view>& files,
-                  std::vector<Bucket>& out, unsigned workers) {
-    // All surviving copies of a click are identical. They enter and leave the
-    // seven-day window together, so they change neither its winning (ts, id)
-    // nor the set of campaigns in it. Routing straight to the person's bucket
-    // therefore implements both output tables without a global click-ID pass.
-    std::vector<Arena<Click>> arenas(workers);
-    std::vector<std::vector<Blocks<Click>>> records(workers);
-    for (auto& reader : records) reader.resize(out.size());
-    readRows<Click>(ctx, files, workers, [&](size_t reader, const Click& click) {
-        records[reader][click.person.hash() & (out.size() - 1)].add(arenas[reader], click);
-    });
-    parallel(out.size(), workers, [&](size_t b) {
-        auto& clicks = out[b].clicks;
-        size_t total = clicks.size();
-        for (auto& reader : records) total += reader[b].size;
-        clicks.reserve(total);
-        for (auto& reader : records) {
-            auto& input = reader[b];
-            size_t remaining = input.size;
-            for (auto& block : input.blocks) {
-                const size_t n = std::min(remaining, blockSize);
-                clicks.insert(clicks.end(), block, block + n);
-                remaining -= n;
+    }
+    // Within each exact ID the earliest ingest survives. Copies that tie are identical.
+    auto before = [](const Copy& a, const Copy& b) {
+        return a.id != b.id ? a.id < b.id : a.ingest < b.ingest;
+    };
+    for (size_t begin = 0; begin < suspects.size();) {
+        size_t end = begin + 1;
+        while (end < suspects.size() && suspects[end] >> tagShift == suspects[begin] >> tagShift) ++end;
+        if (end == begin + 2) {
+            // Most repeated IDs have just two copies. A differing full ID
+            // is a tag collision and leaves both rows untouched.
+            auto& a = copies[begin];
+            auto& b = copies[begin + 1];
+            if (a.id == b.id) {
+                StagedEvent* loser = a.ingest <= b.ingest ? b.staged : a.staged;
+                if (loser) loser->ts = invalidTime;
             }
-            input.blocks.clear();
+            begin = end;
+            continue;
         }
-    });
+        if (end - begin <= 16) {
+            for (size_t i = begin + 1; i < end; ++i) {
+                Copy value = copies[i];
+                size_t hole = i;
+                for (; hole > begin && before(value, copies[hole - 1]); --hole) copies[hole] = copies[hole - 1];
+                copies[hole] = value;
+            }
+        } else {
+            std::stable_sort(copies.begin() + begin, copies.begin() + end, before);
+        }
+        for (size_t i = begin + 1; i < end; ++i)
+            if (copies[i].id == copies[i - 1].id && copies[i].staged)
+                copies[i].staged->ts = invalidTime;
+        begin = end;
+    }
 }
 } // namespace
 
 int64_t timestamp(std::string_view s) {
     const char* p = s.data();
+    if (s.size() == 13) return decimal13(p);
     if ((s.size() != 20 && s.size() != 25) || p[4] != '-') {
         int64_t ms;
         if (s.empty() || !digit(*p)) return invalidTime;
         auto [end, ec] = std::from_chars(p, p + s.size(), ms);
         return ec == std::errc{} && end == p + s.size() ? ms : invalidTime;
     }
+    if (p[7]!='-' || p[10]!='T') return invalidTime;
     const auto base = midnight(p);
-    if (base == invalidTime || p[10] != 'T' || p[13] != ':' || p[16] != ':' ||
-        !digit(p[11]) || !digit(p[12]) || !digit(p[14]) || !digit(p[15]) ||
-        !digit(p[17]) || !digit(p[18])) return invalidTime;
-    const int hour = pairValue(p+11), min = pairValue(p+14), sec = pairValue(p+17);
-    if (hour > 23 || min > 59 || sec > 59) return invalidTime;
+    const int seconds = clockSeconds<true>(p+11);
+    if (base==invalidTime || seconds<0) return invalidTime;
     int offset = 0;
     if (s.size() == 25) {
         if ((p[19] != '+' && p[19] != '-') || p[22] != ':' || !digit(p[20]) ||
@@ -399,13 +571,145 @@ int64_t timestamp(std::string_view s) {
     } else if (p[19] != 'Z') {
         return invalidTime;
     }
-    return base + 1000LL * (3600 * hour + 60 * (min - offset) + sec);
+    return base + 1000LL * (seconds - 60 * offset);
 }
+
 
 void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
             const std::vector<std::string_view>& clickFiles, std::vector<Bucket>& out,
-            unsigned workers) {
+            unsigned workers, const std::function<void()>& awaitIdentities) {
     if (!std::has_single_bit(out.size())) throw std::logic_error("Bucket count must be a power of two");
-    ingestEvents(ctx, eventFiles, out, workers);
-    ingestClicks(ctx, clickFiles, out, workers);
+    lap("start");
+    workers = std::min(workers, 1u << readerBitsMax);
+
+    Source source;
+    source.files = eventFiles;
+    size_t bytes = 0;
+    for (auto file : eventFiles) {
+        source.starts.push_back(bytes);
+        bytes += file.size();
+    }
+    if (bytes >> refBits) throw std::runtime_error("Event input too large");
+    source.spans = chunks(eventFiles);
+    source.eventSpans = source.spans.size();
+    for (auto& span : chunks(clickFiles)) source.spans.push_back(span);
+    if (source.spans.empty()) { awaitIdentities(); return; }
+    std::vector<uint64_t> spanStart(source.eventSpans);
+    for (size_t i = 0, f = 0; i < source.eventSpans; ++i) {
+        while (source.files[f].data() != source.spans[i].file.data() ||
+               source.files[f].size() != source.spans[i].file.size()) ++f;
+        spanStart[i] = source.starts[f];
+    }
+
+    // Staging partitions follow the top hash bits, like the identity table, so
+    // one partition later probes one slice of it. ID shards use the low bits.
+    size_t clickBytes = 0;
+    for (auto file : clickFiles) clickBytes += file.size();
+    const unsigned partBits = std::clamp<int>(std::bit_width((bytes + clickBytes) >> 23), 0, 9);
+    const size_t parts = size_t{1} << partBits;
+    const size_t idShards = std::clamp<size_t>(std::bit_ceil(bytes >> 22), 1, 1024);
+    auto partOf = [&](uint64_t hash) { return static_cast<size_t>((hash >> 1) >> (63 - partBits)); };
+
+    const unsigned readerCount = static_cast<unsigned>(std::min<size_t>(source.spans.size(), workers));
+    std::vector<std::unique_ptr<Reader>> readers(readerCount);
+    std::atomic<size_t> next = 0;
+    parallel(readerCount, readerCount, [&](size_t r) {
+        readers[r] = std::make_unique<Reader>(parts, idShards);
+        Reader& reader = *readers[r];
+        ParsedEvent event;
+        Click click;
+        for (;;) {
+            const size_t i = next.fetch_add(1, std::memory_order_relaxed);
+            if (i >= source.spans.size()) break;
+            const InputChunk& span = source.spans[i];
+            if (i < source.eventSpans) {
+                const uint64_t base = spanStart[i] - reinterpret_cast<uintptr_t>(span.file.data());
+                chunkLines(span, [&](std::string_view line) {
+                    if (!parseEvent(line, ctx, event)) return;
+                    const uint64_t offset = base + reinterpret_cast<uintptr_t>(line.data());
+                    const uint64_t hash = event.id.hash();
+                    uint64_t record = offset;
+                    if (event.valid) {
+                        if (!(event.row.payload & StagedEvent::inlineId)) event.row.origin = offset;
+                        const size_t part = partOf(event.row.user.hash());
+                        const uint64_t index = reader.events.add(part, event.row);
+                        if (index >> indexBits) throw std::runtime_error("Too many rows in one partition");
+                        record = stagedFlag | (uint64_t(r) << (indexBits + partBitsMax)) |
+                                 (uint64_t(part) << indexBits) | index;
+                    }
+                    record |= (hash >> 32) << tagShift;
+                    reader.ids.add(hash & (idShards - 1), record);
+                });
+            } else {
+                chunkLines(span, [&](std::string_view line) {
+                    if (parseClick(line, ctx, click))
+                        reader.clicks.add(partOf(click.person.hash()), click);
+                });
+            }
+        }
+        reader.events.finish();
+        reader.clicks.finish();
+        reader.ids.finish();
+    });
+    lap("parse");
+
+    parallel(idShards, workers, [&](size_t shard) {
+        deduplicate(shard, ctx, source, readers);
+        std::vector<void*> spent;
+        for (auto& reader : readers) reader->ids.release(shard, spent);
+        recycled.give(spent);
+    });
+    lap("dedup");
+    awaitIdentities();
+    lap("await-links");
+
+    // Route every surviving row to its person's bucket. A partition's lookups
+    // stay within one slice of the identity table.
+    std::vector<std::unique_ptr<Router>> routers(workers);
+    std::atomic<size_t> nextPart = 0;
+    const size_t bucketMask = out.size() - 1;
+    parallel(workers, workers, [&](size_t w) {
+        routers[w] = std::make_unique<Router>(out.size());
+        Router& router = *routers[w];
+        std::vector<void*> spent;
+        for (;;) {
+            const size_t p = nextPart.fetch_add(1, std::memory_order_relaxed);
+            if (p >= parts) break;
+            spent.clear();
+            for (auto& reader : readers) {
+                reader->events.pieces(p, [&](const StagedEvent* rows, size_t n) {
+                    for (size_t i = 0; i < n; ++i) {
+                        const StagedEvent& row = rows[i];
+                        if (row.ts == invalidTime) continue;
+                        uint64_t personHash = row.user.hash();
+                        const Key person = ctx.identities.person(row.user, personHash);
+                        router.events.add(personHash & bucketMask,
+                                          Event::pack(person, ctx.start, {row.ts, row.price(), row.category()}));
+                    }
+                });
+                reader->clicks.pieces(p, [&](const Click* rows, size_t n) {
+                    for (size_t i = 0; i < n; ++i) {
+                        Click click = rows[i];
+                        uint64_t personHash = click.person.hash();
+                        click.person = ctx.identities.person(click.person, personHash);
+                        router.clicks.add(personHash & bucketMask, click);
+                    }
+                });
+                reader->events.release(p, spent);
+                reader->clicks.release(p, spent);
+            }
+            recycled.give(spent);
+        }
+        router.events.finish();
+        router.clicks.finish();
+    });
+    for (size_t b = 0; b < out.size(); ++b)
+        for (auto& router : routers) {
+            router->events.pieces(b, [&](const Event* rows, size_t n) { out[b].events.add(rows, n); });
+            router->clicks.pieces(b, [&](const Click* rows, size_t n) { out[b].clicks.add(rows, n); });
+        }
+    // The blocks outlive this function: buckets point into them.
+    for (auto& reader : readers) (void)reader.release();
+    for (auto& router : routers) (void)router.release();
+    lap("route");
 }

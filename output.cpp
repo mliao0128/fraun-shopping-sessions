@@ -39,29 +39,45 @@ void column(pq::RowGroupWriter* group, const Rows& rows, Field field) {
     static_cast<pq::TypedColumnWriter<ParquetType>*>(group->NextColumn())
         ->WriteBatch(static_cast<int64_t>(rows.size()), nullptr, nullptr, values.data());
 }
-pq::ByteArray bytes(const Key& k) {
-    auto text = k.view();
+pq::ByteArray bytes(const Key& k, std::vector<Key::Buffer>& scratch) {
+    const auto text = k.needsDecoding() ? k.view(scratch.emplace_back()) : k.borrowed();
     return {static_cast<uint32_t>(text.size()), reinterpret_cast<const uint8_t*>(text.data())};
 }
-void writeUsers(pq::ParquetFileWriter& file, std::span<const UserRow> rows, const Context& ctx) {
-    auto* group = file.AppendRowGroup();
-    column<pq::ByteArrayType>(group, rows, [](const auto& r){return bytes(r.person);});
-    column<pq::Int32Type>(group, rows, [](const auto& r){return r.day;});
-    column<pq::Int64Type>(group, rows, [](const auto& r){return r.sessions;});
-    column<pq::Int64Type>(group, rows, [](const auto& r){return r.events;});
-    column<pq::Int64Type>(group, rows, [](const auto& r){return r.revenue;});
+class UserWriter {
+    std::vector<pq::ByteArray> people, categories, categoryNames;
     std::vector<int16_t> present;
-    std::vector<pq::ByteArray> categories;
-    present.reserve(rows.size());
-    categories.reserve(rows.size());
-    for (const auto& row : rows) {
-        present.push_back(row.top != UINT32_MAX);
-        if (row.top != UINT32_MAX) categories.push_back(bytes(ctx.categories[row.top]));
+    std::vector<Key::Buffer> decodedPeople, decodedCategories;
+public:
+    explicit UserWriter(const Context& ctx) {
+        decodedCategories.reserve(ctx.categories.size());
+        categoryNames.reserve(ctx.categories.size());
+        for (const Key& name : ctx.categories) categoryNames.push_back(bytes(name, decodedCategories));
     }
-    static_cast<pq::ByteArrayWriter*>(group->NextColumn())->WriteBatch(
-        static_cast<int64_t>(rows.size()), present.data(), nullptr, categories.data());
-    group->Close();
-}
+
+    void write(pq::ParquetFileWriter& file, const UserColumns& rows, size_t first, size_t n) {
+        people.resize(n);
+        present.resize(n);
+        categories.clear();
+        categories.reserve(n);
+        decodedPeople.clear();
+        decodedPeople.reserve(n);
+        for (size_t i = 0; i < n; ++i) {
+            const size_t row = first + i;
+            people[i] = bytes(rows.people[row], decodedPeople);
+            const uint32_t top = rows.top[row];
+            present[i] = top != UINT32_MAX;
+            if (present[i]) categories.push_back(categoryNames[top]);
+        }
+        auto* group = file.AppendRowGroup();
+        static_cast<pq::ByteArrayWriter*>(group->NextColumn())->WriteBatch(n, nullptr, nullptr, people.data());
+        static_cast<pq::Int32Writer*>(group->NextColumn())->WriteBatch(n, nullptr, nullptr, rows.days.data() + first);
+        static_cast<pq::Int64Writer*>(group->NextColumn())->WriteBatch(n, nullptr, nullptr, rows.sessions.data() + first);
+        static_cast<pq::Int64Writer*>(group->NextColumn())->WriteBatch(n, nullptr, nullptr, rows.events.data() + first);
+        static_cast<pq::Int64Writer*>(group->NextColumn())->WriteBatch(n, nullptr, nullptr, rows.revenue.data() + first);
+        static_cast<pq::ByteArrayWriter*>(group->NextColumn())->WriteBatch(n, present.data(), nullptr, categories.data());
+        group->Close();
+    }
+};
 struct CampaignRow { uint32_t id; int32_t day; CampaignStats stats; };
 }
 
@@ -74,12 +90,12 @@ void writeOutputs(const fs::path& root, const Context& ctx, const std::vector<Re
         auto file = writer(userDir / ("part-" + std::to_string(part) + ".parquet"), {
             stringField("user_id"), dayField(), integer("sessions"), integer("events"),
             integer("revenue_cents"), stringField("top_category", true)});
+        UserWriter columns(ctx);
         for (size_t i = part; i < results.size(); i += files) {
-            std::span<const UserRow> rows = results[i].users;
-            while (!rows.empty()) {
-                size_t batch = std::min<size_t>(65536, rows.size());
-                writeUsers(*file, rows.first(batch), ctx);
-                rows = rows.subspan(batch);
+            const UserColumns& rows = results[i].users;
+            for (size_t start = 0; start < rows.people.size(); start += 65536) {
+                const size_t count = std::min<size_t>(65536, rows.people.size() - start);
+                columns.write(*file, rows, start, count);
             }
         }
         file->Close();
@@ -104,8 +120,11 @@ void writeOutputs(const fs::path& root, const Context& ctx, const std::vector<Re
         integer("purchasing_sessions"),integer("revenue_cents"),integer("assisted_sessions")});
     if (!rows.empty()) {
         auto* g = file->AppendRowGroup();
-        column<pq::ByteArrayType>(g, rows, [&](const auto& r){return bytes(ctx.campaignNames[r.id]);});
-        column<pq::ByteArrayType>(g, rows, [&](const auto& r){return bytes(ctx.channels[r.id]);});
+        std::vector<Key::Buffer> scratch;
+        scratch.reserve(rows.size());
+        column<pq::ByteArrayType>(g, rows, [&](const auto& r){return bytes(ctx.campaignNames[r.id],scratch);});
+        scratch.clear();
+        column<pq::ByteArrayType>(g, rows, [&](const auto& r){return bytes(ctx.channels[r.id],scratch);});
         column<pq::Int32Type>(g, rows, [](const auto& r){return r.day;});
         column<pq::Int64Type>(g, rows, [](const auto& r){return r.stats.sessions;});
         column<pq::Int64Type>(g, rows, [](const auto& r){return r.stats.purchasing;});

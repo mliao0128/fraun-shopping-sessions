@@ -127,7 +127,6 @@ void dimensions(const fs::path& data, Inputs& inputs, Context& ctx, unsigned wor
         ctx.channels.push_back(Key::from(f[1]));
         ctx.campaigns.insert(ctx.campaignNames.back(), i);
     });
-    linkPeople(inputs.folder(data / "links"), ctx, workers);
 }
 const char* env(const char* name, const char* fallback) {
     const char* value = std::getenv(name);
@@ -149,6 +148,17 @@ int main(int argc, char** argv) try {
     Inputs inputs;
     Context ctx;
     dimensions(data, inputs, ctx, workers);
+    // Identity linking overlaps with parsing, which needs only the small tables.
+    auto links = inputs.folder(data / "links");
+    std::exception_ptr linkError;
+    std::thread linker([&] {
+        try { linkPeople(links, ctx, std::min(workers, 2u)); }
+        catch (...) { linkError = std::current_exception(); }
+    });
+    auto awaitIdentities = [&] {
+        if (linker.joinable()) linker.join();
+        if (linkError) std::rethrow_exception(linkError);
+    };
     auto events = inputs.folder(data / "events");
     auto clicks = inputs.folder(data / "clicks");
     size_t bytes = 0;
@@ -158,23 +168,40 @@ int main(int argc, char** argv) try {
     size_t bucketCount = std::clamp(std::bit_ceil(bytes / (4u << 20)), size_t{1}, size_t{256});
     std::vector<Bucket> buckets(bucketCount);
     stage("dimensions");
-    ingest(ctx, events, clicks, buckets, workers);
+    try {
+        ingest(ctx, events, clicks, buckets, workers, awaitIdentities);
+    } catch (...) {
+        if (linker.joinable()) linker.join();
+        throw;
+    }
     stage("ingest");
-    std::vector<Result> results(bucketCount);
+    // One result per worker: campaign totals are a dense table per day, far
+    // too large to keep once per bucket.
     std::vector<size_t> order(bucketCount);
     std::iota(order.begin(), order.end(), 0);
     std::sort(order.begin(), order.end(), [&](auto a,auto b) {
-        return buckets[a].events.size() > buckets[b].events.size();
+        return buckets[a].events.size > buckets[b].events.size;
     });
-    parallel(bucketCount, workers, [&](size_t i) {
-        size_t b = order[i];
-        aggregate(buckets[b], results[b], ctx.categories.size(), ctx.campaignNames.size());
-        buckets[b] = {};
+    const unsigned aggregators = static_cast<unsigned>(std::min<size_t>(workers, bucketCount));
+    std::vector<Result> results(aggregators);
+    // About one output row per nine events; reserving spares regrowth copies.
+    size_t surviving = 0;
+    for (const auto& b : buckets) surviving += b.events.size;
+    for (auto& r : results) r.users.reserve(surviving / aggregators / 4 + 1024);
+    std::atomic<size_t> nextBucket{0};
+    parallel(aggregators, aggregators, [&](size_t w) {
+        for (;;) {
+            const size_t i = nextBucket.fetch_add(1, std::memory_order_relaxed);
+            if (i >= bucketCount) break;
+            aggregate(buckets[order[i]], results[w], ctx.categories.size(), ctx.campaignNames.size(), ctx.start);
+        }
     });
     stage("aggregate");
     writeOutputs(output, ctx, results, workers);
     stage("parquet");
-    return 0;
+    // Everything is written and closed. Skip unmapping gigabytes on the way out.
+    std::cerr.flush();
+    _exit(0);
 } catch (const std::exception& e) {
     std::cerr << e.what() << '\n';
     return 1;
