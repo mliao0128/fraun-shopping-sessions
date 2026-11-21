@@ -1658,5 +1658,559 @@
         ]
       }
     }
-  ]
+  ],
+  "additional_60M": {
+    "seed": 919733,
+    "summary": {
+      "baseline_s": 2.0957955695,
+      "candidate_s": 2.0234110175,
+      "reduction_pct": 3.4537983118873017,
+      "faster_pairs": 3,
+      "paired_pct": 2.779153922990152
+    },
+    "all_runs": [
+      {
+        "monotonic_s": 2.216107004,
+        "raw_s": 2.014642747,
+        "tag": "fraun-fast-final",
+        "block": 1,
+        "position": 1,
+        "out": "parse-next-eval/unseen-clock/fraun-fast-final-1",
+        "image": "b3d3d09065bed16aef89ceb12f9ef8afc1781b9f779b6d940eea5946078adb00",
+        "seconds": 2.213637233,
+        "cli_start_seconds": 4.729546593,
+        "peak_cgroup_bytes": 4108935168,
+        "output_scratch_bytes": 68483710,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 1.96011451,
+        "raw_s": 1.781922192,
+        "tag": "parse-next-release",
+        "block": 1,
+        "position": 2,
+        "out": "parse-next-eval/unseen-clock/parse-next-release-1",
+        "image": "18eb45b833e544015f073000ff22b7d72299c24f095172eaa6f9cd87be82df35",
+        "seconds": 1.957052233,
+        "cli_start_seconds": 1.813987332,
+        "peak_cgroup_bytes": 4189925376,
+        "output_scratch_bytes": 68579361,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 1.807427196,
+        "raw_s": 1.643115586,
+        "tag": "parse-next-link-release",
+        "block": 1,
+        "position": 3,
+        "out": "parse-next-eval/unseen-clock/parse-next-link-release-1",
+        "image": "8c0ceaf673586cdf42a08beec7e5848d899d64663e9a9d95e77c939abcfe537a",
+        "seconds": 1.80361783,
+        "cli_start_seconds": 4.458386434,
+        "peak_cgroup_bytes": 4018597888,
+        "output_scratch_bytes": 68515490,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 1.678462074,
+        "raw_s": 1.525874631,
+        "tag": "fraun-fast-final",
+        "block": 2,
+        "position": 1,
+        "out": "parse-next-eval/unseen-clock/fraun-fast-final-2",
+        "image": "b3d3d09065bed16aef89ceb12f9ef8afc1781b9f779b6d940eea5946078adb00",
+        "seconds": 1.679304347,
+        "cli_start_seconds": 4.352138802,
+        "peak_cgroup_bytes": 4194861056,
+        "output_scratch_bytes": 68523160,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 1.680059782,
+        "raw_s": 1.52732714,
+        "tag": "parse-next-link-release",
+        "block": 2,
+        "position": 2,
+        "out": "parse-next-eval/unseen-clock/parse-next-link-release-2",
+        "image": "8c0ceaf673586cdf42a08beec7e5848d899d64663e9a9d95e77c939abcfe537a",
+        "seconds": 1.680191983,
+        "cli_start_seconds": 4.33104116,
+        "peak_cgroup_bytes": 4043665408,
+        "output_scratch_bytes": 68575800,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 1.894803846,
+        "raw_s": 1.72254898,
+        "tag": "parse-next-release",
+        "block": 2,
+        "position": 3,
+        "out": "parse-next-eval/unseen-clock/parse-next-release-2",
+        "image": "18eb45b833e544015f073000ff22b7d72299c24f095172eaa6f9cd87be82df35",
+        "seconds": 0.0,
+        "cli_start_seconds": 1.837661263,
+        "peak_cgroup_bytes": 4227911680,
+        "output_scratch_bytes": 68577410,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 1.849111093,
+        "raw_s": 1.681010091,
+        "tag": "parse-next-release",
+        "block": 3,
+        "position": 1,
+        "out": "parse-next-eval/unseen-clock/parse-next-release-3",
+        "image": "18eb45b833e544015f073000ff22b7d72299c24f095172eaa6f9cd87be82df35",
+        "seconds": 1.846132726,
+        "cli_start_seconds": 4.769460835,
+        "peak_cgroup_bytes": 4314099712,
+        "output_scratch_bytes": 68497515,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 2.35864096,
+        "raw_s": 2.144219051,
+        "tag": "fraun-fast-final",
+        "block": 3,
+        "position": 2,
+        "out": "parse-next-eval/unseen-clock/fraun-fast-final-3",
+        "image": "b3d3d09065bed16aef89ceb12f9ef8afc1781b9f779b6d940eea5946078adb00",
+        "seconds": 2.353188179,
+        "cli_start_seconds": 5.401643847,
+        "peak_cgroup_bytes": 4068343808,
+        "output_scratch_bytes": 68546295,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 2.198158116,
+        "raw_s": 1.998325569,
+        "tag": "parse-next-link-release",
+        "block": 3,
+        "position": 3,
+        "out": "parse-next-eval/unseen-clock/parse-next-link-release-3",
+        "image": "8c0ceaf673586cdf42a08beec7e5848d899d64663e9a9d95e77c939abcfe537a",
+        "seconds": 2.1962525,
+        "cli_start_seconds": 5.294511695,
+        "peak_cgroup_bytes": 4001402880,
+        "output_scratch_bytes": 68520763,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 2.096132182,
+        "raw_s": 1.90557456,
+        "tag": "parse-next-release",
+        "block": 4,
+        "position": 1,
+        "out": "parse-next-eval/unseen-clock/parse-next-release-4",
+        "image": "18eb45b833e544015f073000ff22b7d72299c24f095172eaa6f9cd87be82df35",
+        "seconds": 2.093958292,
+        "cli_start_seconds": 5.143471629,
+        "peak_cgroup_bytes": 4211044352,
+        "output_scratch_bytes": 68488872,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 2.100387265,
+        "raw_s": 1.909443032,
+        "tag": "parse-next-link-release",
+        "block": 4,
+        "position": 2,
+        "out": "parse-next-eval/unseen-clock/parse-next-link-release-4",
+        "image": "8c0ceaf673586cdf42a08beec7e5848d899d64663e9a9d95e77c939abcfe537a",
+        "seconds": 2.101339583,
+        "cli_start_seconds": 4.981609082,
+        "peak_cgroup_bytes": 3975643136,
+        "output_scratch_bytes": 68528805,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 2.360203338,
+        "raw_s": 2.145639453,
+        "tag": "fraun-fast-final",
+        "block": 4,
+        "position": 3,
+        "out": "parse-next-eval/unseen-clock/fraun-fast-final-4",
+        "image": "b3d3d09065bed16aef89ceb12f9ef8afc1781b9f779b6d940eea5946078adb00",
+        "seconds": 2.35691918,
+        "cli_start_seconds": 5.486181832,
+        "peak_cgroup_bytes": 4112359424,
+        "output_scratch_bytes": 68544592,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 2.288675438,
+        "raw_s": 2.080614061,
+        "tag": "parse-next-link-release",
+        "block": 5,
+        "position": 1,
+        "out": "parse-next-eval/unseen-clock/parse-next-link-release-5",
+        "image": "8c0ceaf673586cdf42a08beec7e5848d899d64663e9a9d95e77c939abcfe537a",
+        "seconds": 0.0,
+        "cli_start_seconds": 2.435250762,
+        "peak_cgroup_bytes": 4013625344,
+        "output_scratch_bytes": 68505118,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 1.975484135,
+        "raw_s": 1.795894706,
+        "tag": "fraun-fast-final",
+        "block": 5,
+        "position": 2,
+        "out": "parse-next-eval/unseen-clock/fraun-fast-final-5",
+        "image": "b3d3d09065bed16aef89ceb12f9ef8afc1781b9f779b6d940eea5946078adb00",
+        "seconds": 1.975410595,
+        "cli_start_seconds": 4.902761296,
+        "peak_cgroup_bytes": 4188884992,
+        "output_scratch_bytes": 68523260,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 2.086707525,
+        "raw_s": 1.897006855,
+        "tag": "parse-next-release",
+        "block": 5,
+        "position": 3,
+        "out": "parse-next-eval/unseen-clock/parse-next-release-5",
+        "image": "18eb45b833e544015f073000ff22b7d72299c24f095172eaa6f9cd87be82df35",
+        "seconds": 2.085336356,
+        "cli_start_seconds": 5.243398523,
+        "peak_cgroup_bytes": 4174987264,
+        "output_scratch_bytes": 68565348,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 2.206393002,
+        "raw_s": 2.005811867,
+        "tag": "parse-next-link-release",
+        "block": 6,
+        "position": 1,
+        "out": "parse-next-eval/unseen-clock/parse-next-link-release-6",
+        "image": "8c0ceaf673586cdf42a08beec7e5848d899d64663e9a9d95e77c939abcfe537a",
+        "seconds": 2.201990639,
+        "cli_start_seconds": 5.182974708,
+        "peak_cgroup_bytes": 4031418368,
+        "output_scratch_bytes": 68509956,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 2.183281533,
+        "raw_s": 1.984801337,
+        "tag": "parse-next-release",
+        "block": 6,
+        "position": 2,
+        "out": "parse-next-eval/unseen-clock/parse-next-release-6",
+        "image": "18eb45b833e544015f073000ff22b7d72299c24f095172eaa6f9cd87be82df35",
+        "seconds": 2.180619802,
+        "cli_start_seconds": 5.092794145,
+        "peak_cgroup_bytes": 4120494080,
+        "output_scratch_bytes": 68541756,
+        "exit_code": 0
+      },
+      {
+        "monotonic_s": 1.794064547,
+        "raw_s": 1.630967773,
+        "tag": "fraun-fast-final",
+        "block": 6,
+        "position": 3,
+        "out": "parse-next-eval/unseen-clock/fraun-fast-final-6",
+        "image": "b3d3d09065bed16aef89ceb12f9ef8afc1781b9f779b6d940eea5946078adb00",
+        "seconds": 1.791629163,
+        "cli_start_seconds": 4.677071898,
+        "peak_cgroup_bytes": 4146462720,
+        "output_scratch_bytes": 68542853,
+        "exit_code": 0
+      }
+    ],
+    "baseline_output_checks": [
+      {
+        "tag": "fraun-fast-final",
+        "block": 1,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "parse-next-release",
+        "block": 1,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "parse-next-link-release",
+        "block": 1,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "fraun-fast-final",
+        "block": 2,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "parse-next-link-release",
+        "block": 2,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "parse-next-release",
+        "block": 2,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "parse-next-release",
+        "block": 3,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "fraun-fast-final",
+        "block": 3,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "parse-next-link-release",
+        "block": 3,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "parse-next-release",
+        "block": 4,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "parse-next-link-release",
+        "block": 4,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "fraun-fast-final",
+        "block": 4,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "parse-next-link-release",
+        "block": 5,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "fraun-fast-final",
+        "block": 5,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "parse-next-release",
+        "block": 5,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "parse-next-link-release",
+        "block": 6,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "parse-next-release",
+        "block": 6,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "tag": "fraun-fast-final",
+        "block": 6,
+        "tables": {
+          "user_daily": [
+            6673723,
+            0,
+            0
+          ],
+          "campaign_daily": [
+            28014,
+            0,
+            0
+          ]
+        }
+      }
+    ]
+  }
 }

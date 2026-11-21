@@ -28,3 +28,7 @@ All 36 official fixtures matched. On the public development set, both the 117,03
 The row scanner was compared with the generic parser on 256,000 generated records at five chunk sizes on AVX2 and AVX-512. Timestamp tests covered 930,982 values and 300,000 valid arrival times on each target, including date validity, UTC offsets, exact lateness boundaries and duplicate ordering.
 
 [Per-run timings and oracle checks](measurements.json)
+
+## Additional 60M seed
+
+The generator produced 60 million events and 15 million clicks using seed 919733 after both implementations were chosen. Six fresh containers per build ran without stage profiling, using all six orderings of baseline and both candidates. The baseline median was 2.0958 s and this build took 2.0234 s (3.5% time saved, 3/6 faster pairs). Both output tables from all 18 runs matched the submitted build row for row.
