@@ -1,5 +1,19 @@
 #pragma once
 #include "shared.hpp"
+
+// Event IDs require equality only. Keep the eight suffix bytes in input order
+// and store the prefix in their spare high bits. Bit 63 stays clear of Key tags.
+inline Key eventID(std::string_view s) {
+    if (s.size() != 9)
+        return Key::from(s);
+    uint64_t suffix;
+    std::memcpy(&suffix, s.data() + 1, 8);
+    const auto prefix = static_cast<unsigned char>(s[0]);
+    if (prefix < 128 && !(suffix & ~Key::asciiMask))
+        return {suffix | _pdep_u64(prefix, Key::headerMask)};
+    return Key::fromReference(s);
+}
+
 // Most event rows place the first two delimiters in the first 32 bytes.
 // Parse those and the remaining four independently. The split lies inside
 // the third field, so it introduces no new quote boundary.

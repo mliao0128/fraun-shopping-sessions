@@ -493,17 +493,6 @@ inline bool pairedClocks(const char* event, const char* ingest,
     return ingest-dayMs <= ts;
 }
 
-// Event IDs are only compared to other event IDs. A common prefix can
-// therefore be implicit without imposing a lexical order on this domain.
-inline Key eventID(std::string_view s) {
-    if (s.size() != 9)
-        return Key::from(s);
-    uint64_t tail;
-    std::memcpy(&tail, s.data() + 1, 8);
-    if (*s.data() == 'e' && !(tail >> 63))
-        return {tail};
-    return Key::fromReference(s);
-}
 // Malformed lines and empty IDs never take part in deduplication. Every other
 // copy does, valid or not: an invalid earliest copy suppresses later ones.
 [[gnu::noinline]] bool genericEvent(std::string_view line, const Context &ctx, ParsedEvent &out) {

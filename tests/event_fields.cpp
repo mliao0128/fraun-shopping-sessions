@@ -2,7 +2,31 @@
 #include <random>
 #include <iostream>
 #include <fstream>
+
+static bool distinctEventIDs() {
+    std::vector<std::string> ids;
+    for (unsigned prefix = 0; prefix < 128; ++prefix)
+        ids.push_back(static_cast<char>(prefix) + std::string("12345678"));
+    for (unsigned i = 0; i < 9; ++i) {
+        std::string id = "x12345678";
+        id[i] = static_cast<char>(0x80);
+        ids.push_back(id);
+    }
+    ids.emplace_back("12345678");
+    ids.emplace_back("x123456789");
+    for (size_t i = 0; i < ids.size(); ++i) {
+        const Key key = eventID(ids[i]);
+        if (key.nineAscii() != (i < 128)) return false;
+        const std::string copy = ids[i];
+        if (!(key == eventID(copy))) return false;
+        for (size_t j = 0; j < i; ++j)
+            if (key == eventID(ids[j])) return false;
+    }
+    return true;
+}
+
 int main(int argc, char** argv) {
+    if (!distinctEventIDs()) return 2;
     std::mt19937 rng(93528);
     std::array<std::string_view,7> a,b;
     for (size_t i=0;i<500000;++i) {
