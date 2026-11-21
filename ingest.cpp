@@ -93,9 +93,41 @@ inline int64_t validIngest(const char* p) {
     return midnight(p) + 1000LL * clockSeconds<false>(p+11);
 }
 
+// A valid UTC arrival can only be late if its calendar date follows the
+// event. Keep the six clock digits rather than converting every arrival into
+// milliseconds immediately. Only next-day arrivals and actual duplicate
+// candidates need their time of day decoded.
+inline uint32_t packedClock(const char* clock) {
+    uint64_t bytes;
+    std::memcpy(&bytes, clock, sizeof(bytes));
+    return _pext_u64(__builtin_bswap64(bytes), 0x0f0f000f0f000f0fULL);
+}
+
+inline int decodeClock(uint32_t bcd) {
+    const unsigned hours = 10 * (bcd >> 20) + ((bcd >> 16) & 15);
+    const unsigned minutes = 10 * ((bcd >> 12) & 15) + ((bcd >> 8) & 15);
+    const unsigned seconds = 10 * ((bcd >> 4) & 15) + (bcd & 15);
+    return 3600 * hours + 60 * minutes + seconds;
+}
+
+inline int64_t arrivalMillis(int64_t packed) {
+    // The low clock contribution (0x000000..0x235959) is less than a day.
+    int64_t clock = packed % dayMs;
+    if (clock < 0) clock += dayMs;
+    return packed - clock + 1000LL * decodeClock(static_cast<uint32_t>(clock));
+}
+
 // Parse 13 decimal digits with two bounded overlapping loads. Combining digit
 // pairs, then four-digit groups, leaves two eight-digit chunks for the scalar sum.
 int64_t decimal13(const char* p) {
+#if defined(__AVX512BW__) && defined(__AVX512VL__)
+    // A masked load reads exactly the input field, including at page end.
+    const auto asciiZero = _mm_set1_epi8('0');
+    const auto raw = _mm_mask_loadu_epi8(asciiZero, 0x1fff, p);
+    const auto digits = _mm_sub_epi8(raw, asciiZero);
+    if (_mm_cmpgt_epu8_mask(digits, _mm_set1_epi8(9))) return invalidTime;
+    const auto padded = _mm_slli_si128(digits, 3);
+#else
     const auto first = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p));
     const auto last = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(p+5));
     const auto digits = _mm_sub_epi8(_mm_unpacklo_epi64(first,last), _mm_set1_epi8('0'));
@@ -103,10 +135,32 @@ int64_t decimal13(const char* p) {
     if (!_mm_testz_si128(invalid,invalid)) return invalidTime;
     const auto padded = _mm_shuffle_epi8(digits,
         _mm_setr_epi8(-1,-1,-1,0,1,2,3,4,5,6,7,11,12,13,14,15));
+#endif
     const auto pairs = _mm_maddubs_epi16(padded, _mm_set1_epi16(0x010a));
     const auto quads = _mm_madd_epi16(pairs, _mm_set1_epi32(0x00010064));
     const auto chunks = _mm_madd_epi16(_mm_packs_epi32(quads,quads), _mm_set1_epi32(0x00012710));
     return int64_t(_mm_cvtsi128_si32(chunks)) * 100'000'000 + _mm_extract_epi32(chunks,1);
+}
+
+inline int utcOffsetMinutes(const char* p) {
+    struct Offset { uint64_t key; int minutes = 2000; };
+    static thread_local std::array<Offset,64> cache{};
+    uint64_t key;
+    std::memcpy(&key,p-2,8); // p is the sign at byte 19 of a 25-byte timestamp
+    key >>= 16;
+    const unsigned slot = (((uint8_t(p[0]) & 2) << 4) ^ (uint8_t(p[1]) << 2)
+                         ^ uint8_t(p[2]) ^ uint8_t(p[4])) & 63;
+    auto& entry = cache[slot];
+    if (entry.key != key) {
+        int minutes = 2000;
+        if ((p[0]=='+' || p[0]=='-') && p[3]==':' && digit(p[1]) && digit(p[2]) &&
+            digit(p[4]) && digit(p[5])) {
+            const int h=pairValue(p+1), m=pairValue(p+4);
+            if (h<24 && m<60) minutes=(p[0]=='+' ? 1 : -1)*(60*h+m);
+        }
+        entry = {key,minutes};
+    }
+    return entry.minutes;
 }
 
 struct InputChunk {
@@ -125,7 +179,30 @@ std::vector<InputChunk> chunks(const std::vector<std::string_view>& files) {
     return result;
 }
 
-template<class F> void chunkLines(const InputChunk& chunk, F&& visit) {
+struct StructuralBlock {
+    uint64_t commas, quotes, newlines;
+};
+
+inline StructuralBlock classifyBlock(const char* p) {
+#ifdef __AVX512BW__
+    const __m512i bytes = _mm512_loadu_si512(p);
+    return {_mm512_cmpeq_epi8_mask(bytes, _mm512_set1_epi8(',')),
+            _mm512_cmpeq_epi8_mask(bytes, _mm512_set1_epi8('"')),
+            _mm512_cmpeq_epi8_mask(bytes, _mm512_set1_epi8('\n'))};
+#else
+    const __m256i a = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p));
+    const __m256i b = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p + 32));
+    auto mask = [&](char ch) -> uint64_t {
+        __m256i match = _mm256_set1_epi8(ch);
+        uint32_t lo = _mm256_movemask_epi8(_mm256_cmpeq_epi8(a, match));
+        uint32_t hi = _mm256_movemask_epi8(_mm256_cmpeq_epi8(b, match));
+        return lo | (uint64_t{hi} << 32);
+    };
+    return {mask(','), mask('"'), mask('\n')};
+#endif
+}
+
+template<size_t N, class F> void chunkFields(const InputChunk& chunk, F&& visit) {
     const char* bytes = chunk.file.data();
     const size_t fileEnd = chunk.file.size();
     size_t pos = chunk.begin;
@@ -137,38 +214,43 @@ template<class F> void chunkLines(const InputChunk& chunk, F&& visit) {
         if (newline == prefix.npos) return;
         pos += newline + 1;
     }
-    // Newlines are found 64 bytes at a time; `pos` is the open line's start.
-    auto newlinesIn = [](const char* p) -> uint64_t {
-#ifdef __AVX512BW__
-        return _mm512_cmpeq_epi8_mask(_mm512_loadu_si512(reinterpret_cast<const void*>(p)),
-                                      _mm512_set1_epi8('\n'));
-#else   // local builds for emulators without AVX-512
-        const __m256i newline = _mm256_set1_epi8('\n');
-        const uint32_t a = _mm256_movemask_epi8(_mm256_cmpeq_epi8(
-            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p)), newline));
-        const uint32_t b = _mm256_movemask_epi8(_mm256_cmpeq_epi8(
-            _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p + 32)), newline));
-        return a | (uint64_t{b} << 32);
-#endif
-    };
-    size_t scan = pos;
+    // Start each vector at the current row: its comma and quote positions
+    // are immediately usable by the field parser. No alignment or carrying
+    // masks across blocks is needed.
     while (pos < chunk.end) {
-        if (scan + 64 <= fileEnd) {
-            uint64_t found = newlinesIn(bytes + scan);
-            while (found) {
-                const size_t end = scan + std::countr_zero(found);
-                visit(std::string_view(bytes + pos, end - pos));
-                pos = end + 1;
-                if (pos >= chunk.end) return;
-                found &= found - 1;
+        const char* row = bytes + pos;
+        const size_t remaining = fileEnd - pos;
+        std::array<std::string_view,N> fields;
+        if (remaining >= 128) {
+            auto first = classifyBlock(row);
+            if (first.newlines) {
+                const unsigned n = std::countr_zero(first.newlines);
+                const std::string_view line(row, n);
+                pos += n + 1;
+                if (n && csvFromMasks<N,false>(line, fields, _bzhi_u64(first.commas, n),
+                                               _bzhi_u64(first.quotes, n), 0, 0))
+                    visit(line, fields);
+                continue;
             }
-            scan += 64;
-        } else {
-            size_t end = chunk.file.find('\n', std::max(pos, scan));
-            if (end == chunk.file.npos) end = fileEnd;
-            visit(std::string_view(bytes + pos, end - pos));
-            pos = scan = end + 1;
+            auto second = classifyBlock(row + 64);
+            if (second.newlines) {
+                const unsigned n = std::countr_zero(second.newlines);
+                const std::string_view line(row, 64 + n);
+                pos += line.size() + 1;
+                if (n ? csvFromMasks<N,true>(line, fields, first.commas, first.quotes,
+                                             _bzhi_u64(second.commas,n), _bzhi_u64(second.quotes,n))
+                      : csvFromMasks<N,false>(line, fields, first.commas, first.quotes, 0, 0))
+                    visit(line, fields);
+                continue;
+            }
         }
+        // No bounded vector load past the mapping. A long record still belongs
+        // to the chunk containing its first byte.
+        const size_t next = chunk.file.find('\n', pos + (remaining >= 128 ? 128 : 0));
+        const size_t end = next == chunk.file.npos ? fileEnd : next;
+        auto line = std::string_view(row, end - pos);
+        if (csv(line, fields)) visit(line, fields);
+        pos = end + 1;
     }
 }
 
@@ -336,17 +418,25 @@ struct ParsedEvent {
 
 // Malformed lines and empty IDs never take part in deduplication. Every other
 // copy does, valid or not: an invalid earliest copy suppresses later ones.
-inline bool parseEvent(std::string_view line, const Context& ctx, ParsedEvent& out) {
-    std::array<std::string_view,7> f;
-    if (!csv(line, f) || f[0].empty()) return false;
+inline bool parseEvent(const std::array<std::string_view,7>& f, const Context& ctx, ParsedEvent& out) {
+    if (f[0].empty()) return false;
     out.id = Key::from(f[0]);
     out.ingest = f[3];
     out.valid = false;
     if (f[1].empty() || f[5].empty()) return true;
     const auto ts = timestamp(f[2]);
     if (ts < ctx.start || ts >= ctx.end) return true;
-    const int64_t ingest = f[3].size() == 20 ? validIngest(f[3].data()) : timestamp(f[3]);
-    if (ingest - dayMs > ts) return true;
+    int64_t ingest = 0;
+    if (f[3].size() == 20) {
+        const auto base = midnight(f[3].data());
+        const auto clock = packedClock(f[3].data() + 11);
+        if (base > ts && base - dayMs + 1000LL * decodeClock(clock) > ts) return true;
+        ingest = base + clock;
+    } else {
+        // Outside the canonical UTC fast path, dedup reads this row's source.
+        const auto arrival = timestamp(f[3]);
+        if (arrival > ts && static_cast<uint64_t>(arrival) - static_cast<uint64_t>(ts) > dayMs) return true;
+    }
     uint32_t price = 0, category = 0;
     if (f[4] == "purchase") {
         auto priceEnd = f[6].data() + f[6].size();
@@ -358,17 +448,12 @@ inline bool parseEvent(std::string_view line, const Context& ctx, ParsedEvent& o
         return true;
     }
     out.row = {Key::from(f[1]), ts, (uint64_t{price} << 32) | category, 0};
-    out.row.remember(out.id, ingest);
+    if (f[3].size() == 20) out.row.remember(out.id, ingest);
     out.valid = true;
     return true;
 }
-inline int64_t ingestTime(std::string_view text) {
-    return text.size() == 20 ? validIngest(text.data()) : timestamp(text);
-}
-
-inline bool parseClick(std::string_view line, const Context& ctx, Click& row) {
-    std::array<std::string_view,4> f;
-    if (!csv(line, f) || f[0].empty() || f[1].empty()) return false;
+inline bool parseClick(const std::array<std::string_view,4>& f, const Context& ctx, Click& row) {
+    if (f[0].empty() || f[1].empty()) return false;
     const auto ts = timestamp(f[3]);
     if (ts < ctx.start - 7 * dayMs || ts >= ctx.end) return false;
     const auto campaign = ctx.campaign(Key::from(f[2]));
@@ -468,6 +553,9 @@ void deduplicate(size_t shard, const Context& ctx, const Source& source,
     struct Copy { Key id; int64_t ingest; StagedEvent* staged; };
     static thread_local std::vector<Copy> copies;
     copies.resize(suspects.size());
+    // Canonical UTC arrival keys are exactly ordered already. If a caller
+    // supplies another timestamp form, translate this shard into milliseconds.
+    std::vector<std::pair<size_t,int64_t>> nonCanonical;
     constexpr size_t wave = 64;
     for (size_t base = 0; base < suspects.size(); base += wave) {
         std::array<const char*, wave> lines{}, limits;
@@ -508,8 +596,17 @@ void deduplicate(size_t shard, const Context& ctx, const Source& source,
             const char* stop = newline ? static_cast<const char*>(newline) : limits[i-base];
             if (!csv(std::string_view(start, stop - start), f)) throw std::logic_error("Source line changed");
             copies[i].id = Key::from(f[0]);
-            copies[i].ingest = ingestTime(f[3]);
+            if (f[3].size() == 20) {
+                copies[i].ingest = midnight(f[3].data()) + packedClock(f[3].data()+11);
+            } else {
+                copies[i].ingest = 0;
+                nonCanonical.emplace_back(i,timestamp(f[3]));
+            }
         }
+    }
+    if (!nonCanonical.empty()) {
+        for (auto& copy : copies) copy.ingest = arrivalMillis(copy.ingest);
+        for (auto [index, millis] : nonCanonical) copies[index].ingest = millis;
     }
     // Within each exact ID the earliest ingest survives. Copies that tie are identical.
     auto before = [](const Copy& a, const Copy& b) {
@@ -563,11 +660,8 @@ int64_t timestamp(std::string_view s) {
     if (base==invalidTime || seconds<0) return invalidTime;
     int offset = 0;
     if (s.size() == 25) {
-        if ((p[19] != '+' && p[19] != '-') || p[22] != ':' || !digit(p[20]) ||
-            !digit(p[21]) || !digit(p[23]) || !digit(p[24])) return invalidTime;
-        const int oh = pairValue(p+20), om = pairValue(p+23);
-        if (oh > 23 || om > 59) return invalidTime;
-        offset = (p[19] == '+' ? 1 : -1) * (60 * oh + om);
+        offset = utcOffsetMinutes(p+19);
+        if (offset == 2000) return invalidTime;
     } else if (p[19] != 'Z') {
         return invalidTime;
     }
@@ -624,8 +718,8 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
             const InputChunk& span = source.spans[i];
             if (i < source.eventSpans) {
                 const uint64_t base = spanStart[i] - reinterpret_cast<uintptr_t>(span.file.data());
-                chunkLines(span, [&](std::string_view line) {
-                    if (!parseEvent(line, ctx, event)) return;
+                chunkFields<7>(span, [&](std::string_view line, const auto& fields) {
+                    if (!parseEvent(fields, ctx, event)) return;
                     const uint64_t offset = base + reinterpret_cast<uintptr_t>(line.data());
                     const uint64_t hash = event.id.hash();
                     uint64_t record = offset;
@@ -641,8 +735,8 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     reader.ids.add(hash & (idShards - 1), record);
                 });
             } else {
-                chunkLines(span, [&](std::string_view line) {
-                    if (parseClick(line, ctx, click))
+                chunkFields<4>(span, [&](std::string_view, const auto& fields) {
+                    if (parseClick(fields, ctx, click))
                         reader.clicks.add(partOf(click.person.hash()), click);
                 });
             }

@@ -33,10 +33,39 @@ void endpoints(Batch& batch) {
     uint32_t offset = 0;
 
     while (!file.empty()) {
-        size_t end = file.find('\n');
-        if (end == SV::npos) end = file.size();
         std::array<SV, 2> fields;
-        if (csv(file.substr(0, end), fields) && !fields[0].empty() && !fields[1].empty()) {
+        size_t end;
+        bool valid;
+        const char* p = file.data();
+        uint32_t newlines = 0;
+        __m256i block{};
+        if (file.size() >= 32) {
+            block = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p));
+            newlines = _mm256_movemask_epi8(_mm256_cmpeq_epi8(block, _mm256_set1_epi8('\n')));
+        }
+        if (newlines) {
+            end = std::countr_zero(newlines);
+            // A short edge is typically entirely in this load. Mask the
+            // following row out before counting commas or validating quotes.
+            const uint32_t keep = (newlines & -newlines) - 1;
+            const uint32_t commas = keep & _mm256_movemask_epi8(
+                _mm256_cmpeq_epi8(block, _mm256_set1_epi8(',')));
+            valid = std::has_single_bit(commas);
+            if (valid) {
+                const size_t split = std::countr_zero(commas);
+                const bool left = split >= 2 && p[0]=='"' && p[split-1]=='"';
+                const bool right = end-split >= 3 && p[split+1]=='"' && p[end-1]=='"';
+                const uint32_t quotes = keep & _mm256_movemask_epi8(
+                    _mm256_cmpeq_epi8(block, _mm256_set1_epi8('"')));
+                valid = std::popcount(quotes) == 2*(left+right);
+                fields = {SV(p+left,split-2*left), SV(p+split+1+right,end-split-1-2*right)};
+            }
+        } else {
+            end = file.find('\n');
+            if (end == SV::npos) end = file.size();
+            valid = csv(file.substr(0,end),fields);
+        }
+        if (valid && !fields[0].empty() && !fields[1].empty()) {
             for (SV f : fields) {
                 Key k = Key::from(f);
                 batch.parts[Identities::shard(k.hash())].push_back({k, offset++});
