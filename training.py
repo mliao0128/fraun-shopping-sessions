@@ -15,16 +15,28 @@ def write(name, header, rows):
     with (root / name).open('w') as stream:
         print(header,file=stream)
         for row in rows:
-            print(','.join('"'+str(v)+'"' if randomizer.randrange(5)==0 else str(v) for v in row), file=stream)
+            print(','.join('"'+str(v)+'"' if randomizer.randrange(9)==0 else str(v) for v in row), file=stream)
 
 def user():
-    return f'u{randomizer.randrange(18000):08x}'
+    return randomizer.choice(users)
 
 # Exercise the runtime decoder across numeric, UTC and offset forms. These
 # rows exist only in the compiler instrumentation pass.
 start = datetime(2027, 3, 1, tzinfo=timezone.utc)
 epoch_ms = int(start.timestamp()) * 1000
-users = [user() for _ in range(24000)]
+alphabet="0123456789abcdefghijklmnopqrstuvwxyz"
+def suffix():
+    value=randomizer.getrandbits(40)
+    chars=[]
+    while value:
+        value,digit=divmod(value,36)
+        chars.append(alphabet[digit])
+    return "".join(reversed(chars)) or "0"
+users=["u"+suffix() for _ in range(52000)]
+active=users[:6500]
+def choose_user():
+    return randomizer.choice(active if randomizer.random()<0.50 else users)
+
 
 def stamp(second, form):
     if form == 0:
@@ -36,13 +48,13 @@ def stamp(second, form):
     return local.strftime('%Y-%m-%dT%H:%M:%S') + f"{'+' if offset>=0 else '-'}{abs(offset)//60:02d}:{abs(offset)%60:02d}"
 
 def event_rows():
-    for i in range(300000):
+    for i in range(650000):
         second = randomizer.randrange(14*86400)
-        event_type = randomizer.choice(['view','view','view','cart','purchase'])
+        event_type = randomizer.choice(['view']*13+['cart']*4+['purchase'])
         arrival = stamp(second + randomizer.randrange(0,1200) + (86400 if i%71==0 else 0),1)
-        row = [f'e{randomizer.getrandbits(32):08x}', randomizer.choice(users),
-               stamp(second,randomizer.randrange(3)), arrival,event_type,
-               f'p{randomizer.randrange(8000)}',randomizer.randrange(1,100000) if event_type=='purchase' or i%5==0 else '']
+        row = ['e'+suffix(), choose_user(),
+               stamp(second,randomizer.choice([0,0,0,1,1,1,1,1,2])), arrival,event_type,
+               f'p{randomizer.randrange(30000)}',randomizer.randrange(1,100000) if event_type=='purchase' or i%5==0 else '']
         yield row
         if i%23==0:
             yield row
@@ -51,6 +63,6 @@ def event_rows():
 
 write('events/part.csv','event_id,user_id,ts,ingest_ts,event_type,product_id,price_cents',event_rows())
 write('links/part.csv','user_id_a,user_id_b',((user(),user()) for _ in range(4500)))
-write('products.csv','product_id,category',((f'p{i}',f'cat{i%11}') for i in range(8000)))
-write('campaigns.csv','campaign_id,channel',((f'c{i}','search') for i in range(350)))
-write('clicks/part.csv','click_id,user_id,campaign_id,ts',((f'k{i:08x}',user(),f'c{i%350}',stamp(randomizer.randrange(14*86400),randomizer.randrange(3))) for i in range(75000)))
+write('products.csv','product_id,category',((f'p{i}',f'category_{i%27}') for i in range(30000)))
+write('campaigns.csv','campaign_id,channel',((f'c_{i}','search') for i in range(1000)))
+write('clicks/part.csv','click_id,user_id,campaign_id,ts',(('k'+suffix(),choose_user(),f'c_{i%1000}',stamp(randomizer.randrange(14*86400),randomizer.randrange(3))) for i in range(162500)))

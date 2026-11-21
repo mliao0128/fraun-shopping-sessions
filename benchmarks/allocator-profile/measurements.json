@@ -1,0 +1,2848 @@
+{
+  "intel": [
+    {
+      "lap": 0,
+      "config": "release48:je",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00757981,
+        "start": 5e-08,
+        "parse": 0.347669,
+        "dedup": 0.0407192,
+        "await-links": 6.5728e-05,
+        "route": 0.0617621,
+        "ingest": 0.45026,
+        "aggregate-output": 0.145072
+      },
+      "process_ns": 621782181,
+      "monotonic_ns": 621786399,
+      "peak_rss_kib": 2862408
+    },
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00700995,
+        "start": 4.6e-08,
+        "parse": 0.339939,
+        "dedup": 0.115091,
+        "await-links": 5.8203e-05,
+        "route": 0.0594412,
+        "ingest": 0.514578,
+        "aggregate-output": 0.203687
+      },
+      "process_ns": 787965396,
+      "monotonic_ns": 787970730,
+      "peak_rss_kib": 2887284
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00576382,
+        "start": 4.9e-08,
+        "parse": 0.33145,
+        "dedup": 0.111717,
+        "await-links": 9.5974e-05,
+        "route": 0.0596417,
+        "ingest": 0.502977,
+        "aggregate-output": 0.244295
+      },
+      "process_ns": 816486746,
+      "monotonic_ns": 816492282,
+      "peak_rss_kib": 2887172
+    },
+    {
+      "lap": 1,
+      "config": "release48:je",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00787886,
+        "start": 3.1e-08,
+        "parse": 0.322743,
+        "dedup": 0.045708,
+        "await-links": 4.8667e-05,
+        "route": 0.0614373,
+        "ingest": 0.429997,
+        "aggregate-output": 0.139618
+      },
+      "process_ns": 588820677,
+      "monotonic_ns": 588824640,
+      "peak_rss_kib": 2867584
+    },
+    {
+      "lap": 2,
+      "config": "release48:je",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00776789,
+        "start": 3.2e-08,
+        "parse": 0.283867,
+        "dedup": 0.0407545,
+        "await-links": 4.9679e-05,
+        "route": 0.0615317,
+        "ingest": 0.38626,
+        "aggregate-output": 0.139819
+      },
+      "process_ns": 545070698,
+      "monotonic_ns": 545074369,
+      "peak_rss_kib": 2864804
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.0058171,
+        "start": 4.6e-08,
+        "parse": 0.330129,
+        "dedup": 0.106307,
+        "await-links": 7.3703e-05,
+        "route": 0.0591675,
+        "ingest": 0.495749,
+        "aggregate-output": 0.196887
+      },
+      "process_ns": 760788392,
+      "monotonic_ns": 760793544,
+      "peak_rss_kib": 2887280
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00597281,
+        "start": 3.4e-08,
+        "parse": 0.32849,
+        "dedup": 0.105843,
+        "await-links": 9.8766e-05,
+        "route": 0.059201,
+        "ingest": 0.493688,
+        "aggregate-output": 0.206197
+      },
+      "process_ns": 767126844,
+      "monotonic_ns": 767132036,
+      "peak_rss_kib": 2886268
+    },
+    {
+      "lap": 3,
+      "config": "release48:je",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00782765,
+        "start": 3.8e-08,
+        "parse": 0.28641,
+        "dedup": 0.0406361,
+        "await-links": 8.0857e-05,
+        "route": 0.0617521,
+        "ingest": 0.388941,
+        "aggregate-output": 0.137591
+      },
+      "process_ns": 545256961,
+      "monotonic_ns": 545260637,
+      "peak_rss_kib": 2866484
+    },
+    {
+      "lap": 4,
+      "config": "release48:je",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00775158,
+        "start": 3.1e-08,
+        "parse": 0.285511,
+        "dedup": 0.0406225,
+        "await-links": 5.464e-05,
+        "route": 0.0611797,
+        "ingest": 0.387412,
+        "aggregate-output": 0.137994
+      },
+      "process_ns": 544028427,
+      "monotonic_ns": 544032099,
+      "peak_rss_kib": 2852424
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00579148,
+        "start": 5.6e-08,
+        "parse": 0.327424,
+        "dedup": 0.106423,
+        "await-links": 3.149e-05,
+        "route": 0.0591507,
+        "ingest": 0.493116,
+        "aggregate-output": 0.196145
+      },
+      "process_ns": 757546493,
+      "monotonic_ns": 757551609,
+      "peak_rss_kib": 2887796
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00606819,
+        "start": 4.9e-08,
+        "parse": 0.327865,
+        "dedup": 0.105265,
+        "await-links": 3.7381e-05,
+        "route": 0.0590542,
+        "ingest": 0.492268,
+        "aggregate-output": 0.196809
+      },
+      "process_ns": 756910194,
+      "monotonic_ns": 756915303,
+      "peak_rss_kib": 2889264
+    },
+    {
+      "lap": 5,
+      "config": "release48:je",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00773877,
+        "start": 4.5e-08,
+        "parse": 0.285387,
+        "dedup": 0.0407977,
+        "await-links": 5.1225e-05,
+        "route": 0.0612896,
+        "ingest": 0.387587,
+        "aggregate-output": 0.139863
+      },
+      "process_ns": 545607479,
+      "monotonic_ns": 545611160,
+      "peak_rss_kib": 2866548
+    },
+    {
+      "lap": 6,
+      "config": "release48:je",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00768327,
+        "start": 4.1e-08,
+        "parse": 0.283961,
+        "dedup": 0.040187,
+        "await-links": 5.4563e-05,
+        "route": 0.061286,
+        "ingest": 0.385549,
+        "aggregate-output": 0.139321
+      },
+      "process_ns": 542885188,
+      "monotonic_ns": 542888843,
+      "peak_rss_kib": 2862480
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00588453,
+        "start": 3.4e-08,
+        "parse": 0.327349,
+        "dedup": 0.112765,
+        "await-links": 6.4515e-05,
+        "route": 0.0594128,
+        "ingest": 0.499653,
+        "aggregate-output": 0.195705
+      },
+      "process_ns": 762919334,
+      "monotonic_ns": 762924477,
+      "peak_rss_kib": 2885560
+    },
+    {
+      "lap": 7,
+      "config": "official",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00577039,
+        "start": 4.2e-08,
+        "parse": 0.331013,
+        "dedup": 0.108041,
+        "await-links": 2.4557e-05,
+        "route": 0.0591696,
+        "ingest": 0.498312,
+        "aggregate-output": 0.196622
+      },
+      "process_ns": 763816758,
+      "monotonic_ns": 763821917,
+      "peak_rss_kib": 2888556
+    },
+    {
+      "lap": 7,
+      "config": "release48:je",
+      "seed": "p42",
+      "stages": {
+        "dimensions": 0.00773942,
+        "start": 4.1e-08,
+        "parse": 0.284272,
+        "dedup": 0.0407235,
+        "await-links": 5.0713e-05,
+        "route": 0.0810917,
+        "ingest": 0.406184,
+        "aggregate-output": 0.139107
+      },
+      "process_ns": 563968203,
+      "monotonic_ns": 563972013,
+      "peak_rss_kib": 2864728
+    },
+    {
+      "lap": 0,
+      "config": "release48:je",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.0074844,
+        "start": 4.1e-08,
+        "parse": 2.48079,
+        "dedup": 0.162529,
+        "await-links": 5.1157e-05,
+        "route": 0.200905,
+        "ingest": 2.84433,
+        "aggregate-output": 0.491811
+      },
+      "process_ns": 3442426859,
+      "monotonic_ns": 3442449835,
+      "peak_rss_kib": 7997060
+    },
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00727227,
+        "start": 4.4e-08,
+        "parse": 1.19224,
+        "dedup": 0.183396,
+        "await-links": 7.2123e-05,
+        "route": 0.196383,
+        "ingest": 1.57215,
+        "aggregate-output": 0.702433
+      },
+      "process_ns": 2422681680,
+      "monotonic_ns": 2422697813,
+      "peak_rss_kib": 8186360
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00575837,
+        "start": 3.2e-08,
+        "parse": 1.00335,
+        "dedup": 0.181823,
+        "await-links": 6.2895e-05,
+        "route": 0.196954,
+        "ingest": 1.38223,
+        "aggregate-output": 0.698354
+      },
+      "process_ns": 2223100123,
+      "monotonic_ns": 2223114918,
+      "peak_rss_kib": 8222152
+    },
+    {
+      "lap": 1,
+      "config": "release48:je",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.0082792,
+        "start": 3.2e-08,
+        "parse": 0.830063,
+        "dedup": 0.12974,
+        "await-links": 5.4986e-05,
+        "route": 0.195274,
+        "ingest": 1.1552,
+        "aggregate-output": 0.426857
+      },
+      "process_ns": 1616392008,
+      "monotonic_ns": 1616402755,
+      "peak_rss_kib": 8100724
+    },
+    {
+      "lap": 2,
+      "config": "release48:je",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00764486,
+        "start": 4.5e-08,
+        "parse": 0.839168,
+        "dedup": 0.130054,
+        "await-links": 7.1188e-05,
+        "route": 0.1965,
+        "ingest": 1.16585,
+        "aggregate-output": 0.426383
+      },
+      "process_ns": 1623744431,
+      "monotonic_ns": 1623755222,
+      "peak_rss_kib": 8114404
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00568142,
+        "start": 4.4e-08,
+        "parse": 0.989859,
+        "dedup": 0.193771,
+        "await-links": 5.6495e-05,
+        "route": 0.204369,
+        "ingest": 1.38811,
+        "aggregate-output": 0.693486
+      },
+      "process_ns": 2218471042,
+      "monotonic_ns": 2218485776,
+      "peak_rss_kib": 8226200
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00566761,
+        "start": 4.4e-08,
+        "parse": 0.962076,
+        "dedup": 0.178634,
+        "await-links": 2.7851e-05,
+        "route": 0.195433,
+        "ingest": 1.33623,
+        "aggregate-output": 0.690248
+      },
+      "process_ns": 2162177285,
+      "monotonic_ns": 2162191637,
+      "peak_rss_kib": 8230372
+    },
+    {
+      "lap": 3,
+      "config": "release48:je",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00779646,
+        "start": 4.8e-08,
+        "parse": 0.824793,
+        "dedup": 0.13015,
+        "await-links": 8.3582e-05,
+        "route": 0.195128,
+        "ingest": 1.15021,
+        "aggregate-output": 0.424772
+      },
+      "process_ns": 1605024893,
+      "monotonic_ns": 1605035536,
+      "peak_rss_kib": 8101808
+    },
+    {
+      "lap": 4,
+      "config": "release48:je",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00769574,
+        "start": 3.1e-08,
+        "parse": 0.815881,
+        "dedup": 0.128453,
+        "await-links": 5.6448e-05,
+        "route": 0.196778,
+        "ingest": 1.14123,
+        "aggregate-output": 0.425471
+      },
+      "process_ns": 1596185183,
+      "monotonic_ns": 1596195753,
+      "peak_rss_kib": 8111100
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.0058074,
+        "start": 4.6e-08,
+        "parse": 0.964284,
+        "dedup": 0.178651,
+        "await-links": 3.7995e-05,
+        "route": 0.195844,
+        "ingest": 1.33889,
+        "aggregate-output": 0.69156
+      },
+      "process_ns": 2166290661,
+      "monotonic_ns": 2166305004,
+      "peak_rss_kib": 8230200
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00570009,
+        "start": 4.1e-08,
+        "parse": 0.962834,
+        "dedup": 0.17735,
+        "await-links": 3.81e-05,
+        "route": 0.195781,
+        "ingest": 1.33605,
+        "aggregate-output": 0.722433
+      },
+      "process_ns": 2198845395,
+      "monotonic_ns": 2198859934,
+      "peak_rss_kib": 8226392
+    },
+    {
+      "lap": 5,
+      "config": "release48:je",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00813071,
+        "start": 3.5e-08,
+        "parse": 0.822258,
+        "dedup": 0.127935,
+        "await-links": 5.7103e-05,
+        "route": 0.195202,
+        "ingest": 1.1455,
+        "aggregate-output": 0.432079
+      },
+      "process_ns": 1609046481,
+      "monotonic_ns": 1609057094,
+      "peak_rss_kib": 8090264
+    },
+    {
+      "lap": 6,
+      "config": "release48:je",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.0076257,
+        "start": 4.7e-08,
+        "parse": 0.819766,
+        "dedup": 0.132995,
+        "await-links": 6.0947e-05,
+        "route": 0.204139,
+        "ingest": 1.15705,
+        "aggregate-output": 0.425445
+      },
+      "process_ns": 1613067521,
+      "monotonic_ns": 1613078172,
+      "peak_rss_kib": 8107520
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00568789,
+        "start": 4.5e-08,
+        "parse": 0.965218,
+        "dedup": 0.17873,
+        "await-links": 6.1801e-05,
+        "route": 0.195606,
+        "ingest": 1.33967,
+        "aggregate-output": 0.761568
+      },
+      "process_ns": 2236324757,
+      "monotonic_ns": 2236339513,
+      "peak_rss_kib": 8228280
+    },
+    {
+      "lap": 7,
+      "config": "official",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.0057812,
+        "start": 5.2e-08,
+        "parse": 0.965799,
+        "dedup": 0.177918,
+        "await-links": 4.397e-05,
+        "route": 0.195957,
+        "ingest": 1.3398,
+        "aggregate-output": 0.674261
+      },
+      "process_ns": 2149696253,
+      "monotonic_ns": 2149710442,
+      "peak_rss_kib": 8224984
+    },
+    {
+      "lap": 7,
+      "config": "release48:je",
+      "seed": "f73",
+      "stages": {
+        "dimensions": 0.00756105,
+        "start": 4.5e-08,
+        "parse": 0.810416,
+        "dedup": 0.12754,
+        "await-links": 5.763e-05,
+        "route": 0.194581,
+        "ingest": 1.13266,
+        "aggregate-output": 0.427441
+      },
+      "process_ns": 1589453410,
+      "monotonic_ns": 1589463872,
+      "peak_rss_kib": 8109268
+    },
+    {
+      "lap": 0,
+      "config": "release48:je",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00799316,
+        "start": 5.2e-08,
+        "parse": 0.281878,
+        "dedup": 0.0413654,
+        "await-links": 5.1101e-05,
+        "route": 0.058555,
+        "ingest": 0.381896,
+        "aggregate-output": 0.135345
+      },
+      "process_ns": 536108171,
+      "monotonic_ns": 536111778,
+      "peak_rss_kib": 2864956
+    },
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00624955,
+        "start": 3.5e-08,
+        "parse": 0.320378,
+        "dedup": 0.108965,
+        "await-links": 2.5123e-05,
+        "route": 0.0649368,
+        "ingest": 0.494363,
+        "aggregate-output": 0.197545
+      },
+      "process_ns": 749475905,
+      "monotonic_ns": 749480954,
+      "peak_rss_kib": 2885984
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00618736,
+        "start": 4.2e-08,
+        "parse": 0.319684,
+        "dedup": 0.108726,
+        "await-links": 9.3658e-05,
+        "route": 0.0578575,
+        "ingest": 0.486435,
+        "aggregate-output": 0.196844
+      },
+      "process_ns": 741464290,
+      "monotonic_ns": 741469304,
+      "peak_rss_kib": 2885592
+    },
+    {
+      "lap": 1,
+      "config": "release48:je",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00809507,
+        "start": 3.2e-08,
+        "parse": 0.280675,
+        "dedup": 0.041183,
+        "await-links": 5.1919e-05,
+        "route": 0.0584959,
+        "ingest": 0.380468,
+        "aggregate-output": 0.136608
+      },
+      "process_ns": 535784383,
+      "monotonic_ns": 535787990,
+      "peak_rss_kib": 2856272
+    },
+    {
+      "lap": 2,
+      "config": "release48:je",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00834188,
+        "start": 5.1e-08,
+        "parse": 0.283024,
+        "dedup": 0.041499,
+        "await-links": 5.1911e-05,
+        "route": 0.0585952,
+        "ingest": 0.383219,
+        "aggregate-output": 0.136079
+      },
+      "process_ns": 538089774,
+      "monotonic_ns": 538093387,
+      "peak_rss_kib": 2858436
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00629918,
+        "start": 5.2e-08,
+        "parse": 0.319731,
+        "dedup": 0.108623,
+        "await-links": 9.3383e-05,
+        "route": 0.0578736,
+        "ingest": 0.486396,
+        "aggregate-output": 0.197427
+      },
+      "process_ns": 740957465,
+      "monotonic_ns": 740962452,
+      "peak_rss_kib": 2885984
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.0062803,
+        "start": 4.1e-08,
+        "parse": 0.319598,
+        "dedup": 0.108594,
+        "await-links": 3.0583e-05,
+        "route": 0.0575823,
+        "ingest": 0.485877,
+        "aggregate-output": 0.196217
+      },
+      "process_ns": 739035578,
+      "monotonic_ns": 739040561,
+      "peak_rss_kib": 2885920
+    },
+    {
+      "lap": 3,
+      "config": "release48:je",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00816152,
+        "start": 4.3e-08,
+        "parse": 0.293296,
+        "dedup": 0.041441,
+        "await-links": 5.3067e-05,
+        "route": 0.0588999,
+        "ingest": 0.393736,
+        "aggregate-output": 0.135344
+      },
+      "process_ns": 549928315,
+      "monotonic_ns": 549932008,
+      "peak_rss_kib": 2837152
+    },
+    {
+      "lap": 4,
+      "config": "release48:je",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00805623,
+        "start": 4.4e-08,
+        "parse": 0.291409,
+        "dedup": 0.0409531,
+        "await-links": 4.9719e-05,
+        "route": 0.0597631,
+        "ingest": 0.392233,
+        "aggregate-output": 0.137587
+      },
+      "process_ns": 550778677,
+      "monotonic_ns": 550782372,
+      "peak_rss_kib": 2867168
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00628438,
+        "start": 4.2e-08,
+        "parse": 0.319699,
+        "dedup": 0.109907,
+        "await-links": 7.0827e-05,
+        "route": 0.0577045,
+        "ingest": 0.487457,
+        "aggregate-output": 0.196537
+      },
+      "process_ns": 743033814,
+      "monotonic_ns": 743038816,
+      "peak_rss_kib": 2884500
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00620799,
+        "start": 4.5e-08,
+        "parse": 0.319123,
+        "dedup": 0.109557,
+        "await-links": 6.4147e-05,
+        "route": 0.0578606,
+        "ingest": 0.486679,
+        "aggregate-output": 0.232509
+      },
+      "process_ns": 777366054,
+      "monotonic_ns": 777371286,
+      "peak_rss_kib": 2886828
+    },
+    {
+      "lap": 5,
+      "config": "release48:je",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00820467,
+        "start": 3.1e-08,
+        "parse": 0.288539,
+        "dedup": 0.0416942,
+        "await-links": 9.1107e-05,
+        "route": 0.0586051,
+        "ingest": 0.388989,
+        "aggregate-output": 0.136242
+      },
+      "process_ns": 544189410,
+      "monotonic_ns": 544193065,
+      "peak_rss_kib": 2870372
+    },
+    {
+      "lap": 6,
+      "config": "release48:je",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00804585,
+        "start": 4.1e-08,
+        "parse": 0.28324,
+        "dedup": 0.0425051,
+        "await-links": 5.2732e-05,
+        "route": 0.0603272,
+        "ingest": 0.386224,
+        "aggregate-output": 0.135958
+      },
+      "process_ns": 540852641,
+      "monotonic_ns": 540856270,
+      "peak_rss_kib": 2872968
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00618009,
+        "start": 4.3e-08,
+        "parse": 0.32104,
+        "dedup": 0.110313,
+        "await-links": 6.3165e-05,
+        "route": 0.0578706,
+        "ingest": 0.489347,
+        "aggregate-output": 0.197245
+      },
+      "process_ns": 745134661,
+      "monotonic_ns": 745139669,
+      "peak_rss_kib": 2885716
+    },
+    {
+      "lap": 7,
+      "config": "official",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00627288,
+        "start": 6e-08,
+        "parse": 0.316193,
+        "dedup": 0.110428,
+        "await-links": 8.3535e-05,
+        "route": 0.0579597,
+        "ingest": 0.484737,
+        "aggregate-output": 0.19605
+      },
+      "process_ns": 738452104,
+      "monotonic_ns": 738457071,
+      "peak_rss_kib": 2883860
+    },
+    {
+      "lap": 7,
+      "config": "release48:je",
+      "seed": "p807154",
+      "stages": {
+        "dimensions": 0.00806411,
+        "start": 3.2e-08,
+        "parse": 0.282502,
+        "dedup": 0.0417237,
+        "await-links": 7.861e-05,
+        "route": 0.0596664,
+        "ingest": 0.384019,
+        "aggregate-output": 0.136638
+      },
+      "process_ns": 539127778,
+      "monotonic_ns": 539131393,
+      "peak_rss_kib": 2860180
+    },
+    {
+      "lap": 0,
+      "config": "release48:je",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00738865,
+        "start": 4.7e-08,
+        "parse": 0.277354,
+        "dedup": 0.037613,
+        "await-links": 6.0618e-05,
+        "route": 0.0577239,
+        "ingest": 0.37281,
+        "aggregate-output": 0.136976
+      },
+      "process_ns": 528259539,
+      "monotonic_ns": 528263086,
+      "peak_rss_kib": 2839404
+    },
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00573294,
+        "start": 4.1e-08,
+        "parse": 0.318813,
+        "dedup": 0.100927,
+        "await-links": 0.000107271,
+        "route": 0.0565928,
+        "ingest": 0.476496,
+        "aggregate-output": 0.199216
+      },
+      "process_ns": 733427374,
+      "monotonic_ns": 733432293,
+      "peak_rss_kib": 2865944
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00560791,
+        "start": 4.3e-08,
+        "parse": 0.317542,
+        "dedup": 0.0972843,
+        "await-links": 7.4424e-05,
+        "route": 0.0571271,
+        "ingest": 0.472086,
+        "aggregate-output": 0.232851
+      },
+      "process_ns": 761466139,
+      "monotonic_ns": 761471248,
+      "peak_rss_kib": 2867144
+    },
+    {
+      "lap": 1,
+      "config": "release48:je",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00747865,
+        "start": 3.5e-08,
+        "parse": 0.279784,
+        "dedup": 0.037174,
+        "await-links": 6.5591e-05,
+        "route": 0.0577257,
+        "ingest": 0.374796,
+        "aggregate-output": 0.139212
+      },
+      "process_ns": 531979741,
+      "monotonic_ns": 531983292,
+      "peak_rss_kib": 2847496
+    },
+    {
+      "lap": 2,
+      "config": "release48:je",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.0075711,
+        "start": 4.4e-08,
+        "parse": 0.282991,
+        "dedup": 0.0378534,
+        "await-links": 7.7476e-05,
+        "route": 0.0578001,
+        "ingest": 0.378783,
+        "aggregate-output": 0.138085
+      },
+      "process_ns": 535530717,
+      "monotonic_ns": 535534309,
+      "peak_rss_kib": 2851052
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00571711,
+        "start": 3.3e-08,
+        "parse": 0.318647,
+        "dedup": 0.099469,
+        "await-links": 3.8259e-05,
+        "route": 0.0571772,
+        "ingest": 0.475403,
+        "aggregate-output": 0.19953
+      },
+      "process_ns": 733658694,
+      "monotonic_ns": 733663616,
+      "peak_rss_kib": 2863500
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.0056842,
+        "start": 5.2e-08,
+        "parse": 0.321057,
+        "dedup": 0.0955755,
+        "await-links": 3.3438e-05,
+        "route": 0.0648969,
+        "ingest": 0.481622,
+        "aggregate-output": 0.20137
+      },
+      "process_ns": 739898283,
+      "monotonic_ns": 739903242,
+      "peak_rss_kib": 2867856
+    },
+    {
+      "lap": 3,
+      "config": "release48:je",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.0074179,
+        "start": 3.1e-08,
+        "parse": 0.287899,
+        "dedup": 0.0375462,
+        "await-links": 5.1844e-05,
+        "route": 0.0584626,
+        "ingest": 0.384037,
+        "aggregate-output": 0.138772
+      },
+      "process_ns": 541801970,
+      "monotonic_ns": 541805594,
+      "peak_rss_kib": 2813092
+    },
+    {
+      "lap": 4,
+      "config": "release48:je",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00754011,
+        "start": 5.1e-08,
+        "parse": 0.284068,
+        "dedup": 0.0375263,
+        "await-links": 5.0381e-05,
+        "route": 0.0589336,
+        "ingest": 0.380625,
+        "aggregate-output": 0.140675
+      },
+      "process_ns": 540505196,
+      "monotonic_ns": 540508799,
+      "peak_rss_kib": 2815664
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00568187,
+        "start": 4.2e-08,
+        "parse": 0.316932,
+        "dedup": 0.0995103,
+        "await-links": 9.7306e-05,
+        "route": 0.0567064,
+        "ingest": 0.473322,
+        "aggregate-output": 0.198954
+      },
+      "process_ns": 728873026,
+      "monotonic_ns": 728877928,
+      "peak_rss_kib": 2868580
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00576213,
+        "start": 4.2e-08,
+        "parse": 0.320179,
+        "dedup": 0.101691,
+        "await-links": 5.9416e-05,
+        "route": 0.0566903,
+        "ingest": 0.478692,
+        "aggregate-output": 0.197726
+      },
+      "process_ns": 733834477,
+      "monotonic_ns": 733839395,
+      "peak_rss_kib": 2868708
+    },
+    {
+      "lap": 5,
+      "config": "release48:je",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00753741,
+        "start": 4.4e-08,
+        "parse": 0.285886,
+        "dedup": 0.036837,
+        "await-links": 7.7905e-05,
+        "route": 0.0576842,
+        "ingest": 0.380541,
+        "aggregate-output": 0.138741
+      },
+      "process_ns": 537955749,
+      "monotonic_ns": 537959350,
+      "peak_rss_kib": 2833212
+    },
+    {
+      "lap": 6,
+      "config": "release48:je",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00758568,
+        "start": 3.2e-08,
+        "parse": 0.281816,
+        "dedup": 0.0373591,
+        "await-links": 7.8109e-05,
+        "route": 0.0589544,
+        "ingest": 0.378267,
+        "aggregate-output": 0.1382
+      },
+      "process_ns": 535165320,
+      "monotonic_ns": 535168899,
+      "peak_rss_kib": 2836000
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00576882,
+        "start": 4.6e-08,
+        "parse": 0.317546,
+        "dedup": 0.0989402,
+        "await-links": 6.1807e-05,
+        "route": 0.0567745,
+        "ingest": 0.473382,
+        "aggregate-output": 0.198456
+      },
+      "process_ns": 730174351,
+      "monotonic_ns": 730179240,
+      "peak_rss_kib": 2868996
+    },
+    {
+      "lap": 7,
+      "config": "official",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00564725,
+        "start": 4.5e-08,
+        "parse": 0.318529,
+        "dedup": 0.0989609,
+        "await-links": 8.7213e-05,
+        "route": 0.0566019,
+        "ingest": 0.474237,
+        "aggregate-output": 0.198374
+      },
+      "process_ns": 730109571,
+      "monotonic_ns": 730114461,
+      "peak_rss_kib": 2867628
+    },
+    {
+      "lap": 7,
+      "config": "release48:je",
+      "seed": "fresh",
+      "stages": {
+        "dimensions": 0.00767872,
+        "start": 3.1e-08,
+        "parse": 0.28133,
+        "dedup": 0.0373536,
+        "await-links": 9.1359e-05,
+        "route": 0.0595917,
+        "ingest": 0.378424,
+        "aggregate-output": 0.138553
+      },
+      "process_ns": 534643369,
+      "monotonic_ns": 534646934,
+      "peak_rss_kib": 2839680
+    },
+    {
+      "lap": 0,
+      "config": "release48:je",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.0297859,
+        "start": 1.11e-07,
+        "parse": 0.388352,
+        "dedup": 0.0420436,
+        "await-links": 5.1268e-05,
+        "route": 0.065753,
+        "ingest": 0.496283,
+        "aggregate-output": 0.146154
+      },
+      "process_ns": 697398994,
+      "monotonic_ns": 697403428,
+      "peak_rss_kib": 2762620
+    },
+    {
+      "lap": 0,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00583708,
+        "start": 4.2e-08,
+        "parse": 0.349681,
+        "dedup": 0.107858,
+        "await-links": 2.6402e-05,
+        "route": 0.0571747,
+        "ingest": 0.5148,
+        "aggregate-output": 0.196259
+      },
+      "process_ns": 758329163,
+      "monotonic_ns": 758334213,
+      "peak_rss_kib": 2882788
+    },
+    {
+      "lap": 1,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00585688,
+        "start": 4.6e-08,
+        "parse": 0.316465,
+        "dedup": 0.110094,
+        "await-links": 0.000102683,
+        "route": 0.0572311,
+        "ingest": 0.483967,
+        "aggregate-output": 0.197989
+      },
+      "process_ns": 723268562,
+      "monotonic_ns": 723273392,
+      "peak_rss_kib": 2890168
+    },
+    {
+      "lap": 1,
+      "config": "release48:je",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00772599,
+        "start": 3.5e-08,
+        "parse": 0.290295,
+        "dedup": 0.0407917,
+        "await-links": 5.3409e-05,
+        "route": 0.0564974,
+        "ingest": 0.3877,
+        "aggregate-output": 0.13795
+      },
+      "process_ns": 544733220,
+      "monotonic_ns": 544736855,
+      "peak_rss_kib": 2850036
+    },
+    {
+      "lap": 2,
+      "config": "release48:je",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00786434,
+        "start": 5e-08,
+        "parse": 0.277963,
+        "dedup": 0.0404942,
+        "await-links": 5.4062e-05,
+        "route": 0.0549125,
+        "ingest": 0.373469,
+        "aggregate-output": 0.136333
+      },
+      "process_ns": 528610207,
+      "monotonic_ns": 528613732,
+      "peak_rss_kib": 2863500
+    },
+    {
+      "lap": 2,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.0059689,
+        "start": 4.6e-08,
+        "parse": 0.322913,
+        "dedup": 0.113592,
+        "await-links": 7.5191e-05,
+        "route": 0.0606754,
+        "ingest": 0.497334,
+        "aggregate-output": 0.20576
+      },
+      "process_ns": 745067738,
+      "monotonic_ns": 745072707,
+      "peak_rss_kib": 2888744
+    },
+    {
+      "lap": 3,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00595254,
+        "start": 4.6e-08,
+        "parse": 0.316274,
+        "dedup": 0.109305,
+        "await-links": 9.0708e-05,
+        "route": 0.0574376,
+        "ingest": 0.48318,
+        "aggregate-output": 0.19781
+      },
+      "process_ns": 722123060,
+      "monotonic_ns": 722127873,
+      "peak_rss_kib": 2888252
+    },
+    {
+      "lap": 3,
+      "config": "release48:je",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00770432,
+        "start": 4.5e-08,
+        "parse": 0.277053,
+        "dedup": 0.0408514,
+        "await-links": 9.0476e-05,
+        "route": 0.0565263,
+        "ingest": 0.374584,
+        "aggregate-output": 0.138581
+      },
+      "process_ns": 531778576,
+      "monotonic_ns": 531782113,
+      "peak_rss_kib": 2865728
+    },
+    {
+      "lap": 4,
+      "config": "release48:je",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00781694,
+        "start": 4.4e-08,
+        "parse": 0.277172,
+        "dedup": 0.0406361,
+        "await-links": 5.4436e-05,
+        "route": 0.056596,
+        "ingest": 0.374505,
+        "aggregate-output": 0.136353
+      },
+      "process_ns": 529823493,
+      "monotonic_ns": 529827018,
+      "peak_rss_kib": 2867400
+    },
+    {
+      "lap": 4,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.0059008,
+        "start": 3.3e-08,
+        "parse": 0.318013,
+        "dedup": 0.110666,
+        "await-links": 9.1875e-05,
+        "route": 0.0570899,
+        "ingest": 0.48592,
+        "aggregate-output": 0.196687
+      },
+      "process_ns": 724504802,
+      "monotonic_ns": 724509626,
+      "peak_rss_kib": 2889496
+    },
+    {
+      "lap": 5,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00593291,
+        "start": 3.2e-08,
+        "parse": 0.31809,
+        "dedup": 0.107981,
+        "await-links": 9.2045e-05,
+        "route": 0.056982,
+        "ingest": 0.483203,
+        "aggregate-output": 0.197232
+      },
+      "process_ns": 722389057,
+      "monotonic_ns": 722393869,
+      "peak_rss_kib": 2888816
+    },
+    {
+      "lap": 5,
+      "config": "release48:je",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00800108,
+        "start": 4.6e-08,
+        "parse": 0.278896,
+        "dedup": 0.0405302,
+        "await-links": 7.8353e-05,
+        "route": 0.0566067,
+        "ingest": 0.376184,
+        "aggregate-output": 0.135952
+      },
+      "process_ns": 531075747,
+      "monotonic_ns": 531079280,
+      "peak_rss_kib": 2836256
+    },
+    {
+      "lap": 6,
+      "config": "release48:je",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00789233,
+        "start": 4.9e-08,
+        "parse": 0.281906,
+        "dedup": 0.0404956,
+        "await-links": 4.9743e-05,
+        "route": 0.0567413,
+        "ingest": 0.379256,
+        "aggregate-output": 0.13933
+      },
+      "process_ns": 538868551,
+      "monotonic_ns": 538872138,
+      "peak_rss_kib": 2844856
+    },
+    {
+      "lap": 6,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.0059153,
+        "start": 4.2e-08,
+        "parse": 0.319253,
+        "dedup": 0.108271,
+        "await-links": 7.2085e-05,
+        "route": 0.0585889,
+        "ingest": 0.486258,
+        "aggregate-output": 0.198337
+      },
+      "process_ns": 726796904,
+      "monotonic_ns": 726801749,
+      "peak_rss_kib": 2890344
+    },
+    {
+      "lap": 7,
+      "config": "official",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00598913,
+        "start": 4.1e-08,
+        "parse": 0.315021,
+        "dedup": 0.110336,
+        "await-links": 7.746e-05,
+        "route": 0.0572242,
+        "ingest": 0.482732,
+        "aggregate-output": 0.196246
+      },
+      "process_ns": 720802670,
+      "monotonic_ns": 720807461,
+      "peak_rss_kib": 2890320
+    },
+    {
+      "lap": 7,
+      "config": "release48:je",
+      "seed": "hold2",
+      "stages": {
+        "dimensions": 0.00781747,
+        "start": 4.1e-08,
+        "parse": 0.279675,
+        "dedup": 0.0410597,
+        "await-links": 7.707e-05,
+        "route": 0.0564342,
+        "ingest": 0.377292,
+        "aggregate-output": 0.136677
+      },
+      "process_ns": 533378293,
+      "monotonic_ns": 533381837,
+      "peak_rss_kib": 2856076
+    }
+  ],
+  "container": [
+    {
+      "seed": "practice",
+      "lap": 0,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00317472,
+        "start": 4e-08,
+        "parse": 0.195122,
+        "dedup": 0.0318738,
+        "await-links": 8.9181e-05,
+        "route": 0.0345448,
+        "ingest": 0.261894,
+        "aggregate-output": 0.0840771
+      },
+      "process_ns": 384825264,
+      "monotonic_ns": 384832279,
+      "peak_rss_kib": 2910740,
+      "engine": {
+        "seconds": 0.380135242,
+        "cli_start_seconds": 3.179207755,
+        "peak_cgroup_bytes": 1096769536,
+        "output_scratch_bytes": 24223441,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 0,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.00474252,
+        "start": 5e-08,
+        "parse": 0.246562,
+        "dedup": 0.0246564,
+        "await-links": 0.000132665,
+        "route": 0.0587557,
+        "ingest": 0.33027,
+        "aggregate-output": 0.0630186
+      },
+      "process_ns": 406245610,
+      "monotonic_ns": 406252899,
+      "peak_rss_kib": 2880396,
+      "engine": {
+        "seconds": 0.401770941,
+        "cli_start_seconds": 3.022956079,
+        "peak_cgroup_bytes": 1119145984,
+        "output_scratch_bytes": 17202107,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 0,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.00693506,
+        "start": 5e-08,
+        "parse": 0.243423,
+        "dedup": 0.0219103,
+        "await-links": 0.000148404,
+        "route": 0.0461255,
+        "ingest": 0.311761,
+        "aggregate-output": 0.0615049
+      },
+      "process_ns": 388003023,
+      "monotonic_ns": 388009467,
+      "peak_rss_kib": 2904500,
+      "engine": {
+        "seconds": 0.382859494,
+        "cli_start_seconds": 3.207092548,
+        "peak_cgroup_bytes": 1151188992,
+        "output_scratch_bytes": 17205992,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 1,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.00469323,
+        "start": 5.1e-08,
+        "parse": 0.206298,
+        "dedup": 0.0192635,
+        "await-links": 0.000142944,
+        "route": 0.0411787,
+        "ingest": 0.267023,
+        "aggregate-output": 0.0536527
+      },
+      "process_ns": 332734408,
+      "monotonic_ns": 332738930,
+      "peak_rss_kib": 2885420,
+      "engine": {
+        "seconds": 0.330016262,
+        "cli_start_seconds": 2.962721235,
+        "peak_cgroup_bytes": 1130590208,
+        "output_scratch_bytes": 17201653,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 1,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.00634441,
+        "start": 8.1e-08,
+        "parse": 0.307162,
+        "dedup": 0.0294632,
+        "await-links": 0.000215085,
+        "route": 0.0707556,
+        "ingest": 0.407929,
+        "aggregate-output": 0.104237
+      },
+      "process_ns": 528995001,
+      "monotonic_ns": 528988784,
+      "peak_rss_kib": 2903376,
+      "engine": {
+        "seconds": 0.526331711,
+        "cli_start_seconds": 3.700785079,
+        "peak_cgroup_bytes": 1144762368,
+        "output_scratch_bytes": 17209465,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 1,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00327006,
+        "start": 5e-08,
+        "parse": 0.187763,
+        "dedup": 0.0291845,
+        "await-links": 8.4491e-05,
+        "route": 0.0311613,
+        "ingest": 0.248362,
+        "aggregate-output": 0.0831001
+      },
+      "process_ns": 371349652,
+      "monotonic_ns": 371353857,
+      "peak_rss_kib": 2913784,
+      "engine": {
+        "seconds": 0.367971708,
+        "cli_start_seconds": 3.153038046,
+        "peak_cgroup_bytes": 1100021760,
+        "output_scratch_bytes": 24234151,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 2,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00320227,
+        "start": 5e-08,
+        "parse": 0.208525,
+        "dedup": 0.0288805,
+        "await-links": 7.348e-05,
+        "route": 0.0315538,
+        "ingest": 0.26915,
+        "aggregate-output": 0.0839253
+      },
+      "process_ns": 388664120,
+      "monotonic_ns": 388667639,
+      "peak_rss_kib": 2913832,
+      "engine": {
+        "seconds": 0.383459591,
+        "cli_start_seconds": 2.956484527,
+        "peak_cgroup_bytes": 1099268096,
+        "output_scratch_bytes": 24195793,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 2,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.00433188,
+        "start": 5e-08,
+        "parse": 0.235492,
+        "dedup": 0.0203238,
+        "await-links": 0.000144683,
+        "route": 0.0460175,
+        "ingest": 0.302112,
+        "aggregate-output": 0.0569312
+      },
+      "process_ns": 370828283,
+      "monotonic_ns": 370823680,
+      "peak_rss_kib": 2911268,
+      "engine": {
+        "seconds": 0.367212631,
+        "cli_start_seconds": 2.926657782,
+        "peak_cgroup_bytes": 1153662976,
+        "output_scratch_bytes": 17201298,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 2,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.00419216,
+        "start": 5.1e-08,
+        "parse": 0.197608,
+        "dedup": 0.0190359,
+        "await-links": 0.000144309,
+        "route": 0.0424672,
+        "ingest": 0.259382,
+        "aggregate-output": 0.0528314
+      },
+      "process_ns": 323290671,
+      "monotonic_ns": 323278941,
+      "peak_rss_kib": 2882272,
+      "engine": {
+        "seconds": 0.319964687,
+        "cli_start_seconds": 2.903947353,
+        "peak_cgroup_bytes": 1128886272,
+        "output_scratch_bytes": 17202176,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 3,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.00420169,
+        "start": 5e-08,
+        "parse": 0.230507,
+        "dedup": 0.0230577,
+        "await-links": 0.000750111,
+        "route": 0.0494286,
+        "ingest": 0.303879,
+        "aggregate-output": 0.0629459
+      },
+      "process_ns": 378070003,
+      "monotonic_ns": 378073472,
+      "peak_rss_kib": 2911952,
+      "engine": {
+        "seconds": 0.374276438,
+        "cli_start_seconds": 3.231279069,
+        "peak_cgroup_bytes": 1158082560,
+        "output_scratch_bytes": 17204971,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 3,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.00474681,
+        "start": 6e-08,
+        "parse": 0.366745,
+        "dedup": 0.0307183,
+        "await-links": 0.000186085,
+        "route": 0.0682957,
+        "ingest": 0.466119,
+        "aggregate-output": 0.0977035
+      },
+      "process_ns": 579202976,
+      "monotonic_ns": 579207952,
+      "peak_rss_kib": 2893604,
+      "engine": {
+        "seconds": 0.574018904,
+        "cli_start_seconds": 3.543329271,
+        "peak_cgroup_bytes": 1131778048,
+        "output_scratch_bytes": 17202489,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "practice",
+      "lap": 3,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00390005,
+        "start": 5e-08,
+        "parse": 0.249798,
+        "dedup": 0.0344563,
+        "await-links": 6.7799e-05,
+        "route": 0.0376701,
+        "ingest": 0.322115,
+        "aggregate-output": 0.0933338
+      },
+      "process_ns": 457624998,
+      "monotonic_ns": 457628578,
+      "peak_rss_kib": 2917412,
+      "engine": {
+        "seconds": 0.452598672,
+        "cli_start_seconds": 3.355599421,
+        "peak_cgroup_bytes": 1103339520,
+        "output_scratch_bytes": 24230578,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 0,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.0102251,
+        "start": 5e-08,
+        "parse": 0.691652,
+        "dedup": 0.0649338,
+        "await-links": 8.39e-05,
+        "route": 0.0536631,
+        "ingest": 0.810541,
+        "aggregate-output": 0.134573
+      },
+      "process_ns": 1051116051,
+      "monotonic_ns": 1051123603,
+      "peak_rss_kib": 2909432,
+      "engine": {
+        "seconds": 1.049080238,
+        "cli_start_seconds": 4.773500715,
+        "peak_cgroup_bytes": 1097289728,
+        "output_scratch_bytes": 24012842,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 0,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.00523648,
+        "start": 6e-08,
+        "parse": 0.185921,
+        "dedup": 0.0227783,
+        "await-links": 0.000144145,
+        "route": 0.0568845,
+        "ingest": 0.265858,
+        "aggregate-output": 0.064921
+      },
+      "process_ns": 348042904,
+      "monotonic_ns": 348045221,
+      "peak_rss_kib": 2893644,
+      "engine": {
+        "seconds": 0.343912489,
+        "cli_start_seconds": 3.041922193,
+        "peak_cgroup_bytes": 1137131520,
+        "output_scratch_bytes": 17067514,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 0,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.00649763,
+        "start": 5e-08,
+        "parse": 0.325008,
+        "dedup": 0.0334463,
+        "await-links": 0.00015199,
+        "route": 0.0797345,
+        "ingest": 0.438527,
+        "aggregate-output": 0.107759
+      },
+      "process_ns": 567150418,
+      "monotonic_ns": 567153976,
+      "peak_rss_kib": 2896716,
+      "engine": {
+        "seconds": 0.563273422,
+        "cli_start_seconds": 4.069585254,
+        "peak_cgroup_bytes": 1145135104,
+        "output_scratch_bytes": 17068732,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 1,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.0118545,
+        "start": 5e-08,
+        "parse": 0.347373,
+        "dedup": 0.0386641,
+        "await-links": 0.00016938,
+        "route": 0.087871,
+        "ingest": 0.474258,
+        "aggregate-output": 0.10097
+      },
+      "process_ns": 605814084,
+      "monotonic_ns": 605807134,
+      "peak_rss_kib": 2882044,
+      "engine": {
+        "seconds": 0.602694366,
+        "cli_start_seconds": 4.065114633,
+        "peak_cgroup_bytes": 1131298816,
+        "output_scratch_bytes": 17070155,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 1,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.00641358,
+        "start": 5e-08,
+        "parse": 0.71457,
+        "dedup": 0.0641972,
+        "await-links": 0.000143228,
+        "route": 0.1621,
+        "ingest": 0.94124,
+        "aggregate-output": 0.168127
+      },
+      "process_ns": 1162816822,
+      "monotonic_ns": 1162782428,
+      "peak_rss_kib": 2880288,
+      "engine": {
+        "seconds": 1.16024819,
+        "cli_start_seconds": 4.591566315,
+        "peak_cgroup_bytes": 1123282944,
+        "output_scratch_bytes": 17067225,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 1,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00442808,
+        "start": 5e-08,
+        "parse": 0.47784,
+        "dedup": 0.081391,
+        "await-links": 7.7797e-05,
+        "route": 0.082968,
+        "ingest": 0.642439,
+        "aggregate-output": 0.241093
+      },
+      "process_ns": 958777434,
+      "monotonic_ns": 958769319,
+      "peak_rss_kib": 2911600,
+      "engine": {
+        "seconds": 0.955745061,
+        "cli_start_seconds": 4.346117682,
+        "peak_cgroup_bytes": 1098604544,
+        "output_scratch_bytes": 24042928,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 2,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00436945,
+        "start": 5e-08,
+        "parse": 0.196732,
+        "dedup": 0.0326501,
+        "await-links": 7.0199e-05,
+        "route": 0.0319325,
+        "ingest": 0.261535,
+        "aggregate-output": 0.0892694
+      },
+      "process_ns": 402768329,
+      "monotonic_ns": 402340615,
+      "peak_rss_kib": 2911832,
+      "engine": {
+        "seconds": 0.398232972,
+        "cli_start_seconds": 2.953027213,
+        "peak_cgroup_bytes": 1099550720,
+        "output_scratch_bytes": 24033077,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 2,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.00502926,
+        "start": 5e-08,
+        "parse": 0.217991,
+        "dedup": 0.0210342,
+        "await-links": 0.000134201,
+        "route": 0.0536092,
+        "ingest": 0.292907,
+        "aggregate-output": 0.0548473
+      },
+      "process_ns": 363286472,
+      "monotonic_ns": 362922491,
+      "peak_rss_kib": 2874484,
+      "engine": {
+        "seconds": 0.365219638,
+        "cli_start_seconds": 3.23974475,
+        "peak_cgroup_bytes": 1120419840,
+        "output_scratch_bytes": 17067164,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 2,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.00495416,
+        "start": 5e-08,
+        "parse": 0.190684,
+        "dedup": 0.0198278,
+        "await-links": 0.000133868,
+        "route": 0.0452498,
+        "ingest": 0.256016,
+        "aggregate-output": 0.0532076
+      },
+      "process_ns": 324191161,
+      "monotonic_ns": 323885424,
+      "peak_rss_kib": 2886784,
+      "engine": {
+        "seconds": 0.320644954,
+        "cli_start_seconds": 2.935408515,
+        "peak_cgroup_bytes": 1136185344,
+        "output_scratch_bytes": 17068331,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 3,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.0062144,
+        "start": 6e-08,
+        "parse": 0.192205,
+        "dedup": 0.0197179,
+        "await-links": 0.000150972,
+        "route": 0.0456275,
+        "ingest": 0.25783,
+        "aggregate-output": 0.0556708
+      },
+      "process_ns": 327207571,
+      "monotonic_ns": 326914463,
+      "peak_rss_kib": 2904544,
+      "engine": {
+        "seconds": 0.323890342,
+        "cli_start_seconds": 2.923440552,
+        "peak_cgroup_bytes": 1154961408,
+        "output_scratch_bytes": 17067052,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 3,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.0048388,
+        "start": 5e-08,
+        "parse": 0.240062,
+        "dedup": 0.0228221,
+        "await-links": 0.000130207,
+        "route": 0.0566044,
+        "ingest": 0.319761,
+        "aggregate-output": 0.0664173
+      },
+      "process_ns": 397491917,
+      "monotonic_ns": 397156357,
+      "peak_rss_kib": 2874376,
+      "engine": {
+        "seconds": 0.39522077,
+        "cli_start_seconds": 3.255849093,
+        "peak_cgroup_bytes": 1119133696,
+        "output_scratch_bytes": 17072201,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "r84-blind",
+      "lap": 3,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00394821,
+        "start": 4e-08,
+        "parse": 0.22485,
+        "dedup": 0.0379641,
+        "await-links": 7.1919e-05,
+        "route": 0.0384547,
+        "ingest": 0.301476,
+        "aggregate-output": 0.0968287
+      },
+      "process_ns": 444222776,
+      "monotonic_ns": 443869500,
+      "peak_rss_kib": 2918568,
+      "engine": {
+        "seconds": 0.44392812,
+        "cli_start_seconds": 3.261729688,
+        "peak_cgroup_bytes": 1106493440,
+        "output_scratch_bytes": 24058206,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/hold2",
+      "lap": 0,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00459528,
+        "start": 5e-08,
+        "parse": 0.368919,
+        "dedup": 0.0355437,
+        "await-links": 6.8559e-05,
+        "route": 0.0342906,
+        "ingest": 0.438968,
+        "aggregate-output": 0.0881675
+      },
+      "process_ns": 582742667,
+      "monotonic_ns": 582819265,
+      "peak_rss_kib": 2917480,
+      "engine": {
+        "seconds": 0.579067129,
+        "cli_start_seconds": 3.448215124,
+        "peak_cgroup_bytes": 1106325504,
+        "output_scratch_bytes": 24032457,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/hold2",
+      "lap": 0,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.00453212,
+        "start": 6e-08,
+        "parse": 0.27524,
+        "dedup": 0.0247348,
+        "await-links": 0.000133016,
+        "route": 0.0794603,
+        "ingest": 0.379729,
+        "aggregate-output": 0.068498
+      },
+      "process_ns": 459989072,
+      "monotonic_ns": 459898260,
+      "peak_rss_kib": 2899968,
+      "engine": {
+        "seconds": 0.456583171,
+        "cli_start_seconds": 3.163262912,
+        "peak_cgroup_bytes": 1147842560,
+        "output_scratch_bytes": 17131399,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/hold2",
+      "lap": 0,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.00578593,
+        "start": 5e-08,
+        "parse": 0.376667,
+        "dedup": 0.0269078,
+        "await-links": 0.000126673,
+        "route": 0.0844448,
+        "ingest": 0.488317,
+        "aggregate-output": 0.0880533
+      },
+      "process_ns": 594466140,
+      "monotonic_ns": 594337396,
+      "peak_rss_kib": 2895928,
+      "engine": {
+        "seconds": 0.592597181,
+        "cli_start_seconds": 4.115446049,
+        "peak_cgroup_bytes": 1148223488,
+        "output_scratch_bytes": 17132790,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/hold2",
+      "lap": 1,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.0148437,
+        "start": 6e-08,
+        "parse": 0.373801,
+        "dedup": 0.0570998,
+        "await-links": 0.000165528,
+        "route": 0.0980445,
+        "ingest": 0.529366,
+        "aggregate-output": 0.101049
+      },
+      "process_ns": 656310541,
+      "monotonic_ns": 656404652,
+      "peak_rss_kib": 2913780,
+      "engine": {
+        "seconds": 0.674353608,
+        "cli_start_seconds": 4.230216742,
+        "peak_cgroup_bytes": 1166446592,
+        "output_scratch_bytes": 17134504,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/hold2",
+      "lap": 1,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.0137763,
+        "start": 1e-07,
+        "parse": 0.519214,
+        "dedup": 0.0647491,
+        "await-links": 0.00014679,
+        "route": 0.127211,
+        "ingest": 0.71155,
+        "aggregate-output": 0.130706
+      },
+      "process_ns": 877367678,
+      "monotonic_ns": 877491653,
+      "peak_rss_kib": 2897960,
+      "engine": {
+        "seconds": 0.876627655,
+        "cli_start_seconds": 4.537455104,
+        "peak_cgroup_bytes": 1145614336,
+        "output_scratch_bytes": 17131317,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/hold2",
+      "lap": 1,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00884653,
+        "start": 5e-08,
+        "parse": 0.642401,
+        "dedup": 0.0927942,
+        "await-links": 7.5063e-05,
+        "route": 0.0943493,
+        "ingest": 0.829802,
+        "aggregate-output": 0.0939647
+      },
+      "process_ns": 1034636945,
+      "monotonic_ns": 1034778319,
+      "peak_rss_kib": 2899972,
+      "engine": {
+        "seconds": 1.033671087,
+        "cli_start_seconds": 4.389872063,
+        "peak_cgroup_bytes": 1088315392,
+        "output_scratch_bytes": 24027303,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/hold2",
+      "lap": 2,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00429361,
+        "start": 4e-08,
+        "parse": 0.158165,
+        "dedup": 0.0389178,
+        "await-links": 6.7798e-05,
+        "route": 0.0330971,
+        "ingest": 0.230381,
+        "aggregate-output": 0.0856274
+      },
+      "process_ns": 379317406,
+      "monotonic_ns": 379365522,
+      "peak_rss_kib": 2915108,
+      "engine": {
+        "seconds": 0.374848122,
+        "cli_start_seconds": 3.010492254,
+        "peak_cgroup_bytes": 1104441344,
+        "output_scratch_bytes": 24009524,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/hold2",
+      "lap": 2,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.00450411,
+        "start": 5e-08,
+        "parse": 0.217273,
+        "dedup": 0.0211139,
+        "await-links": 0.000128088,
+        "route": 0.0635868,
+        "ingest": 0.302234,
+        "aggregate-output": 0.057085
+      },
+      "process_ns": 373565451,
+      "monotonic_ns": 373609303,
+      "peak_rss_kib": 2904460,
+      "engine": {
+        "seconds": 0.368866896,
+        "cli_start_seconds": 2.938935068,
+        "peak_cgroup_bytes": 1152016384,
+        "output_scratch_bytes": 17134663,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/hold2",
+      "lap": 2,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.0057653,
+        "start": 5e-08,
+        "parse": 0.29105,
+        "dedup": 0.0266691,
+        "await-links": 0.000158038,
+        "route": 0.0607489,
+        "ingest": 0.378796,
+        "aggregate-output": 0.0818388
+      },
+      "process_ns": 478073773,
+      "monotonic_ns": 478126676,
+      "peak_rss_kib": 2904800,
+      "engine": {
+        "seconds": 0.474696955,
+        "cli_start_seconds": 3.908031681,
+        "peak_cgroup_bytes": 1157263360,
+        "output_scratch_bytes": 17133766,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/hold2",
+      "lap": 3,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.0061634,
+        "start": 5e-08,
+        "parse": 0.279533,
+        "dedup": 0.0350276,
+        "await-links": 0.000167766,
+        "route": 0.078416,
+        "ingest": 0.393372,
+        "aggregate-output": 0.0885798
+      },
+      "process_ns": 498298426,
+      "monotonic_ns": 498351214,
+      "peak_rss_kib": 2908132,
+      "engine": {
+        "seconds": 0.50125726,
+        "cli_start_seconds": 3.710218825,
+        "peak_cgroup_bytes": 1160531968,
+        "output_scratch_bytes": 17134591,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/hold2",
+      "lap": 3,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.0060318,
+        "start": 5e-08,
+        "parse": 0.182341,
+        "dedup": 0.0209559,
+        "await-links": 0.000139238,
+        "route": 0.061581,
+        "ingest": 0.265152,
+        "aggregate-output": 0.0536691
+      },
+      "process_ns": 332810166,
+      "monotonic_ns": 332842497,
+      "peak_rss_kib": 2897184,
+      "engine": {
+        "seconds": 0.329851266,
+        "cli_start_seconds": 2.903178591,
+        "peak_cgroup_bytes": 1145540608,
+        "output_scratch_bytes": 17131829,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/hold2",
+      "lap": 3,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00384421,
+        "start": 4e-08,
+        "parse": 0.201012,
+        "dedup": 0.030819,
+        "await-links": 8.3035e-05,
+        "route": 0.0304933,
+        "ingest": 0.262565,
+        "aggregate-output": 0.090043
+      },
+      "process_ns": 405716508,
+      "monotonic_ns": 405751484,
+      "peak_rss_kib": 2917492,
+      "engine": {
+        "seconds": 0.402138801,
+        "cli_start_seconds": 2.970038944,
+        "peak_cgroup_bytes": 1106911232,
+        "output_scratch_bytes": 24029157,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 0,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00353386,
+        "start": 5e-08,
+        "parse": 0.631112,
+        "dedup": 0.0861521,
+        "await-links": 6.9307e-05,
+        "route": 0.0981171,
+        "ingest": 0.815632,
+        "aggregate-output": 0.290507
+      },
+      "process_ns": 1177963997,
+      "monotonic_ns": 1178049017,
+      "peak_rss_kib": 8273584,
+      "engine": {
+        "seconds": 1.172690434,
+        "cli_start_seconds": 3.750438393,
+        "peak_cgroup_bytes": 2953818112,
+        "output_scratch_bytes": 70495099,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 0,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.0057344,
+        "start": 5e-08,
+        "parse": 0.607573,
+        "dedup": 0.0602333,
+        "await-links": 0.000200435,
+        "route": 0.12366,
+        "ingest": 0.791827,
+        "aggregate-output": 0.18321
+      },
+      "process_ns": 994020870,
+      "monotonic_ns": 993983516,
+      "peak_rss_kib": 8123344,
+      "engine": {
+        "seconds": 0.990097088,
+        "cli_start_seconds": 3.566786922,
+        "peak_cgroup_bytes": 2927124480,
+        "output_scratch_bytes": 50343723,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 0,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.00428114,
+        "start": 5e-08,
+        "parse": 0.564916,
+        "dedup": 0.0576098,
+        "await-links": 0.000153758,
+        "route": 0.12781,
+        "ingest": 0.750647,
+        "aggregate-output": 0.186168
+      },
+      "process_ns": 956862963,
+      "monotonic_ns": 956714616,
+      "peak_rss_kib": 8152008,
+      "engine": {
+        "seconds": 0.954694103,
+        "cli_start_seconds": 3.499631843,
+        "peak_cgroup_bytes": 2961563648,
+        "output_scratch_bytes": 50339854,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 1,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.00485921,
+        "start": 6e-08,
+        "parse": 0.547128,
+        "dedup": 0.0571505,
+        "await-links": 0.000137491,
+        "route": 0.118299,
+        "ingest": 0.72289,
+        "aggregate-output": 0.189104
+      },
+      "process_ns": 930579120,
+      "monotonic_ns": 930442094,
+      "peak_rss_kib": 8148208,
+      "engine": {
+        "seconds": 0.927705525,
+        "cli_start_seconds": 3.500333075,
+        "peak_cgroup_bytes": 2956742656,
+        "output_scratch_bytes": 50344959,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 1,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.00447109,
+        "start": 5e-08,
+        "parse": 0.571959,
+        "dedup": 0.058958,
+        "await-links": 0.000167445,
+        "route": 0.119777,
+        "ingest": 0.75101,
+        "aggregate-output": 0.182731
+      },
+      "process_ns": 950818682,
+      "monotonic_ns": 950685464,
+      "peak_rss_kib": 8121232,
+      "engine": {
+        "seconds": 0.949010241,
+        "cli_start_seconds": 3.53761287,
+        "peak_cgroup_bytes": 2924609536,
+        "output_scratch_bytes": 50341902,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 1,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00340149,
+        "start": 8.1e-08,
+        "parse": 0.741665,
+        "dedup": 0.0916396,
+        "await-links": 8.0042e-05,
+        "route": 0.0985742,
+        "ingest": 0.932113,
+        "aggregate-output": 0.307142
+      },
+      "process_ns": 1315996534,
+      "monotonic_ns": 1315920627,
+      "peak_rss_kib": 8282316,
+      "engine": {
+        "seconds": 1.312180299,
+        "cli_start_seconds": 4.195642532,
+        "peak_cgroup_bytes": 2964041728,
+        "output_scratch_bytes": 70509966,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 2,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00421737,
+        "start": 7e-08,
+        "parse": 0.672129,
+        "dedup": 0.0827031,
+        "await-links": 6.9023e-05,
+        "route": 0.10061,
+        "ingest": 0.855644,
+        "aggregate-output": 0.297831
+      },
+      "process_ns": 1229885356,
+      "monotonic_ns": 1229833789,
+      "peak_rss_kib": 8276240,
+      "engine": {
+        "seconds": 1.224637227,
+        "cli_start_seconds": 4.071652538,
+        "peak_cgroup_bytes": 2956476416,
+        "output_scratch_bytes": 70478787,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 2,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.00673099,
+        "start": 5e-08,
+        "parse": 0.616009,
+        "dedup": 0.0607536,
+        "await-links": 0.000137004,
+        "route": 0.123594,
+        "ingest": 0.800658,
+        "aggregate-output": 0.187646
+      },
+      "process_ns": 1008294802,
+      "monotonic_ns": 1008291802,
+      "peak_rss_kib": 8133820,
+      "engine": {
+        "seconds": 1.00677456,
+        "cli_start_seconds": 3.859650827,
+        "peak_cgroup_bytes": 2938494976,
+        "output_scratch_bytes": 50341602,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 2,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.00556315,
+        "start": 6e-08,
+        "parse": 0.66375,
+        "dedup": 0.101043,
+        "await-links": 0.000376137,
+        "route": 0.156857,
+        "ingest": 0.922186,
+        "aggregate-output": 0.229085
+      },
+      "process_ns": 1170667193,
+      "monotonic_ns": 1170710154,
+      "peak_rss_kib": 8147280,
+      "engine": {
+        "seconds": 1.166770064,
+        "cli_start_seconds": 3.727236907,
+        "peak_cgroup_bytes": 2955591680,
+        "output_scratch_bytes": 50344338,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 3,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.00497683,
+        "start": 5e-08,
+        "parse": 0.664742,
+        "dedup": 0.102843,
+        "await-links": 0.000196304,
+        "route": 0.153814,
+        "ingest": 0.921738,
+        "aggregate-output": 0.232414
+      },
+      "process_ns": 1172801382,
+      "monotonic_ns": 1172864633,
+      "peak_rss_kib": 8156348,
+      "engine": {
+        "seconds": 1.167847286,
+        "cli_start_seconds": 3.745899755,
+        "peak_cgroup_bytes": 2965135360,
+        "output_scratch_bytes": 50342005,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 3,
+      "config": "chase-fuse1",
+      "stages": {
+        "dimensions": 0.00522036,
+        "start": 5e-08,
+        "parse": 0.618148,
+        "dedup": 0.0653315,
+        "await-links": 0.000180792,
+        "route": 0.124652,
+        "ingest": 0.808467,
+        "aggregate-output": 0.192234
+      },
+      "process_ns": 1019086489,
+      "monotonic_ns": 1019137229,
+      "peak_rss_kib": 8114852,
+      "engine": {
+        "seconds": 1.01504592,
+        "cli_start_seconds": 3.602989844,
+        "peak_cgroup_bytes": 2918531072,
+        "output_scratch_bytes": 50339111,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "final",
+      "lap": 3,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00495963,
+        "start": 6e-08,
+        "parse": 1.13372,
+        "dedup": 0.114465,
+        "await-links": 7.9916e-05,
+        "route": 0.120943,
+        "ingest": 1.3694,
+        "aggregate-output": 0.305844
+      },
+      "process_ns": 1764163391,
+      "monotonic_ns": 1764245874,
+      "peak_rss_kib": 8270240,
+      "engine": {
+        "seconds": 1.760985841,
+        "cli_start_seconds": 4.779751224,
+        "peak_cgroup_bytes": 2949713920,
+        "output_scratch_bytes": 70499005,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 0,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.00347693,
+        "start": 5e-08,
+        "parse": 0.280123,
+        "dedup": 0.0342674,
+        "await-links": 7.0514e-05,
+        "route": 0.0367474,
+        "ingest": 0.352134,
+        "aggregate-output": 0.09087
+      },
+      "process_ns": 523540561,
+      "monotonic_ns": 523337537,
+      "peak_rss_kib": 2895432,
+      "engine": {
+        "seconds": 0.521572726,
+        "cli_start_seconds": 2.993626665,
+        "peak_cgroup_bytes": 1103724544,
+        "output_scratch_bytes": 24090371,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 0,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.0124301,
+        "start": 6.1e-08,
+        "parse": 0.395993,
+        "dedup": 0.0674233,
+        "await-links": 0.00015174,
+        "route": 0.100203,
+        "ingest": 0.564064,
+        "aggregate-output": 0.0950064
+      },
+      "process_ns": 675066291,
+      "monotonic_ns": 684085176,
+      "peak_rss_kib": 2849880,
+      "engine": {
+        "seconds": 0.683767225,
+        "cli_start_seconds": 3.808303116,
+        "peak_cgroup_bytes": 1114705920,
+        "output_scratch_bytes": 17159166,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 1,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.0136219,
+        "start": 5e-08,
+        "parse": 0.429988,
+        "dedup": 0.075635,
+        "await-links": 0.000200296,
+        "route": 0.160563,
+        "ingest": 0.666648,
+        "aggregate-output": 0.186302
+      },
+      "process_ns": 894521563,
+      "monotonic_ns": 894020786,
+      "peak_rss_kib": 2885124,
+      "engine": {
+        "seconds": 0.890060231,
+        "cli_start_seconds": 5.185828509,
+        "peak_cgroup_bytes": 1149173760,
+        "output_scratch_bytes": 17159441,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 1,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.0151057,
+        "start": 7e-08,
+        "parse": 0.607896,
+        "dedup": 0.14473,
+        "await-links": 0.000307308,
+        "route": 0.0987364,
+        "ingest": 0.851992,
+        "aggregate-output": 0.220388
+      },
+      "process_ns": 1217183241,
+      "monotonic_ns": 1216749390,
+      "peak_rss_kib": 2892548,
+      "engine": {
+        "seconds": 1.221461301,
+        "cli_start_seconds": 6.43376218,
+        "peak_cgroup_bytes": 1096110080,
+        "output_scratch_bytes": 24113929,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 2,
+      "config": "sub70-release",
+      "stages": {
+        "dimensions": 0.016949,
+        "start": 4.9e-08,
+        "parse": 0.734197,
+        "dedup": 0.197106,
+        "await-links": 0.000120346,
+        "route": 0.122606,
+        "ingest": 1.05472,
+        "aggregate-output": 0.281781
+      },
+      "process_ns": 1560288466,
+      "monotonic_ns": 1542367832,
+      "peak_rss_kib": 2894724,
+      "engine": {
+        "seconds": 1.54010699,
+        "cli_start_seconds": 7.001328127,
+        "peak_cgroup_bytes": 1098084352,
+        "output_scratch_bytes": 24115586,
+        "exit_code": 0
+      }
+    },
+    {
+      "seed": "chase-new/fresh",
+      "lap": 2,
+      "config": "chase-allocator",
+      "stages": {
+        "dimensions": 0.0170158,
+        "start": 7e-08,
+        "parse": 0.681735,
+        "dedup": 0.102885,
+        "await-links": 0.000227771,
+        "route": 0.197704,
+        "ingest": 0.984722,
+        "aggregate-output": 0.284847
+      },
+      "process_ns": 1432939747,
+      "monotonic_ns": 1431154085,
+      "peak_rss_kib": 2867668,
+      "engine": {
+        "seconds": 1.436176063,
+        "cli_start_seconds": 6.889708437,
+        "peak_cgroup_bytes": 1139490816,
+        "output_scratch_bytes": 17161127,
+        "exit_code": 0
+      }
+    }
+  ],
+  "checked_tables": {
+    "42": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "b496a8b06f7da98514af82e13fced52e8de927f4aedcc20ea394286230075a79"
+      },
+      "user_daily": {
+        "rows": 2246306,
+        "sha256": "eb7d6dd604e897d3ac28c7e4261e6033f9764acc4d33db76e74ae52b644c2eef"
+      }
+    },
+    "807154": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "b3fd22446c3230eb1e040de8bb384a5a25ead9a3e85cae085f1c9e42669182e0"
+      },
+      "user_daily": {
+        "rows": 2221335,
+        "sha256": "8ecbe7f48da9cd257a103b6b3538065efad6109befd8250666aadf2681beefb4"
+      }
+    },
+    "1376142809": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "e0576e53eee34ded107f63a93ce22f3b24123777aaa52d575a8f24615ff68bfc"
+      },
+      "user_daily": {
+        "rows": 2223952,
+        "sha256": "85dd6c2b3d24631bf8dc61130e3ee4157734662d889ae48fd91b7de289c6f55a"
+      }
+    },
+    "73": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "927ca38c075969892e97a79a4dbf932f69a8f4dfd5e1c3ddd8f2ce29bb8aa522"
+      },
+      "user_daily": {
+        "rows": 6612082,
+        "sha256": "593a3acba6af2639406a8ad12d85e205ecd22f4af90a4cfa40c7878f40602dbd"
+      }
+    },
+    "1599080644": {
+      "campaign_daily": {
+        "rows": 28014,
+        "sha256": "9c90c9141ca5835d214e7ea04dc81cacc92a2b31aba312900aeecdefd315bd51"
+      },
+      "user_daily": {
+        "rows": 2239981,
+        "sha256": "40e884ac3fd83d574a32708fdf160d64a67ff141607c29c9beaa65e9349faf95"
+      }
+    }
+  }
+}

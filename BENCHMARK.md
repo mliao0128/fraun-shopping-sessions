@@ -1,5 +1,7 @@
 # Shopping Sessions benchmark
 
+The [allocator and compiler-profile comparison](benchmarks/allocator-profile/benchmark.md) includes four independent 20M seeds and one 60M input.
+
 The [fused scanner comparison](benchmarks/fused-parser/benchmark.md) records Intel and eight-thread container times and full-result checks.
 
 The [partitioned ingest benchmark](benchmarks/partitioned-ingest/benchmark.md) compares this pipeline with the 0.84 s submission on three 20M-event inputs and one 60M-event input.

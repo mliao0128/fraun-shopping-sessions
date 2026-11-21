@@ -25,5 +25,5 @@ C
 cc -c "$work/dump.c" -o "$work/dump.o"
 compile "-fprofile-generate=$work/counters" "$work/dump.o" -Wl,--wrap=_exit
 python3 training.py "$work/input"
-NCPU=2 "$output" "$work/input" "$work/output"
+NCPU=4 "$output" "$work/input" "$work/output"
 compile "-fprofile-use=$work/counters" -fprofile-correction -Werror=missing-profile
