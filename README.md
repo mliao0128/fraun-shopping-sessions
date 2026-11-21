@@ -1,6 +1,6 @@
 # Shopping Sessions
 
-A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the mounted CSV files, resolves identities, and writes `user_daily` and `campaign_daily` as Parquet. The [latest paired benchmark](benchmarks/reader-compatibility/benchmark.md) compares this build with our official 0.84 s submission and records complete output checks.
+A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the mounted CSV files, resolves identities, and writes `user_daily` and `campaign_daily` as Parquet. The [latest paired benchmark](benchmarks/overnight-intel/benchmark.md) compares this build with our official 0.64 s submission and records complete output checks.
 
 ## Build and run
 
@@ -12,6 +12,8 @@ python3 tools/benchmark.py shopping-sessions:latest /absolute/path/to/data ./sam
 ```
 
 The runner creates a new output directory for every sample. Its default CPU set is `0-7`. Use `--cpuset` to select eight available hardware threads on a different host. `--profile` prints time spent on each pipeline stage. An ordinary scoring container takes no arguments and uses `DATA_DIR`, `OUTPUT_DIR`, and `NCPU` from the environment.
+
+The Docker build verifies the organizer's generator archive by SHA-256, builds the generator offline from that source, and creates a temporary synthetic input for GCC's profile-guided optimization. Only the solver and runtime libraries enter the final image. [Organizer's generator](https://www.joinbuilders.org/buildathon/tracks/shopping-sessions/files/generator.zip)
 
 ## Verify with the organizer's files
 
@@ -66,4 +68,4 @@ To check a generated seed with an independent implementation, install DuckDB 2.0
 
 ## Dependencies and license
 
-This build extends the Fraun pipeline and [Jerry Hu's staged-scatter and radix implementation](https://github.com/Jerryh127/fraun-shopping-sessions/commit/e315a0296ecc6f9c05c31d57309dc308f6a549b9). It uses GCC, the C++ standard library, Linux memory mapping, and the LZ4 runtime library supplied by Debian bookworm. The Python benchmark runner uses the standard library. The official generator, checker, fixtures and expected outputs are external test inputs. The submission code is released under the [MIT License](LICENSE).
+This build extends the Fraun pipeline and [Jerry Hu's staged-scatter and radix implementation](https://github.com/Jerryh127/fraun-shopping-sessions/commit/e315a0296ecc6f9c05c31d57309dc308f6a549b9). It uses GCC, the C++ standard library, Linux memory mapping, and the LZ4 runtime library supplied by Debian bookworm. The Python benchmark runner uses the standard library. The organizer provides the generator, checker, fixtures and expected outputs. The submission code is released under the [MIT License](LICENSE).

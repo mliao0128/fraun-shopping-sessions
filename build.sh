@@ -24,6 +24,10 @@ void __wrap__exit(int status) { __gcov_dump(); __real__exit(status); }
 C
 cc -c "$work/dump.c" -o "$work/dump.o"
 compile "-fprofile-generate=$work/counters" "$work/dump.o" -Wl,--wrap=_exit
-python3 training.py "$work/input"
-NCPU=4 "$output" "$work/input" "$work/output"
+if command -v shopping-profile-generator >/dev/null 2>&1; then
+  shopping-profile-generator --seed 18323567 --events 2500000 --clicks 500000 --output "$work/input"
+else
+  python3 training.py "$work/input"
+fi
+NCPU=8 "$output" "$work/input" "$work/output"
 compile "-fprofile-use=$work/counters" -fprofile-correction -Werror=missing-profile

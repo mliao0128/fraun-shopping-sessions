@@ -35,14 +35,35 @@ struct Key {
     bool eightAscii() const { return (bits >> 56) == 0x88; }
     bool needsDecoding() const { return nineAscii() || eightAscii(); }
 
+    static constexpr uint64_t headerMask = 0x0080808080808080ULL;
+    static constexpr uint64_t scatterPrefix(unsigned char c) {
+        uint64_t r = 0;
+        for (unsigned i = 0; i < 7; ++i)
+            r |= uint64_t((c >> i) & 1) << (7 + 8 * i);
+        return r;
+    }
+    template <unsigned Hint = 255> static Key nine(const char *p) {
+        uint64_t suffix;
+        std::memcpy(&suffix, p + 1, 8);
+        unsigned c = static_cast<unsigned char>(*p);
+        if ((suffix & ~asciiMask) || c >= 128)
+            return fromReference({p, 9});
+        uint64_t marks;
+        if constexpr (Hint != 255) {
+            marks = (c == Hint) ? scatterPrefix(Hint) : _pdep_u64(c, headerMask);
+        } else
+            marks = _pdep_u64(c, headerMask);
+        return {__builtin_bswap64(suffix) | marks};
+    }
+    unsigned prefix() const { return _pext_u64(bits, headerMask); }
+    void writeNine(char *target) const {
+        target[0] = static_cast<char>(prefix());
+        uint64_t value = __builtin_bswap64(bits & asciiMask);
+        std::memcpy(target + 1, &value, 8);
+    }
     static Key from(std::string_view s) {
-        if (s.size() == 9) {
-            uint64_t prefix;
-            std::memcpy(&prefix,s.data(),8);
-            const unsigned char last = static_cast<unsigned char>(s[8]);
-            if (!(prefix & ~asciiMask) && last < 128)
-                return {(_pext_u64(__builtin_bswap64(prefix),asciiMask) << 7) | last};
-        }
+        if (s.size() == 9)
+            return nine(s.data());
         if (s.size() == 8) {
             uint64_t bytes;
             std::memcpy(&bytes, s.data(), 8);
@@ -65,6 +86,9 @@ struct Key {
             }
             return {shortTag | (uint64_t{s.size()} << 56) | value};
         }
+        return fromReference(s);
+    }
+    static Key fromReference(std::string_view s) {
         const uintptr_t addr = reinterpret_cast<uintptr_t>(s.data());
         if (s.size() < (1u<<14) && addr <= pointerMask)
             return {referenceTag | (uint64_t{s.size()} << 48) | addr};
@@ -94,9 +118,7 @@ struct Key {
             return {buffer.data(), 8};
         }
         if (!nineAscii()) return borrowed();
-        uint64_t prefix = __builtin_bswap64(_pdep_u64(bits >> 7,asciiMask));
-        std::memcpy(buffer.data(),&prefix,8);
-        buffer[8]=static_cast<char>(bits & 127);
+        writeNine(buffer.data());
         return {buffer.data(),9};
     }
     uint64_t hash() const {
@@ -109,7 +131,11 @@ struct Key {
         return bits == o.bits || (external() && o.external() && borrowed()==o.borrowed());
     }
     bool operator<(const Key& o) const {
-        if (nineAscii() && o.nineAscii()) return bits < o.bits;
+        if (nineAscii() && o.nineAscii()) {
+            if (((bits ^ o.bits) & headerMask) != 0)
+                return prefix() < o.prefix();
+            return bits < o.bits;
+        }
         Buffer a,b;
         return view(a) < o.view(b);
     }

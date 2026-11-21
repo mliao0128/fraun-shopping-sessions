@@ -186,18 +186,28 @@ int main(int argc, char** argv) try {
     };
     Inputs inputs;
     Context ctx;
-    dimensions(data, inputs, ctx, workers);
+
     // Identity linking overlaps with parsing, which needs only the small tables.
     auto links = inputs.folder(data / "links");
     std::exception_ptr linkError;
     std::thread linker([&] {
-        try { linkPeople(links, ctx, std::max(1u, workers / 2)); }
-        catch (...) { linkError = std::current_exception(); }
+        try {
+            linkPeople(links, ctx, std::min(workers, 3u));
+        } catch (...) {
+            linkError = std::current_exception();
+        }
     });
     auto awaitIdentities = [&] {
         if (linker.joinable()) linker.join();
         if (linkError) std::rethrow_exception(linkError);
     };
+    try {
+        dimensions(data, inputs, ctx, workers);
+    } catch (...) {
+        if (linker.joinable())
+            linker.join();
+        throw;
+    }
     auto events = inputs.folder(data / "events");
     auto clicks = inputs.folder(data / "clicks");
     size_t bytes = 0;

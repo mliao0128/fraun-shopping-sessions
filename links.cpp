@@ -242,7 +242,7 @@ void linkPeople(const std::vector<std::string_view> &files, Context &ctx, unsign
         rows += std::count(b.rows.begin(), b.rows.end(), '\n') + 1;
     if (!rows)
         return;
-    const size_t cap = std::bit_ceil(std::max<size_t>(32, rows / shards * 2 + rows / shards / 4 + 64));
+    const size_t cap = std::bit_ceil(std::max<size_t>(32, rows / shards + rows / shards / 2 + 64));
     if (cap > UINT32_MAX / shards) {
         fallbackLinks(files, ctx, workers);
         return;
@@ -270,58 +270,59 @@ void linkPeople(const std::vector<std::string_view> &files, Context &ctx, unsign
         overflow.store(true, std::memory_order_relaxed);
         return UINT32_MAX;
     };
-    auto root = [&](uint32_t i) {
+    // Each edge points from its larger key to a smaller neighbor. Redirecting
+    // an occupied edge leaves precisely one outstanding connection between
+    // the old neighbor and the proposed new one; its greatest key decreases.
+    auto merge = [&](Key high, Key low, uint64_t hash) {
         for (;;) {
-            auto cur = std::atomic_ref<uint64_t>(dict.slots[i].name.bits);
-            auto n = cur.load(std::memory_order_relaxed);
-            if (n == empty)
-                return i;
-            auto g = std::atomic_ref<uint64_t>(dict.slots[n].name.bits).load(std::memory_order_relaxed);
-            if (g != empty)
-                cur.compare_exchange_weak(n, g, std::memory_order_relaxed);
-            i = static_cast<uint32_t>(n);
-        }
-    };
-    auto merge = [&](uint32_t a, uint32_t b) {
-        if (a == UINT32_MAX || b == UINT32_MAX)
-            return;
-        while (a != b) {
-            a = root(a);
-            b = root(b);
-            if (a == b)
-                break;
-            Key ka{std::atomic_ref<uint64_t>(dict.slots[a].raw.bits).load(std::memory_order_acquire)};
-            Key kb{std::atomic_ref<uint64_t>(dict.slots[b].raw.bits).load(std::memory_order_acquire)};
-            if (kb < ka)
-                std::swap(a, b);
-            uint64_t expected = empty;
-            if (std::atomic_ref<uint64_t>(dict.slots[b].name.bits)
-                    .compare_exchange_weak(expected, a, std::memory_order_relaxed))
-                break;
-        }
-    };
-    parallel(chunks.size(), workers, [&](size_t i) {
-        struct Pair {
-            Key a, b;
-            uint64_t ha, hb;
-        };
-        std::array<Pair, 32> batch;
-        size_t used = 0;
-        auto flush = [&] {
-            for (size_t j = 0; j < used; ++j) {
-                const auto &e = batch[j];
-                merge(intern(e.a, e.ha), intern(e.b, e.hb));
+            const uint32_t i = intern(high, hash);
+            if (i == UINT32_MAX)
+                return;
+            auto cell = std::atomic_ref<uint64_t>(dict.slots[i].name.bits);
+            uint64_t old = cell.load(std::memory_order_relaxed);
+            for (;;) {
+                if (old == empty) {
+                    if (cell.compare_exchange_weak(old, low.bits, std::memory_order_relaxed))
+                        return;
+                    continue;
+                }
+                Key previous{old};
+                if (previous == low)
+                    return;
+                if (previous < low) {
+                    high = low;
+                    low = previous;
+                    break;
+                }
+                if (cell.compare_exchange_weak(old, low.bits, std::memory_order_relaxed)) {
+                    high = previous;
+                    break;
+                }
             }
+            hash = high.hash();
+        }
+    };
+    parallel(chunks.size(), workers, [&](size_t n) {
+        struct Edge {
+            Key high, low;
+            uint64_t hash;
+        };
+        std::array<Edge, 32> pending;
+        unsigned used = 0;
+        auto flush = [&] {
+            for (unsigned i = 0; i < used; ++i)
+                merge(pending[i].high, pending[i].low, pending[i].hash);
             used = 0;
         };
-        linkRows(chunks[i].rows, [&](Key a, Key b) {
+        linkRows(chunks[n].rows, [&](Key a, Key b) {
             if (a == b || overflow.load(std::memory_order_relaxed))
                 return;
-            uint64_t ha = a.hash(), hb = b.hash();
-            __builtin_prefetch(&dict.slots[Identities::shard(ha) * cap + dict.home(ha)], 1);
-            __builtin_prefetch(&dict.slots[Identities::shard(hb) * cap + dict.home(hb)], 1);
-            batch[used++] = {a, b, ha, hb};
-            if (used == batch.size())
+            if (a < b)
+                std::swap(a, b);
+            const uint64_t h = a.hash();
+            __builtin_prefetch(&dict.slots[Identities::shard(h) * cap + dict.home(h)], 1);
+            pending[used++] = {a, b, h};
+            if (used == pending.size())
                 flush();
         });
         flush();
@@ -331,36 +332,80 @@ void linkPeople(const std::vector<std::string_view> &files, Context &ctx, unsign
         fallbackLinks(files, ctx, workers);
         return;
     }
-    std::array<std::vector<Identities::Alias>, shards> aliases;
-    parallel(shards, workers, [&](size_t s) {
-        auto &out = aliases[s];
-        for (size_t i = s * cap; i < (s + 1) * cap; ++i) {
+    dict.fingerprints.resize(dict.slots.size());
+    parallel(shards, workers, [&](size_t sh) {
+        size_t base = sh * cap;
+        for (size_t i = base; i < base + cap; ++i) {
+            auto raw = dict.slots[i].raw;
+            if (!raw.empty()) {
+                uint64_t h = raw.hash();
+                dict.fingerprints[base + dict.home(h)] |= Identities::fingerprint(h);
+            }
+        }
+    });
+    parallel(shards, workers, [&](size_t shard) {
+        const size_t base = shard * cap;
+        size_t live = 0;
+        struct Path {
+            uint32_t start;
+            Key next;
+            uint64_t hash;
+        };
+        constexpr unsigned width = 32;
+        Path paths[width];
+        unsigned pending = 0;
+        auto flush = [&]() {
+            while (pending) {
+                unsigned active = 0;
+                for (unsigned j = 0; j < pending; ++j) {
+                    auto path = paths[j];
+                    uint64_t h = path.hash;
+                    size_t begin = Identities::shard(h) * cap, pos = dict.home(h);
+                    uint32_t idx = UINT32_MAX;
+                    if (dict.fingerprints[begin + pos] & Identities::fingerprint(h)) {
+                        auto &key = path.next;
+                        for (size_t step = 0; step < cap; ++step, pos = (pos + 1) & (cap - 1)) {
+                            auto found = dict.slots[begin + pos].raw;
+                            if (found.empty())
+                                break;
+                            if (found == key) {
+                                idx = uint32_t(begin + pos);
+                                break;
+                            }
+                        }
+                    }
+                    if (idx == UINT32_MAX) {
+                        std::atomic_ref<uint64_t>(dict.slots[path.start].name.bits)
+                            .store(path.next.bits, std::memory_order_relaxed);
+                    } else {
+                        path.next = {std::atomic_ref<uint64_t>(dict.slots[idx].name.bits)
+                                         .load(std::memory_order_relaxed)};
+                        path.hash = path.next.hash();
+                        __builtin_prefetch(&dict.fingerprints[path.hash >> dict.slotShift], 0, 3);
+                        paths[active++] = path;
+                    }
+                }
+                pending = active;
+            }
+        };
+        for (size_t i = base; i < base + cap; ++i) {
             if (dict.slots[i].raw.empty())
                 continue;
-            auto r = root(static_cast<uint32_t>(i));
-            if (r != i)
-                out.push_back({dict.slots[i].raw, dict.slots[r].raw});
+            ++live;
+            Key next{std::atomic_ref<uint64_t>(dict.slots[i].name.bits).load(std::memory_order_relaxed)};
+            auto h = next.hash();
+            __builtin_prefetch(&dict.fingerprints[h >> dict.slotShift], 0, 3);
+            paths[pending++] = {uint32_t(i), next, h};
+            if (pending == width)
+                flush();
         }
+        flush();
+        if (live == cap)
+            overflow.store(true, std::memory_order_relaxed);
     });
-    size_t biggest = 0;
-    for (auto &out : aliases)
-        biggest = std::max(biggest, out.size());
-    std::vector<Identities::Alias>().swap(dict.slots);
-    if (!biggest)
-        return;
-    dict.shardSize = std::bit_ceil(biggest + biggest / 2 + 1);
-    dict.slotShift = 64 - Identities::shardBits - std::countr_zero(dict.shardSize);
-    dict.slots.resize(shards * dict.shardSize);
-    dict.fingerprints.resize(dict.slots.size());
-    parallel(shards, workers, [&](size_t s) {
-        const size_t base = s * dict.shardSize, mask = dict.shardSize - 1;
-        for (auto x : aliases[s]) {
-            auto h = x.raw.hash();
-            auto pos = dict.home(h);
-            dict.fingerprints[base + pos] |= Identities::fingerprint(h);
-            while (!dict.slots[base + pos].raw.empty())
-                pos = (pos + 1) & mask;
-            dict.slots[base + pos] = x;
-        }
-    });
+    if (overflow.load(std::memory_order_relaxed)) {
+        dict.slots.clear();
+        dict.fingerprints.clear();
+        fallbackLinks(files, ctx, workers);
+    }
 }

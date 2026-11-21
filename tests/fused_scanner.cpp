@@ -19,6 +19,10 @@ int main(int argc, char **argv) {
                 file += "abc,\" "[rng() % 6];
             file += '\n';
         }
+    // Keep the 61-byte boundary in both the LF-terminated and final-row checks.
+    std::string finalRow = "e,u,0,2027-03-01T00:00:00Z,view,p,";
+    finalRow.resize(61, '1');
+    file += finalRow + '\n';
     for (int terminal = 0; terminal < 2; ++terminal) {
         if (terminal)
             file.pop_back();

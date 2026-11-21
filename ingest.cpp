@@ -341,7 +341,40 @@ constexpr unsigned refBits = 40;
 constexpr unsigned indexBits = 21;
 constexpr uint32_t indexLimit = 1u << indexBits;
 constexpr uint32_t sourceTag = 0x80000000u, invalidArrivalTag = 0xa0000000u, slowTag = 0xc0000000u;
-struct IdRecord { Key id; uint64_t info; };
+
+struct EventToken {
+    uint64_t bits{};
+    bool operator==(EventToken o) const { return bits == o.bits; }
+    uint64_t hash() const { return (bits ^ (bits >> 27)) * 0x9e3779b97f4a7c15ull; }
+};
+EventToken encodeEventToken(Key k) {
+    if (__builtin_expect(!k.external(), true)) {
+        uint32_t h = _mm_crc32_u64(0, k.bits);
+        // The CRC-32C transformation of the low word is bijective for a fixed high word.
+        return {(k.bits & 0xffffffff00000000ull) | h};
+    }
+    struct Stripe {
+        std::mutex lock;
+        std::unordered_map<std::string_view, uint32_t> codes;
+    };
+    static Stripe groups[64];
+    static std::atomic<uint32_t> next{0};
+    uint32_t h = uint32_t(k.hash());
+    auto &g = groups[h >> 26];
+    std::lock_guard guard(g.lock);
+    auto [at, added] = g.codes.try_emplace(k.borrowed(), 0);
+    if (added) {
+        uint32_t number = next.fetch_add(1, std::memory_order_relaxed);
+        if (number >= 0x50000000u)
+            throw std::length_error("External event ID directory exceeds addressable capacity");
+        at->second = 0xb0000000u + number;
+    }
+    return {(uint64_t(at->second) << 32) | h};
+}
+struct IdRecord {
+    EventToken id;
+    uint64_t info;
+};
 struct Extended { int64_t arrival; uint32_t bucket,index; };
 static_assert(sizeof(IdRecord) == 16);
 
@@ -460,12 +493,23 @@ inline bool pairedClocks(const char* event, const char* ingest,
     return ingest-dayMs <= ts;
 }
 
+// Event IDs are only compared to other event IDs. A common prefix can
+// therefore be implicit without imposing a lexical order on this domain.
+inline Key eventID(std::string_view s) {
+    if (s.size() != 9)
+        return Key::from(s);
+    uint64_t tail;
+    std::memcpy(&tail, s.data() + 1, 8);
+    if (*s.data() == 'e' && !(tail >> 63))
+        return {tail};
+    return Key::fromReference(s);
+}
 // Malformed lines and empty IDs never take part in deduplication. Every other
 // copy does, valid or not: an invalid earliest copy suppresses later ones.
 [[gnu::noinline]] bool genericEvent(std::string_view line, const Context &ctx, ParsedEvent &out) {
     std::array<std::string_view,7> f;
     if (!eventFields(line, f) || f[0].empty()) return false;
-    out.id = Key::from(f[0]);
+    out.id = eventID(f[0]);
     out.valid = false;
     out.arrival = invalidTime;
     if (f[1].empty() || f[5].empty()) return true;
@@ -488,18 +532,9 @@ inline bool pairedClocks(const char* event, const char* ingest,
     out.valid = true;
     return true;
 }
-inline Key inlineAsciiKey(const char *p, unsigned n) {
-    if (n == 9 || n == 8) {
-        uint64_t word;
-        std::memcpy(&word, p, 8);
-        if ((word & ~Key::asciiMask) == 0) {
-            if (n == 8)
-                return {Key::eightTag | _pext_u64(word, Key::asciiMask)};
-            auto tail = static_cast<unsigned char>(p[8]);
-            if (tail < 128)
-                return {(_pext_u64(__builtin_bswap64(word), Key::asciiMask) << 7) | tail};
-        }
-    }
+template <unsigned Hint> inline Key inlineAsciiKey(const char *p, unsigned n) {
+    if (n == 9)
+        return Key::nine<Hint>(p);
     return Key::from({p, n});
 }
 struct HeadLayout {
@@ -569,7 +604,7 @@ inline void saveMasks(PreparedMasks &packed, CsvMask mh, CsvMask mm, CsvMask mt)
 inline void prepMasks(std::string_view s, PreparedMasks &packed) {
     packed.line = s;
     const size_t n = s.size();
-    if (n <= 60 || n > 92) {
+    if (n <= 61 || n > 92) {
         packed.head = nullptr;
         return;
     }
@@ -596,13 +631,15 @@ template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
         return _mm256_movemask_epi8(_mm256_cmpeq_epi8(v, _mm256_set1_epi8(c)));
     };
     while (p < finish) {
+        if (limit - p > 2048)
+            __builtin_prefetch(p + 2048, 0, 3);
         if (limit - p >= 92) {
             auto h = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p));
             auto m = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p + 30));
             auto z = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p + 60));
             auto early = _mm256_or_si256(_mm256_cmpeq_epi8(h, newline), _mm256_cmpeq_epi8(m, newline));
             uint32_t last = byteMask(z, '\n');
-            if (!(_mm256_movemask_epi8(early) & 0x3fffffffu) && last && !(last & 1)) {
+            if (!(_mm256_movemask_epi8(early) & 0x3fffffffu) && last && !(last & 3)) {
                 unsigned l = std::countr_zero(last), n = 60 + l;
                 CsvMask mh{byteMask(h, ',') & 0x3fffffffu, byteMask(h, '"') & 0x3fffffffu};
                 CsvMask mm{byteMask(m, ','), byteMask(m, '"')};
@@ -650,7 +687,7 @@ inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, Parse
         return false;
     if (!h.idLen)
         return false;
-    out.id = inlineAsciiKey(p + h.id, h.idLen);
+    out.id = eventID({p + h.id, h.idLen});
     out.valid = false;
     out.arrival = invalidTime;
     if (!t.productLen || !h.userLen)
@@ -677,7 +714,7 @@ inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, Parse
             category = ctx.unknown;
     } else
         return true;
-    out.user = inlineAsciiKey(p + h.user, h.userLen);
+    out.user = inlineAsciiKey<'u'>(p + h.user, h.userLen);
     out.row = {ts, price, category};
     out.valid = true;
     return true;
@@ -727,7 +764,7 @@ inline bool parseClick(std::string_view line, const Context &ctx, Click &row) {
     auto campaign = ctx.campaigns.lookup({cp, cn}, p + n);
     if (campaign == UINT32_MAX)
         return false;
-    row = {inlineAsciiKey(p + e0 + 1 + t1, userLen), inlineAsciiKey(p + t0, idLen), ts, campaign};
+    row = {inlineAsciiKey<'u'>(p + e0 + 1 + t1, userLen), inlineAsciiKey<'c'>(p + t0, idLen), ts, campaign};
     return true;
 }
 struct Source {
@@ -769,20 +806,16 @@ void invalidate(uint64_t info, Reader& reader) {
 }
 
 struct Winner { IdRecord row; Reader* reader = nullptr; };
-size_t findWinner(const std::vector<Winner>& slots, uint64_t hash, const Key& id) {
+size_t findWinner(const std::vector<Winner> &slots, uint64_t hash, const EventToken &id) {
     size_t pos = (hash >> 10) & (slots.size()-1);
     while (slots[pos].reader && !(slots[pos].row.id == id))
         pos = (pos+1) & (slots.size()-1);
     return pos;
 }
 
-inline uint32_t filterHash(Key id) {
-    if (id.external())
-        return static_cast<uint32_t>(id.hash());
-    return _mm_crc32_u64(0, id.bits);
-}
-void deduplicate(size_t shard, int64_t arrivalOrigin, const Source& source,
-                 std::vector<std::unique_ptr<Reader>>& readers) {
+inline uint32_t filterHash(EventToken id) { return static_cast<uint32_t>(id.bits); }
+void dedupOriginal(size_t shard, int64_t arrivalOrigin, const Source &source,
+                   std::vector<std::unique_ptr<Reader>> &readers) {
     size_t count = 0;
     for (auto& r : readers) count += r->ids.count(shard);
     if (count < 2) return;
@@ -841,6 +874,109 @@ void deduplicate(size_t shard, int64_t arrivalOrigin, const Source& source,
                 }
             }
         });
+}
+struct RecordBlock {
+    const IdRecord *rows;
+    Reader *owner;
+    size_t count;
+};
+struct RecordDirectory {
+    std::vector<RecordBlock> blocks;
+    size_t count = 0;
+    void load(size_t shard, const std::vector<std::unique_ptr<Reader>> &readers) {
+        blocks.clear();
+        count = 0;
+        for (auto &r : readers)
+            r->ids.pieces(shard, [&](const IdRecord *rows, size_t n) {
+                blocks.push_back({rows, r.get(), n});
+                count += n;
+            });
+    }
+    static constexpr unsigned rowBits = std::countr_zero(rowsPerBlock<IdRecord>);
+    static constexpr size_t within = rowsPerBlock<IdRecord> - 1;
+    const IdRecord &get(uint32_t ref) const { return blocks[ref >> rowBits].rows[ref & within]; }
+    bool earlier(uint32_t newer, uint32_t prior, const Source &source, int64_t origin) const {
+        const auto &a = blocks[newer >> rowBits];
+        const auto &b = blocks[prior >> rowBits];
+        const uint64_t ia = a.rows[newer & within].info, ib = b.rows[prior & within].info;
+        const bool before =
+            (uint32_t(ia) | uint32_t(ib)) < sourceTag
+                ? (ia >> 32) < (ib >> 32)
+                : arrival(ia, *a.owner, source, origin) < arrival(ib, *b.owner, source, origin);
+        if (before)
+            invalidate(ib, *b.owner);
+        else
+            invalidate(ia, *a.owner);
+        return before;
+    }
+};
+// One cache line holds membership tags and row locations for sixteen IDs.
+// A tag hit always leads to a comparison of the complete original IDs.
+struct alignas(64) FingerGroup {
+    uint8_t tags[16];
+    uint16_t lo[16];
+    uint8_t hi[16];
+    uint32_t ref(unsigned i) const { return lo[i] | (uint32_t(hi[i]) << 16); }
+    void set(unsigned i, uint32_t v) {
+        lo[i] = uint16_t(v);
+        hi[i] = uint8_t(v >> 16);
+    }
+};
+static_assert(sizeof(FingerGroup) == 64);
+void deduplicate(size_t shard, int64_t origin, const Source &source,
+                 std::vector<std::unique_ptr<Reader>> &readers) {
+    static thread_local RecordDirectory dir;
+    dir.load(shard, readers);
+    if (dir.count < 2)
+        return;
+    if (dir.blocks.size() > (1u << 24) / rowsPerBlock<IdRecord>) {
+        dedupOriginal(shard, origin, source, readers);
+        return;
+    }
+    static thread_local std::vector<FingerGroup> groups;
+    const size_t cap = std::max<size_t>(16, std::bit_ceil(dir.count + dir.count / 4 + 1));
+    groups.assign(cap / 16, FingerGroup{});
+    const uint32_t mask = groups.size() - 1;
+    for (uint32_t b = 0; b < dir.blocks.size(); ++b) {
+        const auto &block = dir.blocks[b];
+        constexpr unsigned batch = 32;
+        for (uint32_t first = 0; first < block.count; first += batch) {
+            const unsigned n = std::min<size_t>(batch, block.count - first);
+            uint32_t hashes[batch];
+            for (unsigned j = 0; j < n; ++j) {
+                hashes[j] = filterHash(block.rows[first + j].id);
+                __builtin_prefetch(&groups[(hashes[j] >> 8) & mask], 1, 2);
+            }
+            for (unsigned j = 0; j < n; ++j) {
+                const uint32_t h = hashes[j], ref = (b << dir.rowBits) | uint32_t(first + j);
+                const unsigned tag = std::max(1u, h & 255);
+                uint32_t pos = (h >> 8) & mask;
+                for (;; pos = (pos + 1) & mask) {
+                    auto &g = groups[pos];
+                    auto chars = _mm_load_si128(reinterpret_cast<const __m128i *>(g.tags));
+                    auto hits = _mm_movemask_epi8(_mm_cmpeq_epi8(chars, _mm_set1_epi8(tag)));
+                    while (hits) {
+                        unsigned k = std::countr_zero(unsigned(hits));
+                        uint32_t old = g.ref(k);
+                        if (dir.get(old).id == block.rows[first + j].id) {
+                            if (dir.earlier(ref, old, source, origin))
+                                g.set(k, ref);
+                            goto complete;
+                        }
+                        hits &= hits - 1;
+                    }
+                    auto free = _mm_movemask_epi8(_mm_cmpeq_epi8(chars, _mm_setzero_si128()));
+                    if (free) {
+                        auto k = std::countr_zero(unsigned(free));
+                        g.tags[k] = tag;
+                        g.set(k, ref);
+                        break;
+                    }
+                }
+            complete:;
+            }
+        }
+    }
 }
 template<class T, size_t N, class Reject>
 void correct(T* rows, size_t count, size_t bucket, unsigned shift,
@@ -923,7 +1059,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                                                      INT64_MAX - INT32_MAX);
     const unsigned shift = 63 - std::countr_zero(parts);
     // Use more ID partitions than user partitions so a worker's duplicate bitmap fits in cache.
-    const size_t idShards = std::clamp<size_t>(std::bit_ceil(bytes >> 21), 1, 1024);
+    const size_t idShards = std::clamp<size_t>(std::bit_ceil(bytes >> 21), 1, 512);
     const unsigned idShift = 32 - std::countr_zero(idShards);
     auto partOf = [&](uint64_t hash) { return static_cast<size_t>((hash >> 1) >> shift); };
 
@@ -937,7 +1073,8 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         Click click;
         for (;;) {
             const size_t i = next.fetch_add(1, std::memory_order_relaxed);
-            if (i >= source.spans.size()) break;
+            if (i >= source.eventSpans)
+                break;
             const InputChunk& span = source.spans[i];
             if (i < source.eventSpans) {
                 const uint64_t base = spanStart[i] - reinterpret_cast<uintptr_t>(span.file.data());
@@ -949,7 +1086,8 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     if (!parsePrepared(m, ctx, event))
                         return;
                     const uint64_t offset = base + reinterpret_cast<uintptr_t>(line.data());
-                    const size_t idShard = (uint64_t{filterHash(event.id)} >> idShift);
+                    const auto token = encodeEventToken(event.id);
+                    const size_t idShard = (uint64_t{filterHash(token)} >> idShift);
                     uint64_t info;
                     if (event.valid) {
                         const auto bucket = static_cast<uint32_t>(partOf(event.user.hash()));
@@ -960,7 +1098,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                         info = event.arrival != invalidTime && relative <= UINT32_MAX
                              ? (relative << 32) | invalidArrivalTag : special(offset,sourceTag);
                     }
-                    reader.ids.add(idShard, IdRecord{event.id, info});
+                    reader.ids.add(idShard, IdRecord{token, info});
                 };
                 eventLines(span, [&]() -> PreparedMasks & {
                     auto &m = queue[cursor % ahead];
@@ -971,24 +1109,43 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 });
                 for (unsigned j = cursor - std::min(cursor, ahead); j < cursor; ++j)
                     emit(queue[j % ahead]);
-            } else {
-                chunkLines(span, [&](std::string_view line) {
-                    if (parseClick(line, ctx, click))
-                        reader.clicks.add(partOf(click.person.hash()), click);
-                });
             }
         }
         reader.events.finish();
-        reader.clicks.finish();
         reader.ids.finish();
     });
     lap("parse");
 
-    parallel(idShards, workers, [&](size_t shard) {
+    const size_t clicks = source.spans.size() - source.eventSpans;
+    auto processShard = [&](size_t shard) {
         deduplicate(shard, arrivalOrigin, source, readers);
         std::vector<void*> spent;
-        for (auto& reader : readers) reader->ids.release(shard, spent);
+        for (auto &reader : readers)
+            reader->ids.release(shard, spent);
         recycled.give(spent);
+    };
+    auto processClicks = [&](size_t part, Reader &reader) {
+        chunkLines(source.spans[source.eventSpans + part], [&](std::string_view line) {
+            Click row;
+            if (!parseClick(line, ctx, row))
+                return;
+            uint64_t hash = row.person.hash();
+
+            reader.clicks.add(partOf(hash), row);
+        });
+    };
+
+    parallel(idShards, workers, processShard);
+    std::atomic<size_t> nextClick = 0;
+    parallel(readerCount, readerCount, [&](size_t w) {
+        Reader &reader = *readers[w];
+        for (;;) {
+            size_t i = nextClick.fetch_add(1, std::memory_order_relaxed);
+            if (i >= clicks)
+                break;
+            processClicks(i, reader);
+        }
+        reader.clicks.finish();
     });
     lap("dedup");
     // Drop the file-backed PTEs after the last source reread. Borrowed keys

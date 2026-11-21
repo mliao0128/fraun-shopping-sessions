@@ -1,5 +1,7 @@
 # Shopping Sessions benchmark
 
+The [overnight Intel comparison](benchmarks/overnight-intel/benchmark.md) measures this candidate against the official 0.64 s commit on four practice inputs and two final-size inputs.
+
 The [branch-alignment comparison](benchmarks/branch-alignment/benchmark.md) records the release checks, five practice seeds and the 60M comparison.
 
 The [allocator and compiler-profile comparison](benchmarks/allocator-profile/benchmark.md) includes four independent 20M seeds and one 60M input.

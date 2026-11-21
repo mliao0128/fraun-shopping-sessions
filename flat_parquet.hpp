@@ -216,10 +216,8 @@ public:
             const Key &k = keys[run];
             if (k.nineAscii()) {
                 const uint32_t len = 9;
-                const uint64_t bytes = __builtin_bswap64(_pdep_u64(k.bits >> 7, Key::asciiMask));
                 std::memcpy(p, &len, 4);
-                std::memcpy(p + 4, &bytes, 8);
-                p[12] = static_cast<char>(k.bits & 127);
+                k.writeNine(reinterpret_cast<char *>(p + 4));
                 p += 13;
             } else if (k.eightAscii()) {
                 const uint32_t len = 8;
