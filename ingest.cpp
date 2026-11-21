@@ -1138,16 +1138,29 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         });
     };
 
-    parallel(idShards, workers, processShard);
-    std::atomic<size_t> nextClick = 0;
+    std::atomic<size_t> nextShard = 0, nextClick = 0;
     parallel(readerCount, readerCount, [&](size_t w) {
         Reader &reader = *readers[w];
-        for (;;) {
-            size_t i = nextClick.fetch_add(1, std::memory_order_relaxed);
-            if (i >= clicks)
-                break;
-            processClicks(i, reader);
+        auto drainClicks = [&] {
+            for (;;) {
+                const size_t i = nextClick.fetch_add(1, std::memory_order_relaxed);
+                if (i >= clicks) break;
+                processClicks(i, reader);
+            }
+        };
+        // A small click lane overlaps its arithmetic with the random ID probes.
+        // First return one ID block chain per worker to prime the shared recycler.
+        if (w < std::max<size_t>(1, readerCount / 3) && readerCount > 1) {
+            const size_t i = nextShard.fetch_add(1, std::memory_order_relaxed);
+            if (i < idShards) processShard(i);
+            drainClicks();
         }
+        for (;;) {
+            const size_t i = nextShard.fetch_add(1, std::memory_order_relaxed);
+            if (i >= idShards) break;
+            processShard(i);
+        }
+        drainClicks();
         reader.clicks.finish();
     });
     lap("dedup");
