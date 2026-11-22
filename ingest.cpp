@@ -586,6 +586,17 @@ inline EventToken tokenFromText(std::string_view text) {
     }
     return encodeEventToken(eventID(text));
 }
+// The two valid four-byte event types differ by an odd word. Multiplication
+// by its modular inverse maps their difference to one, bijectively on all
+// 32-bit words. Every other four-byte spelling has rank at least two.
+inline bool visitWord(const char* text) {
+    constexpr uint32_t view = 0x77656976u, cart = 0x74726163u;
+    constexpr uint32_t inverse = 0x0dc5fde5u;
+    static_assert((cart-view)*inverse == 1u);
+    uint32_t word;
+    std::memcpy(&word,text,sizeof(word));
+    return (word-view)*inverse <= 1u;
+}
 // Malformed lines and empty IDs never take part in deduplication. Every other
 // copy does, valid or not: an invalid earliest copy suppresses later ones.
 [[gnu::noinline]] bool genericEvent(std::string_view line, const Context &ctx, ParsedEvent &out) {
@@ -598,7 +609,9 @@ inline EventToken tokenFromText(std::string_view text) {
     int64_t ts;
     if (!eventTimes(f[2], f[3], ctx, ts, out.arrival)) return true;
     uint32_t price = 0, category = 0;
-    if (f[4] == "purchase") {
+    if (f[4].size() == 4) {
+        if (!visitWord(f[4].data())) return true;
+    } else if (f[4] == "purchase") {
         auto priceEnd = f[6].data() + f[6].size();
         auto [end, error] = std::from_chars(f[6].data(), priceEnd, price);
         if (error != std::errc{} || end != priceEnd || price == 0 || price > 10'000'000)
@@ -606,7 +619,7 @@ inline EventToken tokenFromText(std::string_view text) {
         category = ctx.products.lookup(f[5], line.data() + line.size());
         if (category == UINT32_MAX)
             category = ctx.unknown;
-    } else if (f[4] != "view" && f[4] != "cart") {
+    } else {
         return true;
     }
     out.user = Key::from(f[1]);
@@ -784,9 +797,7 @@ inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, Parse
         return true;
     uint32_t price = 0, category = 0;
     if (t.kindLen == 4) {
-        uint32_t word;
-        std::memcpy(&word, tail + t.kind, 4);
-        if (word != 0x77656976u && word != 0x74726163u)
+        if (!visitWord(tail + t.kind))
             return true;
     } else if (t.kindLen == 8 && !std::memcmp(tail + t.kind, "purchase", 8)) {
         const char *end = tail + t.price + t.priceLen;
