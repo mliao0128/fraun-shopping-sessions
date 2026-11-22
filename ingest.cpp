@@ -1,3 +1,4 @@
+#include <bitset>
 #include <sys/mman.h>
 #include "shared.hpp"
 #include "event_fields.hpp"
@@ -592,20 +593,31 @@ static constexpr auto bytePairs = [] {
     return pairs;
 }();
 
+static std::array<uint16_t,65536> pairOwners;
+static unsigned activeOwners = 0;
+constexpr uint16_t noOwner = UINT16_MAX;
+
 inline EventToken familyName(const char* p) {
     uint64_t raw;
-    std::memcpy(&raw, p+1, sizeof(raw));
-    const unsigned a=bytePairs[uint16_t(raw)];
-    const unsigned b=bytePairs[uint16_t(raw>>16)];
-    const unsigned c=bytePairs[uint16_t(raw>>32)];
-    const unsigned d=bytePairs[uint16_t(raw>>48)];
-    if ((a|b|c|d)&0x8000) return {};
-    return {numericTag | (uint64_t(d)<<32) | ((a*1296u+b)*1296u+c)};
+    std::memcpy(&raw,p+1,sizeof(raw));
+    const unsigned owner=pairOwners[uint16_t(raw)];
+    const unsigned a=bytePairs[uint16_t(raw>>16)];
+    const unsigned b=bytePairs[uint16_t(raw>>32)];
+    const unsigned c=bytePairs[uint16_t(raw>>48)];
+    if ((owner|a|b|c)&0x8000) return {};
+    return {numericTag | (uint64_t(owner)<<32) | ((a*1296u+b)*1296u+c)};
 }
 
 int chooseFamily(const std::vector<std::string_view>& files) {
-    std::array<uint32_t,256> frequency{};
-    uint32_t seen=0;
+    struct Sample {
+        uint32_t rows{};
+        std::bitset<256> first;
+        std::bitset<256> second;
+    };
+    std::array<Sample,256> samples{};
+    size_t seen=0;
+    pairOwners.fill(noOwner);
+    activeOwners=0;
     for(auto file:files) {
         size_t newline=file.find('\n');
         if(newline==file.npos) continue;
@@ -613,18 +625,30 @@ int chooseFamily(const std::vector<std::string_view>& files) {
         for(unsigned j=0;j<16 && start<file.size();++j) {
             newline=file.find('\n',start);
             if(newline==file.npos) newline=file.size();
-            auto line=file.substr(start,newline-start);start=newline+1;
+            auto line=file.substr(start,newline-start);
+            start=newline+1;
             std::array<std::string_view,7> fields;
-            if(eventFields(line,fields) && !fields[0].empty()) {
-                ++seen;
-                if(fields[0].size()==9 && familyName(fields[0].data()).bits)
-                    ++frequency[static_cast<unsigned char>(fields[0][0])];
-            }
+            if(!eventFields(line,fields) || fields[0].empty()) continue;
+            ++seen;
+            const auto name=fields[0];
+            if(name.size()!=9) continue;
+            uint64_t raw;
+            std::memcpy(&raw,name.data()+1,sizeof(raw));
+            const unsigned lastSix=bytePairs[uint16_t(raw>>16)] | bytePairs[uint16_t(raw>>32)] | bytePairs[uint16_t(raw>>48)];
+            if(lastSix & 0x8000) continue;
+            auto& sample=samples[static_cast<unsigned char>(name[0])];
+            ++sample.rows;
+            sample.first.set(uint8_t(raw));
+            sample.second.set(uint8_t(raw>>8));
         }
         if(seen>=2048)break;
     }
-    const auto max=std::max_element(frequency.begin(),frequency.end());
-    return seen>=96 && *max>seen/2 ? int(max-frequency.begin()) : -1;
+    const auto best=std::max_element(samples.begin(),samples.end(),[](const auto& a,const auto& b){return a.rows<b.rows;});
+    if(seen<96 || best->rows<=seen/2 || best->first.count()*best->second.count()>familyOwners) return -1;
+    for(unsigned i=0;i<256;++i) if(best->first[i])
+        for(unsigned j=0;j<256;++j) if(best->second[j])
+            pairOwners[i|(j<<8)]=activeOwners++;
+    return int(best-samples.begin());
 }
 inline EventToken tokenFromText(std::string_view text) {
     if(text.size()==9 && static_cast<unsigned char>(text[0])==familyPrefix) {
@@ -1288,7 +1312,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     const unsigned shift = 63 - std::countr_zero(parts);
     // Use more ID partitions than user partitions so a worker's duplicate bitmap fits in cache.
     familyPrefix=chooseFamily(eventFiles);
-    const size_t nameOwners=familyPrefix>=0?familyOwners:0;
+    const size_t nameOwners=activeOwners;
     const size_t stockShards=std::clamp<size_t>(std::bit_ceil(bytes >> 21),1,size_t{1}<<ctx.settings.idBits);
     const size_t idShards=nameOwners?std::max<size_t>(1,stockShards/8):stockShards;
     const size_t allOwners=idShards+nameOwners;
