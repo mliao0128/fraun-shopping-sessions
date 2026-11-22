@@ -280,7 +280,13 @@ public:
 };
 
 template<class T> constexpr size_t rowsPerBlock = blockBytes / sizeof(T);
-constexpr size_t eventRunBlocks = 4;
+constexpr size_t maxEventRun = 16;
+constexpr size_t eventRun(size_t firstBlock) {
+    if (firstBlock == 0) return 1;
+    if (firstBlock < 5) return 4;
+    if (firstBlock < 13) return 8;
+    return maxEventRun;
+}
 
 // Radix scatter with software write combining: rows collect in a small
 // per-partition buffer and leave as whole cache lines with non-temporal
@@ -304,7 +310,7 @@ template<class T, size_t Group, bool adjacent = false> class Scatter {
                     cursor.active += rowsPerBlock<T>;
                     --cursor.following;
                 } else if (start != 0) {
-                    constexpr size_t run = eventRunBlocks;
+                    const size_t run = eventRun(start / rowsPerBlock<T>);
                     cursor.active = static_cast<T*>(slab.fresh(run * blockBytes));
                     cursor.following = run - 1;
                 } else {
@@ -358,13 +364,13 @@ public:
     template<class F> void pieces(size_t part, F&& visit) {
         size_t remaining = cursors[part].count;
         if constexpr (adjacent) {
-            // Block zero was reserved alone. Every subsequent group of four
-            // logical blocks comes from one contiguous physical allocation.
+            // Visit each original allocation as one dense raw run.
             for (size_t b = 0; remaining;) {
-                const size_t count = std::min(remaining, (b ? eventRunBlocks : 1) * rowsPerBlock<T>);
+                const size_t run = eventRun(b);
+                const size_t count = std::min(remaining, run * rowsPerBlock<T>);
                 visit(blocks[part][b],count);
                 remaining -= count;
-                b += b ? eventRunBlocks : 1;
+                b += run;
             }
         } else {
             for (T* block : blocks[part]) {
@@ -1204,7 +1210,7 @@ void deduplicate(size_t shard, int64_t origin, const Source &source,
 // so moving it cannot disturb the flags or cause a second donor move.
 size_t compactCancelled(Event* rows, size_t count, const uint8_t* cancelled) {
     constexpr size_t lanes = 32;
-    std::array<uint32_t, (eventRunBlocks * rowsPerBlock<Event> + lanes - 1) / lanes> masks;
+    std::array<uint32_t, (maxEventRun * rowsPerBlock<Event> + lanes - 1) / lanes> masks;
     size_t removed = 0;
     for (size_t offset = 0; offset < count; offset += lanes) {
         const auto flags = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(cancelled + offset));
