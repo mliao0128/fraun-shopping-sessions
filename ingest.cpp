@@ -552,7 +552,7 @@ inline Key eventID(std::string_view text) { return Key::from(text); }
     } else if (f[4] != "view" && f[4] != "cart") {
         return true;
     }
-    out.user = Key::shopper(f[1]);
+    out.user = Key::from(f[1]);
     out.row = {ts, price, category};
     out.valid = true;
     return true;
@@ -741,7 +741,7 @@ inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, Parse
             category = ctx.unknown;
     } else
         return true;
-    out.user = inlineAsciiKey<'u'>(p + h.user, h.userLen);
+    out.user = h.userLen == 9 ? Key::nine<'u'>(p + h.user) : Key::from({p + h.user, h.userLen});
     out.row = {ts, price, category};
     out.valid = true;
     return true;
@@ -1119,11 +1119,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 constexpr unsigned ahead = 1;
                 std::array<PreparedMasks, ahead> queue;
                 unsigned cursor = 0;
-                auto emit = [&](PreparedMasks &m) {
-                    auto line = m.line;
-                    if (!parsePrepared(m, ctx, event))
-                        return;
-                    const uint64_t offset = base + reinterpret_cast<uintptr_t>(line.data());
+                auto storeEvent = [&](const ParsedEvent& event, uint64_t offset, uint64_t rawHash) {
                     const auto token = encodeEventToken(event.id);
                     const uint32_t hash = filterHash(token);
                     const size_t idShard = uint64_t{hash} >> idShift;
@@ -1133,7 +1129,6 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     }
                     uint64_t info;
                     if (event.valid) {
-                        auto rawHash = event.user.hash();
                         const auto bucket = static_cast<uint32_t>(partOf(rawHash));
                         const uint32_t index =
                             reader.events.add(bucket, Event::pack(event.user, ctx.start, event.row, rawHash));
@@ -1145,6 +1140,34 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     }
                     reader.ids.add(idShard, IdRecord{token, info});
                 };
+                // Only events with a long shopper need a potentially cold table probe.
+                // Leave their entries in a short reader-local queue while continuing to
+                // consume the CSV. Each ID record is emitted together with its locator.
+                struct PendingShopper { ParsedEvent event; uint64_t offset, hash; };
+                constexpr unsigned depth = 8;
+                std::array<PendingShopper, depth> pending;
+                unsigned queued = 0;
+                auto flush = [&](PendingShopper& item) {
+                    item.event.user = Key::internHashedShopper(item.event.user.borrowed(), item.hash);
+                    storeEvent(item.event, item.offset, item.hash);
+                };
+                auto emit = [&](PreparedMasks& masks) {
+                    if (!parsePrepared(masks, ctx, event)) return;
+                    const uint64_t offset = base + reinterpret_cast<uintptr_t>(masks.line.data());
+                    const uint64_t hash = event.valid ? event.user.hash() : 0;
+                    if (event.valid && event.user.external() && Key::shopperSlots) {
+                        const auto width = event.user.borrowed().size();
+                        if (width > 9 && width <= 48) {
+                            __builtin_prefetch(&Key::shopperSlots[hash & Key::shopperMask], 0, 3);
+                            auto& item = pending[queued % depth];
+                            if (queued >= depth) flush(item);
+                            item = {event, offset, hash};
+                            ++queued;
+                            return;
+                        }
+                    }
+                    storeEvent(event, offset, hash);
+                };
                 eventLines(span, [&]() -> PreparedMasks & {
                     auto &m = queue[cursor % ahead];
                     if (cursor >= ahead)
@@ -1154,6 +1177,8 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 });
                 for (unsigned j = cursor - std::min(cursor, ahead); j < cursor; ++j)
                     emit(queue[j % ahead]);
+                for (unsigned j = queued - std::min(queued, depth); j < queued; ++j)
+                    flush(pending[j % depth]);
             }
         }
         reader.events.finish();

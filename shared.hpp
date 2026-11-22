@@ -60,9 +60,7 @@ struct Key {
         shopperSlots = pool;
         shopperMask = count - 1;
     }
-    static Key internShopper(std::string_view text) {
-        if (text.size() > 48 || !shopperSlots) return fromReference(text);
-        const uint64_t hash = std::hash<std::string_view>{}(text);
+    static Key internHashedShopper(std::string_view text, uint64_t hash) {
         const uint32_t ready = static_cast<uint32_t>(text.size()) + 2;
         for (const size_t index : {size_t(hash) & shopperMask, size_t(hash >> 32) & shopperMask}) {
             auto& slot = shopperSlots[index];
@@ -79,6 +77,10 @@ struct Key {
             return {shopperTag | (uint64_t{text.size()} << 48) | reinterpret_cast<uintptr_t>(&slot)};
         }
         return fromReference(text);
+    }
+    static Key internShopper(std::string_view text) {
+        if (text.size() > 48 || !shopperSlots) return fromReference(text);
+        return internHashedShopper(text, std::hash<std::string_view>{}(text));
     }
     static Key shopper(std::string_view text) {
         return text.size() > 9 ? internShopper(text) : from(text);
