@@ -286,29 +286,11 @@ inline CsvMask classify32(const char* p) {
             static_cast<uint32_t>(_mm256_movemask_epi8(_mm256_cmpeq_epi8(bytes, _mm256_set1_epi8('"'))))};
 }
 
-template<size_t N, bool Long, bool Wide = false>
-bool csvPacked(std::string_view line, std::array<std::string_view,N>& fields) {
+template<size_t N, bool Long>
+inline bool csvFromMasks(std::string_view line, std::array<std::string_view,N>& fields,
+                         uint64_t commas, uint64_t quotes, uint64_t upperCommas, uint64_t upperQuotes) {
     const size_t size = line.size();
     const char* p = line.data();
-    auto first = classify32(p);
-    auto last = classify32(p + size - 32);
-    uint64_t commas, quotes, upperCommas = 0, upperQuotes = 0;
-    if constexpr (Long) {
-        auto middle = classify32(p + 32);
-        commas = first.comma | (uint64_t(middle.comma) << 32);
-        quotes = first.quote | (uint64_t(middle.quote) << 32);
-        if constexpr (Wide) {
-            auto third = classify32(p + 64);
-            upperCommas = third.comma | (uint64_t(last.comma) << (size - 96));
-            upperQuotes = third.quote | (uint64_t(last.quote) << (size - 96));
-        } else {
-            upperCommas = last.comma >> (96-size);
-            upperQuotes = last.quote >> (96-size);
-        }
-    } else {
-        commas = first.comma | (uint64_t(last.comma) << (size-32));
-        quotes = first.quote | (uint64_t(last.quote) << (size-32));
-    }
     if (std::popcount(commas) + std::popcount(upperCommas) != N - 1) return false;
 
     // Compress the quotes at possible field boundaries to one bit per field.
@@ -350,6 +332,32 @@ bool csvPacked(std::string_view line, std::array<std::string_view,N>& fields) {
         begin = end + 1;
     }
     return true;
+}
+
+template<size_t N, bool Long, bool Wide = false>
+bool csvPacked(std::string_view line, std::array<std::string_view,N>& fields) {
+    const size_t size = line.size();
+    const char* p = line.data();
+    auto first = classify32(p);
+    auto last = classify32(p + size - 32);
+    uint64_t commas, quotes, upperCommas = 0, upperQuotes = 0;
+    if constexpr (Long) {
+        auto middle = classify32(p + 32);
+        commas = first.comma | (uint64_t(middle.comma) << 32);
+        quotes = first.quote | (uint64_t(middle.quote) << 32);
+        if constexpr (Wide) {
+            auto third = classify32(p + 64);
+            upperCommas = third.comma | (uint64_t(last.comma) << (size - 96));
+            upperQuotes = third.quote | (uint64_t(last.quote) << (size - 96));
+        } else {
+            upperCommas = last.comma >> (96-size);
+            upperQuotes = last.quote >> (96-size);
+        }
+    } else {
+        commas = first.comma | (uint64_t(last.comma) << (size-32));
+        quotes = first.quote | (uint64_t(last.quote) << (size-32));
+    }
+    return csvFromMasks<N,Long>(line,fields,commas,quotes,upperCommas,upperQuotes);
 }
 
 template<size_t N> bool csv(std::string_view line, std::array<std::string_view,N>& fields) {

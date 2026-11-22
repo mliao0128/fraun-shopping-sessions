@@ -13,7 +13,14 @@ inline bool eventFields(std::string_view s, std::array<std::string_view,7>& f) {
     auto tail = classify32(p + n - 32);
     const uint32_t low = head.comma;
     const uint64_t high = middle.comma | (uint64_t(tail.comma) << (n - 64));
-    if (std::popcount(low) != 2 || (low & 0x80000001u) || (high & 1)) return csv(s,f);
+    if (std::popcount(low) != 2 || (low & 0x80000001u) || (high & 1)) {
+        // This row does not fit the usual head split. All its punctuation
+        // has already been classified in the three overlapping registers.
+        return csvFromMasks<7,true>(s, f,
+            head.comma | (uint64_t(middle.comma) << 32),
+            head.quote | (uint64_t(middle.quote) << 32),
+            uint64_t(tail.comma) >> (96-n), uint64_t(tail.quote) >> (96-n));
+    }
     if (std::popcount(high) != 4) return false;
     const uint64_t highQuotes = middle.quote | (uint64_t(tail.quote) << (n - 64));
     const uint32_t lowStarts = (low << 1) | 1, lowEnds = low >> 1;

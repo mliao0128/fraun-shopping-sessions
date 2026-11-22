@@ -603,9 +603,9 @@ static_assert(sizeof(ParsedEvent) == 48);
 
 // Malformed lines and empty IDs never take part in deduplication. Every other
 // copy does, valid or not: an invalid earliest copy suppresses later ones.
-[[gnu::noinline]] bool genericEvent(std::string_view line, const Context &ctx, ParsedEvent &out, Reader& reader) {
+template<typename Fill> [[gnu::always_inline]] inline bool consumeGeneric(std::string_view line, const Context &ctx, ParsedEvent &out, Reader& reader, const Fill& fill) {
     std::array<std::string_view,7> f;
-    if (!eventFields(line, f) || f[0].empty()) return false;
+    if (!fill(line, f) || f[0].empty()) return false;
     prepareIdentity(f[0], reader, out);
     out.valid = false;
     out.arrival = invalidTime;
@@ -628,6 +628,9 @@ static_assert(sizeof(ParsedEvent) == 48);
     out.row = {ts, price, category};
     out.valid = true;
     return true;
+}
+[[gnu::noinline]] bool genericEvent(std::string_view line, const Context &ctx, ParsedEvent &out, Reader& reader) {
+    return consumeGeneric(line, ctx, out, reader, eventFields);
 }
 template <unsigned Hint> inline Key inlineAsciiKey(const char *p, unsigned n) {
     if (n == 9)
@@ -763,6 +766,25 @@ template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
         p = end + 1;
     }
 }
+// The prepared queue already holds every punctuation bit of these rows.
+// Splice its two 30-byte ends around the true-width middle.
+inline bool recoverFields(const PreparedMasks& row, std::array<std::string_view,7>& fields) {
+    const auto s=row.line;
+    const unsigned n=s.size(), middle=n-60, tailAt=n-30;
+    auto lower=[&](uint32_t head,uint32_t mid,uint32_t tail) {
+        return uint64_t(head) | (uint64_t(_bzhi_u32(mid,middle))<<30) | (uint64_t(tail)<<tailAt);
+    };
+    const auto tc=uint32_t(row.tt), tq=uint32_t(row.tt>>32);
+    const uint64_t c=lower(uint32_t(row.ht),row.commas,tc),q=lower(uint32_t(row.ht>>32),row.quotes,tq);
+    if (n<=64) return csvFromMasks<7,false>(s,fields,c,q,0,0);
+    return csvFromMasks<7,true>(s,fields,c,q,uint64_t(tc)>>(64-tailAt),uint64_t(tq)>>(64-tailAt));
+}
+[[gnu::noinline]] bool recoverPrepared(const PreparedMasks& row, const Context& ctx,
+                                        ParsedEvent& event, Reader& reader) {
+    return consumeGeneric(row.line,ctx,event,reader,[&](std::string_view, auto& fields) {
+        return recoverFields(row,fields);
+    });
+}
 inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, ParsedEvent &out, Reader& reader) {
     auto s = packed.line;
     const size_t n = s.size();
@@ -775,13 +797,13 @@ inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, Parse
     CsvMask mh{uint32_t(ht), uint32_t(ht >> 32)}, mt{uint32_t(tt), uint32_t(tt >> 32)},
         mm{packed.commas, packed.quotes};
     if ((h.tag != ht || !ht) && !decodeHead(mh, ht, h))
-        return genericEvent(s, ctx, out, reader);
+        return recoverPrepared(packed,ctx,out,reader);
     if ((t.tag != tt || !tt) && !decodeTail(mt, tt, t))
-        return genericEvent(s, ctx, out, reader);
+        return recoverPrepared(packed,ctx,out,reader);
     const unsigned width = n - 60;
     uint32_t mc = _bzhi_u32(mm.comma, width), mq = _bzhi_u32(mm.quote, width);
     if (!std::has_single_bit(mc) || (mc & ((1u << (width - 1)) | 1u)))
-        return genericEvent(s, ctx, out, reader);
+        return recoverPrepared(packed,ctx,out,reader);
     if (mq != ((mc >> 1) * h.quoted | (mc << 1) * t.quoted))
         return false;
     if (!h.idLen)
