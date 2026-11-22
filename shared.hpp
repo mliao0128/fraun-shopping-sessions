@@ -287,7 +287,7 @@ inline CsvMask classify32(const char* p) {
 }
 
 template<size_t N, bool Long>
-inline bool csvFromMasks(std::string_view line, std::array<std::string_view,N>& fields,
+[[gnu::always_inline]] inline bool csvFromMasks(std::string_view line, std::array<std::string_view,N>& fields,
                          uint64_t commas, uint64_t quotes, uint64_t upperCommas, uint64_t upperQuotes) {
     const size_t size = line.size();
     const char* p = line.data();
