@@ -69,12 +69,17 @@ struct Key {
         const auto seed = _mm_set_epi64x(INT64_C(0x2645ff95aabc9b37), int64_t(n));
         __m128i first, last;
         if (n > 32) {
-            auto a = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data()));
-            auto b = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data()+16));
-            auto c = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data()+n-32));
-            auto d = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data()+n-16));
-            first = _mm_aesenc_si128(a,b);
-            last = _mm_aesenc_si128(c,d);
+            const auto* p = s.data();
+            // The independent rounds mix the outer and inner windows. Every input
+            // byte participates, including when the two inner loads overlap.
+            const auto first = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p));
+            const auto second = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p+16));
+            const auto third = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p+n-32));
+            const auto last = _mm_loadu_si128(reinterpret_cast<const __m128i*>(p+n-16));
+            const auto left = _mm_aesenc_si128(_mm_xor_si128(first,seed),second);
+            const auto right = _mm_aesenc_si128(_mm_xor_si128(last,seed),third);
+            const auto mixed = _mm_aesenc_si128(left,right);
+            return static_cast<uint64_t>(_mm_cvtsi128_si64(_mm_xor_si128(mixed,_mm_srli_si128(mixed,8))));
         } else if (n <= 16) {
             first = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(s.data()));
             last = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(s.data()+n-8));
