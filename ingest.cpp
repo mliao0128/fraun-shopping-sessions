@@ -570,18 +570,19 @@ inline bool isoTimes(const char* event, const char* arrival, const Context& ctx,
 // including case and leading zeroes, or borrows the exact mapped string.
 inline Key eventID(std::string_view text) { return Key::from(text); }
 inline EventToken tokenFromText(std::string_view text) {
-    if (text.size() == 9) {
-        uint64_t first, last;
-        std::memcpy(&first, text.data(), 8);
-        std::memcpy(&last, text.data() + 1, 8);
-        if (!((first | last) & ~Key::asciiMask)) {
-            // Of 63 ASCII bits, keep bytes 0..3 and the low three bits
-            // of byte 4. CRC32C has full rank on the other 32 bits.
-            // Together the two words identify the original nine bytes exactly.
-            constexpr uint64_t kept = UINT64_C(0x000000077f7f7f7f);
-            const uint64_t prefix = _pext_u64(first, kept);
-            const uint32_t crc = _mm_crc32_u64(uint8_t(first), last);
-            return {(prefix << 32) | crc};
+    const size_t n = text.size();
+    if (n == 8 || n == 9) {
+        // Both formats end in eight ASCII bytes. Their CRC has rank 32
+        // on the 56 payload bits. Preserve the complementary 24 bits.
+        uint64_t suffix;
+        std::memcpy(&suffix, text.data() + (n - 8), sizeof suffix);
+        const auto first = static_cast<uint8_t>(text.front());
+        if (!((suffix | first) & ~Key::asciiMask)) {
+            const uint64_t tag = n == 9 ? first : Key::eightTag >> 56;
+            constexpr uint64_t kept = UINT64_C(0x00000000077f7f7f);
+            const uint64_t witness = _pext_u64(suffix, kept);
+            const uint32_t crc = _mm_crc32_u64(tag, suffix);
+            return {(tag << 56) | (witness << 32) | crc};
         }
     }
     return encodeEventToken(eventID(text));
