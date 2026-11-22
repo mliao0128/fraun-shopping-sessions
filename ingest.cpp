@@ -358,6 +358,8 @@ constexpr uint32_t sourceTag = 0x80000000u, invalidArrivalTag = 0xa0000000u, slo
 struct EventToken {
     uint64_t bits{};
     bool external() const { return bits >= Key::indirectTag; }
+    bool witness() const { return (bits >> 60) == 9; }
+    uint32_t witnessIndex() const { return uint32_t(bits >> 32) & 0x0fffffffu; }
     bool operator==(EventToken other) const {
         return bits == other.bits ||
             (external() && other.external() && Key{bits}.borrowed() == Key{other.bits}.borrowed());
@@ -391,9 +393,33 @@ struct Reader {
     Scatter<Click, 8> clicks;
     Scatter<IdRecord, 16> ids;
     std::vector<Extended> slow;
-    // Only external strings need a separate hash. Their full source references
-    // stay in the normal 16-byte ID records, even for invalid revision rows.
-    std::vector<std::vector<uint32_t>> externalHashes;
+    static constexpr uint32_t witnessLimit = 1u << 28;
+    bool rawOverflow = false;
+    static constexpr unsigned pageBits = 13;
+    static constexpr size_t pageSize = size_t{1} << pageBits;
+    uint32_t count = 0;
+    std::vector<std::unique_ptr<uint64_t[]>> pages;
+    uint64_t* active = nullptr;
+    size_t opaqueCount() const { return count; }
+    void saveOpaque(uint64_t word) {
+        const uint32_t at = count++ & (pageSize - 1);
+        if (!at) {
+            pages.push_back(std::make_unique_for_overwrite<uint64_t[]>(pageSize));
+            active = pages.back().get();
+        }
+        active[at] = word;
+    }
+    uint64_t originalBits(uint32_t ordinal) const { return pages[ordinal >> pageBits][ordinal & (pageSize - 1)]; }
+    void releaseOpaque() { pages.clear(); active = nullptr; }
+    EventToken rememberOpaque(EventToken full, uint32_t hash) {
+        const size_t ordinal = opaqueCount();
+        if (ordinal >= witnessLimit) { rawOverflow = true; return full; }
+        saveOpaque(full.bits);
+        return {UINT64_C(0x9000000000000000) | (uint64_t(ordinal) << 32) | hash};
+    }
+    EventToken original(EventToken token) const {
+        return token.witness() ? EventToken{originalBits(token.witnessIndex())} : token;
+    }
     Reader(size_t parts, size_t idShards) : events(slab, parts), clicks(slab, parts), ids(slab, idShards) {}
 };
 
@@ -872,10 +898,11 @@ void dedupOriginal(size_t shard, int64_t arrivalOrigin, const Source &source,
     for (auto& reader : readers)
         reader->ids.pieces(shard, [&](const IdRecord* rows,size_t n) {
             for (size_t i = 0; i < n; ++i) {
-                const auto& row = rows[i];
+                auto row = rows[i];
                 const size_t bit = filterHash(row.id) & mask;
                 if (!((filter[bit / 64].repeated >> (bit % 64)) & 1))
                     continue;
+                row.id = reader->original(row.id);
                 const uint64_t hash = row.id.hash();
                 size_t pos = findWinner(slots,hash,row.id);
                 if (!slots[pos].reader) {
@@ -924,6 +951,15 @@ struct RecordDirectory {
     static constexpr unsigned rowBits = std::countr_zero(rowsPerBlock<IdRecord>);
     static constexpr size_t within = rowsPerBlock<IdRecord> - 1;
     const IdRecord &get(uint32_t ref) const { return blocks[ref >> rowBits].rows[ref & within]; }
+    bool equal(uint32_t newer, uint32_t older) const {
+        const auto& a = blocks[newer >> rowBits];
+        const auto& b = blocks[older >> rowBits];
+        const auto left = a.rows[newer & within].id;
+        const auto right = b.rows[older & within].id;
+        if (!left.witness() && !right.witness()) return left == right;
+        if (left.witness() && right.witness() && uint32_t(left.bits) != uint32_t(right.bits)) return false;
+        return a.owner->original(left) == b.owner->original(right);
+    }
     bool earlier(uint32_t newer, uint32_t prior, const Source &source, int64_t origin) const {
         const auto &a = blocks[newer >> rowBits];
         const auto &b = blocks[prior >> rowBits];
@@ -966,23 +1002,22 @@ void deduplicate(size_t shard, int64_t origin, const Source &source,
     const size_t cap = std::max<size_t>(16, std::bit_ceil(dir.count + dir.count / 4 + 1));
     groups.assign(cap / 16, FingerGroup{});
     const uint32_t mask = groups.size() - 1;
-    const Reader *previousReader = nullptr;
-    const uint32_t *externalHashes = nullptr;
     for (uint32_t b = 0; b < dir.blocks.size(); ++b) {
         const auto &block = dir.blocks[b];
-        if (block.owner != previousReader) {
-            previousReader = block.owner;
-            externalHashes = previousReader->externalHashes.empty()
-                ? nullptr : previousReader->externalHashes[shard].data();
-        }
         constexpr unsigned batch = 32;
         for (uint32_t first = 0; first < block.count; first += batch) {
             const unsigned n = std::min<size_t>(batch, block.count - first);
             uint32_t hashes[batch];
-            for (unsigned j = 0; j < n; ++j) {
-                const EventToken id = block.rows[first + j].id;
-                hashes[j] = id.external() ? *externalHashes++ : static_cast<uint32_t>(id.bits);
-                __builtin_prefetch(&groups[(hashes[j] >> 8) & mask], 1, 2);
+            if (!block.owner->rawOverflow) {
+                for (unsigned j = 0; j < n; ++j) {
+                    hashes[j] = uint32_t(block.rows[first+j].id.bits);
+                    __builtin_prefetch(&groups[(hashes[j] >> 8) & mask], 1, 2);
+                }
+            } else {
+                for (unsigned j = 0; j < n; ++j) {
+                    hashes[j] = filterHash(block.rows[first+j].id);
+                    __builtin_prefetch(&groups[(hashes[j] >> 8) & mask], 1, 2);
+                }
             }
             for (unsigned j = 0; j < n; ++j) {
                 const uint32_t h = hashes[j], ref = (b << dir.rowBits) | uint32_t(first + j);
@@ -995,7 +1030,7 @@ void deduplicate(size_t shard, int64_t origin, const Source &source,
                     while (hits) {
                         unsigned k = std::countr_zero(unsigned(hits));
                         uint32_t old = g.ref(k);
-                        if (dir.get(old).id == block.rows[first + j].id) {
+                        if (dir.equal(ref,old)) {
                             if (dir.earlier(ref, old, source, origin))
                                 g.set(k, ref);
                             goto complete;
@@ -1120,13 +1155,10 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 std::array<PreparedMasks, ahead> queue;
                 unsigned cursor = 0;
                 auto storeEvent = [&](const ParsedEvent& event, uint64_t offset, uint64_t rawHash) {
-                    const auto token = encodeEventToken(event.id);
+                    auto token = encodeEventToken(event.id);
                     const uint32_t hash = filterHash(token);
                     const size_t idShard = uint64_t{hash} >> idShift;
-                    if (token.external()) {
-                        if (reader.externalHashes.empty()) reader.externalHashes.resize(idShards);
-                        reader.externalHashes[idShard].push_back(hash);
-                    }
+                    if (token.external()) token = reader.rememberOpaque(token,hash);
                     uint64_t info;
                     if (event.valid) {
                         const auto bucket = static_cast<uint32_t>(partOf(rawHash));
@@ -1192,8 +1224,6 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         std::vector<void*> spent;
         for (auto &reader : readers) {
             reader->ids.release(shard, spent);
-            if (!reader->externalHashes.empty())
-                std::vector<uint32_t>().swap(reader->externalHashes[shard]);
         }
         recycled.give(spent);
     };
@@ -1258,6 +1288,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         drainClicks();
         reader.clicks.finish();
     });
+    for (auto& reader : readers) reader->releaseOpaque();
     lap("dedup");
     // Borrowed variable-width shopper and click spellings are still read by
     // canonical routing, session attribution and the Parquet writer.
