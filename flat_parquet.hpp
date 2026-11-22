@@ -201,6 +201,7 @@ public:
             return;
         }
         auto& c = column();
+        c.codec = 0;
         page(c, group.dictionary, group.entries, plain, true);
         page(c, group.codes, group.rows, 8);
     }
