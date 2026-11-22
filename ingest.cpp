@@ -101,7 +101,9 @@ template<bool Check> inline int clockSeconds(const char* p) {
 }
 
 inline int64_t validIngest(const char* p) {
-    return midnight(p) + 1000LL * clockSeconds<false>(p+11);
+    auto date = midnight(p);
+    if (date == invalidTime) return invalidTime;
+    return date + 1000LL * clockSeconds<false>(p+11);
 }
 
 // Parse 13 decimal digits with two bounded overlapping loads. Combining digit
@@ -438,6 +440,11 @@ inline uint64_t isoDateKey(const char* date, __m128i fields) {
     return uint64_t(year) | (uint64_t(monthDay) << 32);
 }
 
+inline bool withinLateness(int64_t arrival, int64_t event) {
+    return arrival != invalidTime &&
+           (arrival <= event || uint64_t(arrival) - uint64_t(event) <= uint64_t(dayMs));
+}
+
 template<bool HasOffset>
 inline bool isoTimes(const char* event, const char* arrival, const Context& ctx,
                      int64_t& eventMs, int64_t& arrivalMs) {
@@ -488,9 +495,10 @@ inline bool isoTimes(const char* event, const char* arrival, const Context& ctx,
 
     const uint64_t arrivalKey = isoDateKey(arrival, _mm256_extracti128_si256(fields, 1));
     const int64_t arrivalMidnight = eventKey == arrivalKey ? eventMidnight : cachedMidnight(arrival, arrivalKey);
+    if (arrivalMidnight == invalidTime) return false;
     const int arrivalSeconds = _mm_cvtsi128_si32(_mm256_extracti128_si256(seconds, 1));
     arrivalMs = arrivalMidnight + 1000LL * arrivalSeconds;
-    return arrivalMs - dayMs <= eventMs;
+    return withinLateness(arrivalMs, eventMs);
 }
 
 [[gnu::always_inline]] inline bool eventTimes(std::string_view event, std::string_view arrival,
@@ -512,7 +520,7 @@ inline bool isoTimes(const char* event, const char* arrival, const Context& ctx,
         if (ts < ctx.start || ts >= ctx.end)
             return false;
         ingest = validIngest(a);
-        return ingest - dayMs <= ts;
+        return withinLateness(ingest,ts);
     }
     if (arrival.size() == 20 && (event.size() == 20 || event.size() == 25) && e[4]=='-') {
         if (event.size() == 20)
@@ -523,7 +531,7 @@ inline bool isoTimes(const char* event, const char* arrival, const Context& ctx,
     if (ts < ctx.start || ts >= ctx.end)
         return false;
     ingest = arrival.size() == 20 ? validIngest(a) : timestamp(arrival);
-    return ingest-dayMs <= ts;
+    return withinLateness(ingest,ts);
 }
 
 // IDs are opaque CSV values. This lossless compact Key uses all the bytes,
@@ -531,7 +539,7 @@ inline bool isoTimes(const char* event, const char* arrival, const Context& ctx,
 inline Key eventID(std::string_view text) { return Key::from(text); }
 // Malformed lines and empty IDs never take part in deduplication. Every other
 // copy does, valid or not: an invalid earliest copy suppresses later ones.
-[[gnu::noinline]] bool genericEvent(std::string_view line, const Context &ctx, ParsedEvent &out) {
+[[gnu::noinline]] bool plainGenericEvent(std::string_view line, const Context &ctx, ParsedEvent &out) {
     std::array<std::string_view,7> f;
     if (!eventFields(line, f) || f[0].empty()) return false;
     out.id = eventID(f[0]);
@@ -681,6 +689,42 @@ template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
                 p += n + 1;
                 continue;
             }
+            // No line ending in the first 92 bytes. The fourth block completes
+            // the punctuation map for longer records. Every bit used below
+            // comes from this row, and the gap must contain no CSV syntax.
+            if (!last && !(_mm256_movemask_epi8(early) & 0x3fffffffu) && limit-p >= 124) {
+                const auto fourth = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p+92));
+                const uint32_t endings = byteMask(fourth,'\n');
+                unsigned extra = std::countr_zero(endings);
+                if (extra && extra <= 24) {
+                    const auto hc=byteMask(h,','), hq=byteMask(h,'"');
+                    const auto mc=byteMask(m,','), mq=byteMask(m,'"');
+                    const uint64_t marks=(hc | hq) | (uint64_t(mc | mq)<<30);
+                    constexpr uint64_t gap = (uint64_t{1}<<24)-1;
+                    unsigned prefix=0;
+                    if (!(marks & (gap<<1))) prefix=1;
+                    else if ((hc & 0x1fff) && !(marks & (gap<<14))) prefix=14;
+                    if (prefix) {
+                        const auto zc=byteMask(z,','), zq=byteMask(z,'"');
+                        const auto fc=byteMask(fourth,','), fq=byteMask(fourth,'"');
+                        const auto keep=(1u<<prefix)-1;
+                        auto front=[&](uint32_t a,uint32_t b) {
+                            uint32_t skipped=(uint64_t(a) | (uint64_t(b)<<30)) >> 24;
+                            return ((a & keep) | (skipped & ~keep)) & 0x3fffffffu;
+                        };
+                        auto mid=[](uint32_t b,uint32_t c){return (b>>24) | (c<<6);};
+                        auto tail=[&](uint32_t c,uint32_t d){
+                            return uint32_t((uint64_t(c) | (uint64_t(d)<<32))>>(extra+2)) & 0x3fffffffu;
+                        };
+                        PreparedMasks &row=visit();
+                        row.line={p,92+extra};
+                        saveMasks(row,{front(hc,mc),front(hq,mq)},{mid(mc,zc),mid(mq,zq)},{tail(zc,fc),tail(zq,fq)});
+                        row.ht |= uint64_t(prefix==1 ? 1 : 2)<<30;
+                        p+=93+extra;
+                        continue;
+                    }
+                }
+            }
         }
         const char *end = static_cast<const char *>(std::memchr(p, '\n', limit - p));
         if (!end)
@@ -691,30 +735,43 @@ template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
         p = end + 1;
     }
 }
-inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, ParsedEvent &out) {
+[[gnu::noinline]] bool genericEvent(std::string_view, const Context&, ParsedEvent&);
+
+template<unsigned Gap>
+inline bool parseLayout(const PreparedMasks &packed, const Context &ctx, ParsedEvent &out, unsigned keep = 0) {
     auto s = packed.line;
-    const size_t n = s.size();
-    const char *p = s.data();
+    const size_t n = s.size() - Gap;
+    const char *p = s.data() + Gap;
+    auto fallback = [&] {
+        if constexpr (Gap) return plainGenericEvent(s,ctx,out);
+        else return genericEvent(s,ctx,out);
+    };
     if (!packed.head)
-        return genericEvent(s, ctx, out);
+        return fallback();
     auto &h = *packed.head;
     auto &t = *packed.tail;
-    auto ht = packed.ht, tt = packed.tt;
+    auto ht = packed.ht & ~uint64_t(0xc0000000u), tt = packed.tt;
     CsvMask mh{uint32_t(ht), uint32_t(ht >> 32)}, mt{uint32_t(tt), uint32_t(tt >> 32)},
         mm{packed.commas, packed.quotes};
     if ((h.tag != ht || !ht) && !decodeHead(mh, ht, h))
-        return genericEvent(s, ctx, out);
+        return fallback();
     if ((t.tag != tt || !tt) && !decodeTail(mt, tt, t))
-        return genericEvent(s, ctx, out);
+        return fallback();
+    if constexpr (Gap) {
+        const unsigned lo = keep == 1 ? h.id : h.user;
+        const unsigned len = keep == 1 ? h.idLen : h.userLen;
+        if (keep < lo || keep >= lo + len) return fallback();
+    }
     const unsigned width = n - 60;
     uint32_t mc = _bzhi_u32(mm.comma, width), mq = _bzhi_u32(mm.quote, width);
     if (!std::has_single_bit(mc) || (mc & ((1u << (width - 1)) | 1u)))
-        return genericEvent(s, ctx, out);
+        return fallback();
     if (mq != ((mc >> 1) * h.quoted | (mc << 1) * t.quoted))
         return false;
     if (!h.idLen)
         return false;
-    out.id = eventID({p + h.id, h.idLen});
+    const unsigned idGap = Gap && keep == 1 ? Gap : 0;
+    out.id = eventID({s.data() + h.id, h.idLen + idGap});
     out.valid = false;
     out.arrival = invalidTime;
     if (!t.productLen || !h.userLen)
@@ -741,10 +798,46 @@ inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, Parse
             category = ctx.unknown;
     } else
         return true;
-    out.user = h.userLen == 9 ? Key::nine<'u'>(p + h.user) : Key::from({p + h.user, h.userLen});
+    const char *user = s.data() + h.user + idGap;
+    const unsigned userLen = h.userLen + Gap - idGap;
+    out.user = userLen == 9 ? Key::nine<'u'>(user) : Key::from({user,userLen});
     out.row = {ts, price, category};
     out.valid = true;
     return true;
+}
+
+inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, ParsedEvent &out) {
+    if (packed.head && (packed.ht & 0xc0000000u))
+        return parseLayout<24>(packed,ctx,out,(packed.ht & 0x40000000u) ? 1 : 14);
+    return parseLayout<0>(packed,ctx,out);
+}
+
+// A run of opaque bytes inside an ID contributes no CSV structure. Classify
+// the actual punctuation, skip that run in the mask only, and retain the full
+// original bytes both when hashing IDs and when comparing shopper spellings.
+[[gnu::noinline]] bool genericEvent(std::string_view line, const Context &ctx, ParsedEvent &out) {
+    const size_t n = line.size();
+    constexpr unsigned gap = 24;
+    if (n < 93 || n > 92 + gap) return plainGenericEvent(line,ctx,out);
+    const char *p = line.data();
+    const auto left = classify32(p), right = classify32(p + gap);
+    const uint64_t marks = uint64_t(left.comma | left.quote) |
+                           (uint64_t(right.comma | right.quote) << gap);
+    constexpr uint64_t removed = (uint64_t{1} << gap) - 1;
+    unsigned keep;
+    if (!(marks & (removed << 1))) keep = 1;
+    else if (!(marks & (removed << 14)) && (left.comma & 0x1fff)) keep = 14;
+    else return plainGenericEvent(line,ctx,out);
+    const uint32_t front = (1u << keep) - 1;
+    auto headMask = [&](uint32_t l,uint32_t r) {return ((l & front) | (r & ~front)) & 0x3fffffffu;};
+    const CsvMask head{headMask(left.comma,right.comma),headMask(left.quote,right.quote)};
+    auto middle = classify32(p + gap + 30), tail = classify32(p + n - 32);
+    tail.comma >>= 2;
+    tail.quote >>= 2;
+    PreparedMasks packed;
+    packed.line = line;
+    saveMasks(packed,head,middle,tail);
+    return parseLayout<gap>(packed,ctx,out,keep);
 }
 inline int64_t ingestTime(std::string_view text) {
     return text.size() == 20 ? validIngest(text.data()) : timestamp(text);
