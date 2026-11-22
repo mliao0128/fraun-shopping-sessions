@@ -262,7 +262,30 @@ class LiveSlabAdvice {
     std::array<Ticket,8> queue{};
     std::array<std::atomic<uint64_t>,64> position{};
     std::mutex lock;
-    std::condition_variable changed;
+    std::atomic<uint64_t> changed{0};
+    const std::vector<InputChunk>& spans;
+    std::atomic<size_t>& claimed;
+    const size_t eventCount,lead;
+    size_t nextInput=0;
+    bool warmInput;
+    void signal() {
+        changed.fetch_add(1,std::memory_order_release);
+        changed.notify_one();
+    }
+    bool handleInput() {
+        if(!warmInput)return false;
+        const size_t head=claimed.load(std::memory_order_acquire);
+        nextInput=std::max(nextInput,head);
+        if(nextInput>=eventCount || nextInput-head>=lead)return false;
+        const auto& s=spans[nextInput++];
+#if defined(MADV_POPULATE_READ)
+        if(s.end-s.begin>=(256u<<10) && ::madvise(const_cast<char*>(s.file.data()+s.begin),
+                  s.end-s.begin,MADV_POPULATE_READ) && (errno==EINVAL || errno==ENOSYS))
+            readSupported=false;
+#endif
+        return true;
+    }
+    bool readSupported=true;
     std::thread helper;
     size_t first=0,size=0,capacity=0;
     bool closing=false;
@@ -279,22 +302,29 @@ class LiveSlabAdvice {
     }
     void work() {
         for (;;) {
+            const uint64_t state=changed.load(std::memory_order_acquire);
             Ticket t{};
+            bool hasWrite=false;
             {
-                std::unique_lock guard(lock);
-                changed.wait(guard,[&]{return size || closing;});
+                std::lock_guard guard(lock);
                 if(closing) return;
-                t=queue[first];
-                first=(first+1)%queue.size();
-                --size;
+                if(size) {
+                    t=queue[first];
+                    first=(first+1)%queue.size();
+                    --size;hasWrite=true;
+                }
             }
-            if(supported.load(std::memory_order_relaxed) &&
+            if(hasWrite && supported.load(std::memory_order_relaxed) &&
                position[t.reader].load(std::memory_order_acquire)==t.epoch)
                 populate(t.address);
+            const bool hasInput=readSupported && handleInput();
+            if(!hasWrite && !hasInput)changed.wait(state,std::memory_order_acquire);
         }
     }
 public:
-    LiveSlabAdvice(unsigned readers, bool enabled) {
+    LiveSlabAdvice(unsigned readers,bool enabled,const std::vector<InputChunk>& chunks,
+                   size_t n,std::atomic<size_t>& next,bool warm)
+        : spans(chunks),claimed(next),eventCount(n),lead(std::min<size_t>(16,2*readers)),warmInput(warm) {
         if (!enabled) return;
         const char* value=std::getenv("SHOP_SLAB_MODE");
         if(value && std::string_view(value)=="demand") return;
@@ -304,6 +334,11 @@ public:
         catch(const std::system_error&) {}
     }
     bool enabled() const {return mode!=Mode::demand;}
+    size_t takeInput() {
+        const size_t i=claimed.fetch_add(1,std::memory_order_relaxed);
+        if(warmInput && mode==Mode::background)signal();
+        return i;
+    }
     void advance(unsigned reader, uint64_t epoch, char* next) {
         position[reader].store(epoch,std::memory_order_release);
         if(!next || !supported.load(std::memory_order_relaxed)) return;
@@ -313,12 +348,12 @@ public:
         queue[(first+size)%queue.size()]={next,reader,epoch};
         ++size;
         guard.unlock();
-        changed.notify_one();
+        signal();
     }
     void finish() {
         if(!helper.joinable()) return;
         {std::lock_guard guard(lock);closing=true;}
-        changed.notify_one();
+        signal();
         helper.join();
     }
     ~LiveSlabAdvice() {finish();}
@@ -1326,9 +1361,9 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     auto partOf = [&](uint64_t hash) { return static_cast<size_t>((hash >> 1) >> shift); };
 
     const unsigned readerCount = static_cast<unsigned>(std::min<size_t>(source.spans.size(), workers));
-    LiveSlabAdvice advice(readerCount,bytes>=(256u<<20));
-    std::vector<std::unique_ptr<Reader>> readers(readerCount);
     std::atomic<size_t> next = 0;
+    LiveSlabAdvice advice(readerCount,bytes>=(256u<<20),source.spans,source.eventSpans,next,!ctx.populateInput);
+    std::vector<std::unique_ptr<Reader>> readers(readerCount);
     parallel(readerCount, readerCount, [&](size_t r) {
         readers[r] = std::make_unique<Reader>(parts, idShards);
         Reader& reader = *readers[r];
@@ -1336,7 +1371,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         ParsedEvent event;
         Click click;
         for (;;) {
-            const size_t i = next.fetch_add(1, std::memory_order_relaxed);
+            const size_t i = advice.takeInput();
             if (i >= source.eventSpans)
                 break;
             const InputChunk& span = source.spans[i];
