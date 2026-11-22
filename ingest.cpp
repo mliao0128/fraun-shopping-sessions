@@ -1222,11 +1222,8 @@ void learnShopperEncoding(const std::vector<std::string_view>& files,size_t byte
         if(sample.size()>=2048)break;
     }
     shopperCodec.learn(sample);
-    if(shopperCodec.buckets>parts || parts+shopperCodec.buckets>1024)shopperCodec.buckets=0;
+    shopperCodec.place(parts);
     if(!shopperCodec.buckets)return;
-    while((size_t(shopperCodec.buckets)<<1)<=parts){
-        ++compactExtraBits;shopperCodec.buckets*=2;
-    }
     unsigned partBits=std::countr_zero(parts);
     compactBucketShift=partBits?32-partBits:0;
     compactRemainder=UINT32_MAX>>partBits;
@@ -1297,8 +1294,9 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                         auto bucket=uint32_t(encoded?compactPartition(code):partOf(rawHash));
                         const auto delta=uint64_t(event.row.ts)-uint64_t(ctx.start);
                         uint32_t index;
-                        if(encoded && !event.row.price && delta<(uint64_t{1}<<31)) {
-                            index=reader.compact.add(bucket,(delta<<32)|uint32_t(code));
+                        uint64_t receipt;
+                        if(encoded && !event.row.price && shopperCodec.pack(code,delta,receipt)) {
+                            index=reader.compact.add(bucket,receipt);
                             bucket+=parts;
                         } else {
                             index=reader.events.add(bucket,Event::pack(event.user,ctx.start,event.row,encoded?event.user.hash():rawHash));
@@ -1481,17 +1479,17 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                         cancelOffset+=n;
                         for(size_t i=0;i<alive;){
                             uint64_t row=rows[i];
-                            const Key raw=compactShopper(completeCompactCode(p,uint32_t(row)));
+                            const Key raw=compactShopper(completeCompactCode(p,row));
                             uint64_t hash=raw.hash();
                             const Key canonical=ctx.identities.person(raw,hash);
                             if(canonical.bits==raw.bits){++i;continue;}
                             size_t destination=partOf(hash);
                             if(isCompactShopper(canonical)){
-                                uint64_t renamed=(row&UINT64_C(0xffffffff00000000))|uint32_t(canonical.bits);
+                                uint64_t renamed=(row&~shopperCodec.lowMask)|(canonical.bits&shopperCodec.lowMask);
                                 if(p==destination){rows[i++]=renamed;continue;}
                                 router.compact.add(destination,renamed);
                             }else{
-                                int64_t ts=ctx.start+int64_t(row>>32);
+                                int64_t ts=ctx.start+shopperCodec.milliseconds(row);
                                 router.events.add(destination,Event::pack(canonical,ctx.start,{ts,0,0},hash));
                             }
                             if(--alive!=i)rows[i]=rows[alive];

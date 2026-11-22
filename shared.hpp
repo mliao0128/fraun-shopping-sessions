@@ -243,16 +243,15 @@ inline ShopperCodec shopperCodec;
 // bytes. The private 0x89 domain exists only between parsed rows and grouping.
 inline constexpr uint64_t compactKeyTag=UINT64_C(0x8900000000000000);
 inline constexpr uint64_t compactKeyPayload=UINT64_C(0x00ffffffffffffff);
-inline unsigned compactExtraBits=0;
 inline uint32_t compactBucketShift=0,compactRemainder=UINT32_MAX;
-inline uint32_t compactPartition(uint64_t code){return uint32_t(code>>(32-compactExtraBits));}
-inline uint64_t completeCompactCode(size_t partition,uint32_t low){
-    return ((uint64_t(partition)>>compactExtraBits)<<32)|low;
+inline uint32_t compactPartition(uint64_t code){
+    return shopperCodec.partition(code,uint32_t(_mm_crc32_u64(0,code&shopperCodec.lowMask)));
 }
+inline uint64_t completeCompactCode(size_t partition,uint64_t low){return shopperCodec.complete(partition,low);}
 inline uint64_t exactCompactSpelling(uint64_t code){return shopperCodec.decode(code);}
 inline uint64_t compactGraphHash(uint64_t code){
-    const uint32_t mixed=_mm_crc32_u64(0,code);
-    const uint32_t home=(compactPartition(code)<<compactBucketShift)|(mixed&compactRemainder);
+    const uint32_t mixed=_mm_crc32_u64(0,code&shopperCodec.lowMask);
+    const uint32_t home=(shopperCodec.partition(code,mixed)<<compactBucketShift)|(mixed&compactRemainder);
     return (uint64_t(home)<<32)|mixed;
 }
 inline bool isCompactShopper(Key raw){return (raw.bits>>56)==0x89;}

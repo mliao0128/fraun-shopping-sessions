@@ -121,10 +121,10 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
         }
     });
     bucket.compact.each([&](uint64_t row){
-        const auto code=completeCompactCode(bucket.partition,uint32_t(row));
+        const auto code=completeCompactCode(bucket.partition,row);
         const Key name=compactShopper(code);
         const auto g=index.add(name,name.hash());
-        const uint32_t delta=row>>32;
+        const uint32_t delta=shopperCodec.milliseconds(row);
         usedBits|=delta;
         out.pending[at++]={g,delta};
         ++groups[g].eventEnd;
@@ -162,7 +162,7 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
         });
         bucket.compact.each([&](uint64_t row){
             auto g=out.pending[at++].group;
-            out.wideTimes[groups[g].eventEnd++]=origin+int64_t(row>>32);
+            out.wideTimes[groups[g].eventEnd++]=origin+shopperCodec.milliseconds(row);
         });
     }
     out.clicks.resize(nClicks);

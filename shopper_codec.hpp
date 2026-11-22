@@ -1,69 +1,71 @@
 #pragma once
-#include <bitset>
 #include <array>
+#include <bit>
 #include <cstdint>
-#include <cstring>
 #include <string_view>
 #include <vector>
-#include <algorithm>
+
 struct ShopperCodec {
-    static constexpr uint64_t domain=UINT64_C(36)*36*36*36*36*36;
-    static constexpr uint64_t seven=UINT64_C(0x7f7f7f7f7f7f7f7f);
-    struct Sample {uint32_t n{};std::bitset<128> a,b;};
-    std::array<uint32_t,65536> base;
-    std::array<uint16_t,1296> inverse{};
-    static constexpr auto pairs=[] {
-        std::array<uint16_t,65536> t{};
-        t.fill(0x8000);
-        constexpr char alpha[]="0123456789abcdefghijklmnopqrstuvwxyz";
-        for(unsigned a=0;a<36;++a)for(unsigned b=0;b<36;++b)
-            t[uint8_t(alpha[a]) | (uint16_t(uint8_t(alpha[b]))<<8)]=a*36+b;
-        return t;
-    }();
-    static constexpr auto spell=[] {
-        std::array<uint16_t,1296> t{};
-        constexpr char alpha[]="0123456789abcdefghijklmnopqrstuvwxyz";
-        for(unsigned a=0;a<36;++a)for(unsigned b=0;b<36;++b)
-            t[a*36+b]=(uint16_t(uint8_t(alpha[a]))<<8)|uint8_t(alpha[b]);
-        return t;
-    }();
-    uint64_t marks=UINT64_MAX;
-    uint32_t buckets=0;
-    void learn(const std::vector<std::string_view>& names) {
-        std::array<Sample,128> s{};
-        base.fill(UINT32_MAX);buckets=0;marks=UINT64_MAX;
-        for(auto x:names){
-            if(x.size()!=9 || uint8_t(x[0])>=128 || uint8_t(x[1])>=128 || uint8_t(x[2])>=128)continue;
-            uint64_t raw;std::memcpy(&raw,x.data()+1,8);
-            if((pairs[uint16_t(raw>>16)]|pairs[uint16_t(raw>>32)]|pairs[uint16_t(raw>>48)])&0x8000)continue;
-            auto& v=s[uint8_t(x[0])];++v.n;v.a.set(uint8_t(raw));v.b.set(uint8_t(raw>>8));
+    uint64_t invariant{},variable{},lowMask{};
+    unsigned width{},lowBits{},partBits{};
+    uint32_t buckets{};
+    void learn(const std::vector<std::string_view>& sample) {
+        *this=ShopperCodec{};
+        std::array<uint32_t,128> leads{};
+        for(auto bytes:sample)if(bytes.size()==9 && static_cast<unsigned char>(bytes[0])<128)
+            ++leads[static_cast<unsigned char>(bytes[0])];
+        auto lead=std::max_element(leads.begin(),leads.end())-leads.begin();
+        if(sample.size()<96 || leads[lead]<=sample.size()/2)return;
+        std::array<uint32_t,64> ones{};unsigned n=0;
+        for(auto bytes:sample)if(bytes.size()==9 && static_cast<unsigned char>(bytes[0])==lead){
+            auto key=Key::nine(bytes.data());if(!key.nineAscii())continue;++n;
+            for(unsigned bit=0;bit<63;++bit)ones[bit]+=(key.bits>>bit)&1;
         }
-        auto top=std::max_element(s.begin(),s.end(),[](const auto& a,const auto& b){return a.n<b.n;});
-        if(names.size()<96 || top->n<=names.size()/2 || top->a.count()*top->b.count()>1296)return;
-        unsigned count=0;
-        for(unsigned a=0;a<128;++a)if(top->a[a])for(unsigned b=0;b<128;++b)if(top->b[b]){
-            base[a|(b<<8)]=count*(domain/4096);
-            inverse[count++]=(a<<8)|b;
+        if(n<96)return;
+        const unsigned tolerated=n/128;
+        invariant=0;variable=0;
+        for(unsigned bit=0;bit<63;++bit){
+            if(ones[bit]>=n-tolerated)invariant |= uint64_t{1}<<bit;
+            else if(ones[bit]>tolerated)variable |= uint64_t{1}<<bit;
         }
-        buckets=(uint64_t(count)*domain+UINT32_MAX)>>32;
-        char representative[9]={'0','0','0','0','0','0','0','0','0'};
-        representative[0]=char(top-s.begin());marks=Key::nine(representative).bits&~seven;
+        width=std::popcount(variable);
+        if(width>54 || !width)return;
+        buckets=1;
     }
-    bool encode(uint64_t key,uint64_t& code) const {
-        if((key&~seven)!=marks)return false;
-        uint64_t v=__builtin_bswap64(key&seven);
-        auto start=base[uint16_t(v)];
-        unsigned a=pairs[uint16_t(v>>16)],b=pairs[uint16_t(v>>32)],c=pairs[uint16_t(v>>48)];
-        if(start==UINT32_MAX||((a|b|c)&0x8000))return false;
-        code=(uint64_t(start)<<12)+(a*1296+b)*1296+c;
-        return true;
+    void place(size_t maximum) {
+        if(!buckets)return;
+        partBits=std::min<unsigned>(width,std::countr_zero(maximum));
+        buckets=uint32_t{1}<<partBits;
+        lowBits=width-partBits;
+        lowMask=(uint64_t{1}<<lowBits)-1;
     }
-    uint64_t decode(uint64_t code) const {
-        const unsigned first=code/domain;
-        uint32_t trailing=code-first*domain;
-        const uint32_t hi=trailing/1296;
-        const uint32_t low=trailing%1296;
-        return marks|(uint64_t(inverse[first])<<48)|(uint64_t(spell[hi/1296])<<32)|
-               (uint64_t(spell[hi%1296])<<16)|spell[low];
+    bool encode(uint64_t raw,uint64_t& out) const {
+        if((raw&~variable)!=invariant)return false;
+        out=_pext_u64(raw,variable);return true;
+    }
+    uint64_t decode(uint64_t code) const {return invariant|_pdep_u64(code,variable);}
+    uint32_t partition(uint64_t code,uint32_t noise)const {
+        const uint32_t upper=uint32_t(code>>lowBits);
+        return partBits?((upper^(noise>>(32-partBits)))&(buckets-1)):0;
+    }
+    uint64_t complete(size_t part,uint64_t low)const {
+        low&=lowMask;
+        uint32_t noise=_mm_crc32_u64(0,low);
+        const auto upper=uint64_t(part)^(partBits?noise>>(32-partBits):0);
+        return (upper<<lowBits)|low;
+    }
+    bool pack(uint64_t code,uint64_t ms,uint64_t& receipt) const {
+        if(ms>=(UINT64_C(1)<<31))return false;
+        uint64_t tick=ms;
+        if(lowBits>32){
+            tick=ms/1000;
+            if(tick*1000!=ms)return false;
+        }
+        if(tick>(UINT64_MAX>>lowBits))return false;
+        receipt=(tick<<lowBits)|(code&lowMask);return true;
+    }
+    uint32_t milliseconds(uint64_t receipt) const {
+        uint64_t tick=receipt>>lowBits;
+        return uint32_t(lowBits>32?tick*1000:tick);
     }
 };
