@@ -578,19 +578,29 @@ inline Key eventID(std::string_view text) { return Key::from(text); }
 constexpr uint64_t numericTag=UINT64_C(0x8f00000000000000);
 constexpr unsigned familyOwners=36*36;
 static int familyPrefix=-1;
+// Each table lookup validates both bytes and returns their injective local
+// label. The invalid bit combines across the four independent lookups.
+static constexpr auto bytePairs = [] {
+    std::array<uint16_t, 65536> pairs{};
+    pairs.fill(UINT16_C(0x8000));
+    constexpr char alphabet[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+    for (unsigned first=0; first<36; ++first)
+        for (unsigned second=0; second<36; ++second) {
+            const uint16_t raw = uint8_t(alphabet[first]) | (uint16_t(uint8_t(alphabet[second]))<<8);
+            pairs[raw] = uint16_t(first*36+second);
+        }
+    return pairs;
+}();
+
 inline EventToken familyName(const char* p) {
-    const auto raw=_mm_loadl_epi64(reinterpret_cast<const __m128i*>(p+1));
-    const auto digits=_mm_sub_epi8(raw,_mm_set1_epi8('0'));
-    const auto letters=_mm_sub_epi8(raw,_mm_set1_epi8('a'));
-    const auto dOk=_mm_cmpeq_epi8(_mm_subs_epu8(digits,_mm_set1_epi8(9)),_mm_setzero_si128());
-    const auto aOk=_mm_cmpeq_epi8(_mm_subs_epu8(letters,_mm_set1_epi8(25)),_mm_setzero_si128());
-    if((unsigned(_mm_movemask_epi8(_mm_or_si128(dOk,aOk)))&255u)!=255u) return {};
-    const auto values=_mm_blendv_epi8(digits,_mm_add_epi8(letters,_mm_set1_epi8(10)),aOk);
-    const auto pairs=_mm_maddubs_epi16(values,_mm_set1_epi16(0x0124));
-    const auto leading=_mm_madd_epi16(pairs,_mm_set1_epi32((1<<16)|1296));
-    const uint32_t last=uint32_t(_mm_extract_epi32(pairs,1));
-    const auto code=uint32_t(_mm_cvtsi128_si32(leading))*1296u+uint16_t(last);
-    return {numericTag | (uint64_t(last>>16)<<32) | code};
+    uint64_t raw;
+    std::memcpy(&raw, p+1, sizeof(raw));
+    const unsigned a=bytePairs[uint16_t(raw)];
+    const unsigned b=bytePairs[uint16_t(raw>>16)];
+    const unsigned c=bytePairs[uint16_t(raw>>32)];
+    const unsigned d=bytePairs[uint16_t(raw>>48)];
+    if ((a|b|c|d)&0x8000) return {};
+    return {numericTag | (uint64_t(d)<<32) | ((a*1296u+b)*1296u+c)};
 }
 
 int chooseFamily(const std::vector<std::string_view>& files) {
