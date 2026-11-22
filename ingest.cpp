@@ -145,6 +145,62 @@ inline void populateChunk(const InputChunk& c) {
 #endif
 }
 
+class WarmInputAhead {
+    const std::vector<InputChunk>& spans;
+    const size_t count, lead;
+    std::atomic<size_t>& claim;
+    std::atomic<bool> stopped{false}, supported{true};
+    std::thread worker;
+    bool sync=false;
+
+    void prepare(const InputChunk& span) {
+#if defined(MADV_POPULATE_READ)
+        const size_t length=span.end-span.begin;
+        if(length<(256u<<10)) return;
+        if(::madvise(const_cast<char*>(span.file.data()+span.begin),length,MADV_POPULATE_READ)
+                && (errno==EINVAL || errno==ENOSYS))
+            supported.store(false,std::memory_order_relaxed);
+#endif
+    }
+    void run() {
+        size_t cursor=0;
+        while(!stopped.load(std::memory_order_acquire) && supported.load(std::memory_order_relaxed)) {
+            const size_t active=claim.load(std::memory_order_acquire);
+            cursor=std::max(cursor,active);
+            if(cursor>=count) return;
+            if(cursor-active>=lead) {
+                claim.wait(active,std::memory_order_acquire);
+                continue;
+            }
+            prepare(spans[cursor++]);
+        }
+    }
+public:
+    WarmInputAhead(const std::vector<InputChunk>& s,size_t n,unsigned readers,std::atomic<size_t>& next,bool enable)
+        : spans(s),count(n),lead(std::min<size_t>(16,2*readers)),claim(next) {
+        if(!enable)return;
+        const char* policy=std::getenv("SHOP_INPUT_AHEAD");
+        if(policy && std::string_view(policy)=="demand")return;
+        if(policy && std::string_view(policy)=="sync"){sync=true;return;}
+        try {worker=std::thread([this]{run();});}
+        catch(const std::system_error&) {}
+    }
+    size_t take() {
+        const size_t i=claim.fetch_add(1,std::memory_order_acq_rel);
+        if(worker.joinable())claim.notify_one();
+        if(sync && i<count && supported.load(std::memory_order_relaxed))prepare(spans[i]);
+        return i;
+    }
+    void finish() {
+        if(!worker.joinable())return;
+        stopped.store(true,std::memory_order_release);
+        claim.fetch_add(1,std::memory_order_release);
+        claim.notify_all();
+        worker.join();
+    }
+    ~WarmInputAhead(){finish();}
+};
+
 template<class F> void chunkLines(const InputChunk& chunk, F&& visit) {
     const char* bytes = chunk.file.data();
     const size_t fileEnd = chunk.file.size();
@@ -1239,13 +1295,14 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     const unsigned readerCount = static_cast<unsigned>(std::min<size_t>(source.spans.size(), workers));
     std::vector<std::unique_ptr<Reader>> readers(readerCount);
     std::atomic<size_t> next = 0;
+    WarmInputAhead ahead(source.spans,source.eventSpans,readerCount,next,!ctx.populateInput && bytes>=(256u<<20));
     parallel(readerCount, readerCount, [&](size_t r) {
         readers[r] = std::make_unique<Reader>(parts, idShards);
         Reader& reader = *readers[r];
         ParsedEvent event;
         Click click;
         for (;;) {
-            const size_t i = next.fetch_add(1, std::memory_order_relaxed);
+            const size_t i = ahead.take();
             if (i >= source.eventSpans)
                 break;
             const InputChunk& span = source.spans[i];
@@ -1335,6 +1392,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         reader.ids.finish();
         reader.prepareCancellations(parts);
     });
+    ahead.finish();
     lap("parse");
 
     const size_t clicks = source.spans.size() - source.eventSpans;
