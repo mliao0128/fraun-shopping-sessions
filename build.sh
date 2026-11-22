@@ -27,6 +27,10 @@ case "$arch_flags" in
             exit 0
         done ;;
 esac
+# Keep the default profiled release on 256-bit vector instructions.
+if [ "$arch_flags" = "$default_arch" ]; then
+    arch_flags="$arch_flags -mno-avx512f"
+fi
 echo "Profiling and compiling: $arch_flags" >&2
 # The normal executable exits immediately after closing Parquet. Flush GCC's
 # counters at precisely that point in the temporary instrumented executable.
