@@ -1,14 +1,14 @@
-name: Public 60M solver comparison
+name: Public 60M parser and writer comparison
 on:
   push:
-    branches: [ci/public-final-60m-20261122]
+    branches: [ci/final-parser-comparison-20261122]
 permissions:
   contents: read
 jobs:
   compare:
     name: 60M seed ${{ matrix.seed }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 13
     strategy:
       fail-fast: false
       matrix:
