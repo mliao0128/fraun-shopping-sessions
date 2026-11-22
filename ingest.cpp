@@ -1203,9 +1203,8 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     item.event.user = Key::internHashedShopper(item.event.user.borrowed(), item.hash);
                     storeEvent(item.event, item.offset, item.hash);
                 };
-                auto emit = [&](PreparedMasks& masks) {
-                    if (!parsePrepared(masks, ctx, event)) return;
-                    const uint64_t offset = base + reinterpret_cast<uintptr_t>(masks.line.data());
+                auto accept = [&](const char *line) {
+                    const uint64_t offset = base + reinterpret_cast<uintptr_t>(line);
                     const uint64_t hash = event.valid ? event.user.hash() : 0;
                     if (event.valid && event.user.external() && Key::shopperSlots) {
                         const auto width = event.user.borrowed().size();
@@ -1220,6 +1219,25 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     }
                     storeEvent(event, offset, hash);
                 };
+                // Keep only a bounded group of input spans. Revisions are
+                // compared by their recorded arrival, independently of parse order.
+                std::array<std::string_view, 128> generic;
+                unsigned genericCount = 0;
+                auto drainGeneric = [&] {
+                    for (unsigned j = 0; j < genericCount; ++j) {
+                        auto line = generic[j];
+                        if (genericEvent(line, ctx, event)) accept(line.data());
+                    }
+                    genericCount = 0;
+                };
+                auto emit = [&](PreparedMasks& masks) {
+                    if (masks.head) {
+                        if (parsePrepared(masks, ctx, event)) accept(masks.line.data());
+                        return;
+                    }
+                    generic[genericCount++] = masks.line;
+                    if (genericCount == generic.size()) drainGeneric();
+                };
                 eventLines(span, [&]() -> PreparedMasks & {
                     auto &m = queue[cursor % ahead];
                     if (cursor >= ahead)
@@ -1229,6 +1247,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 });
                 for (unsigned j = cursor - std::min(cursor, ahead); j < cursor; ++j)
                     emit(queue[j % ahead]);
+                drainGeneric();
                 for (unsigned j = queued - std::min(queued, depth); j < queued; ++j)
                     flush(pending[j % depth]);
             }
