@@ -1,0 +1,40 @@
+name: Public 60M solver comparison
+on:
+  push:
+    branches: [ci/public-final-60m-20261122]
+permissions:
+  contents: read
+jobs:
+  compare:
+    name: 60M seed ${{ matrix.seed }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [10553418, 1202951868, 1907391620]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Record standard runner and build the public generator
+        shell: bash
+        run: |
+          set -euo pipefail
+          lscpu | grep -E 'Model name:|^CPU\(s\):|Thread\(s\) per core:|Core\(s\) per socket:|Socket\(s\):'
+          free -h
+          df -h .
+          sudo apt-get -qq update
+          sudo apt-get -qq install -y libjemalloc2 liblz4-dev
+          python3 -m venv "$RUNNER_TEMP/validation"
+          "$RUNNER_TEMP/validation/bin/pip" install --disable-pip-version-check duckdb==1.5.6
+          cd "$RUNNER_TEMP"
+          curl -fsSL --retry 3 https://www.joinbuilders.org/buildathon/tracks/shopping-sessions/files/generator.zip -o generator.zip
+          echo '78f973f75d14b48e792628284f19c75de71fa597d20952e16a9ced93c78bee4a  generator.zip' | sha256sum -c -
+          unzip -q generator.zip
+          cargo build --manifest-path generator/Cargo.toml --locked --offline --release
+          mkdir -p shopping-bin
+          cp generator/target/release/generate shopping-bin/
+      - name: Verify release executables and run exact 60M queries
+        run: |
+          "$RUNNER_TEMP/validation/bin/python" -u benchmarks/hosted/benchmark.py ${{ matrix.seed }}
