@@ -1,4 +1,5 @@
 #include "shared.hpp"
+#include "frame.hpp"
 
 #include <algorithm>
 #include <array>
@@ -23,13 +24,13 @@ struct Group {
 };
 
 // Sessions need only the times. The few purchases travel separately.
-struct Purchase {
-    int64_t ts;
+template<class Timestamp> struct PurchaseRow {
+    Timestamp ts;
     uint32_t price, category, group;
 };
 
-struct TimedClick {
-    int64_t ts;
+template<class Timestamp> struct ClickRow {
+    Timestamp ts;
     uint32_t campaign;
     Key id;
 };
@@ -88,7 +89,10 @@ public:
 };
 
 struct OwnedTime { uint32_t group, offset; };
-struct Grouped {
+template<bool Compact> struct Grouped {
+    using Timestamp=std::conditional_t<Compact,uint32_t,int64_t>;
+    using Purchase=PurchaseRow<Timestamp>;
+    using TimedClick=ClickRow<Timestamp>;
     std::vector<Group> groups;
     std::vector<Purchase> purchases;
     std::vector<TimedClick> clicks;
@@ -98,7 +102,12 @@ struct Grouped {
     bool wide = false, circular = false;
 };
 
-void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
+template<bool Compact> void groupRows(const Bucket& bucket,Grouped<Compact>& out,int64_t origin,const CalendarFrame& frame) {
+    using Purchase=typename Grouped<Compact>::Purchase;
+    auto storedTime=[&](int64_t time) {
+        if constexpr(Compact) return static_cast<uint32_t>(uint64_t(time)-uint64_t(frame.anchor));
+        else return time;
+    };
     if (bucket.events.size >= absent || bucket.clicks.size >= absent)
         throw std::runtime_error("Too many rows in one bucket");
     auto& groups = out.groups;
@@ -112,12 +121,12 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
         uint32_t g = index.add(e.person, e.routingHash());
         const EventData row = e.unpack(origin);
         const uint64_t delta = uint64_t(row.ts)-uint64_t(origin);
-        usedBits |= delta;
+        if constexpr(!Compact) usedBits |= delta;
         out.pending[at++] = {g,static_cast<uint32_t>(delta)};
         ++groups[g].eventEnd;
         if (row.price) {
             ++groups[g].purchaseEnd;
-            out.purchases.push_back({row.ts, row.price, row.category, g});
+            out.purchases.push_back({storedTime(row.ts), row.price, row.category, g});
         }
     });
     out.wide = usedBits > UINT32_MAX;
@@ -125,13 +134,13 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
     out.clickOwner.resize(bucket.clicks.size);
     at = 0;
     bucket.clicks.each([&](const Click &c) {
-        clickBits |= uint64_t(c.ts) - uint64_t(origin) + 7 * dayMs;
+        if constexpr(!Compact) clickBits |= uint64_t(c.ts) - uint64_t(origin) + 7 * dayMs;
         const uint32_t g = index.lookup(c.person, c.routingHash());
         out.clickOwner[at++] = g;
         if (g!=absent)
             ++groups[g].clickEnd;
     });
-    out.circular = ((usedBits | clickBits) < (uint64_t{1} << 31));
+    out.circular = Compact ? frame.circular : ((usedBits | clickBits) < (uint64_t{1} << 31));
     uint32_t nEvents=0, nClicks=0;
     for(auto& g : groups) {
         uint32_t ne=g.eventEnd, nc=g.clickEnd;
@@ -156,7 +165,7 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
     at=0;
     bucket.clicks.each([&](const Click& c) {
         uint32_t g=out.clickOwner[at++];
-        if (g!=absent) out.clicks[groups[g].clickEnd++] = {c.ts,c.campaign,c.id};
+        if (g!=absent) out.clicks[groups[g].clickEnd++] = {storedTime(c.ts),c.campaign,c.id};
     });
     // Group purchases with a counting scatter. Only purchases by the
     // same person need time ordering, and most such spans are short.
@@ -358,12 +367,16 @@ int32_t utcDay(int64_t ts) {
 
 }  // namespace
 
-void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t campaignCount, int64_t origin) {
+template<bool Compact> void aggregateMode(Bucket& bucket, Result& result,size_t categoryCount,size_t campaignCount,int64_t origin,const CalendarFrame& frame) {
     if (!bucket.events.size) return;
     // Scratch space is kept per thread: buckets are alike in size, and reusing
     // it spares the allocator and the kernel a round trip per bucket.
-    static thread_local Grouped grouped;
-    groupRows(bucket, grouped, origin);
+    using Timestamp=typename Grouped<Compact>::Timestamp;
+    using TimedClick=typename Grouped<Compact>::TimedClick;
+    static_assert(!Compact || (sizeof(TimedClick)==16 && sizeof(typename Grouped<Compact>::Purchase)==16));
+    const int64_t eventBase=Compact?origin-frame.anchor:origin;
+    static thread_local Grouped<Compact> grouped;
+    groupRows(bucket, grouped, origin,frame);
     result.startBucket(bucket.events.size);
     const auto &groups = grouped.groups;
     const auto& purchases = grouped.purchases;
@@ -388,7 +401,7 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
     };
 
     struct Session {
-        int64_t start, last;
+        Timestamp start, last;
         uint32_t count, dayIndex;
     };
     // Each click assists a contiguous range of starts. Keep per-day ends so
@@ -431,21 +444,21 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
         const size_t firstOutput = result.users.days.size();
         sessions.clear();
         auto emit = [&](int64_t first, int64_t last, uint32_t count) {
-            sessions.push_back({first, last, count});
+            sessions.push_back({static_cast<Timestamp>(first),static_cast<Timestamp>(last),count});
         };
         const size_t count = group.eventEnd - i;
         if (grouped.wide)
             exactSessions(grouped.wideTimes.data() + i, count, 0, emit);
         else if (count <= 3)
-            exactSessions(grouped.times.data() + i, count, origin, emit);
+            exactSessions(grouped.times.data() + i, count, eventBase, emit);
         else if (count <= 8) {
             auto* times = grouped.times.data() + i;
-            if (!shortSessions(times, count, origin, emit))
-                networkSessions(times, count, origin, emit);
+            if (!shortSessions(times, count, eventBase, emit))
+                networkSessions(times, count, eventBase, emit);
         } else if (count <= 16)
-            networkSessions(grouped.times.data() + i, count, origin, emit);
+            networkSessions(grouped.times.data() + i, count, eventBase, emit);
         else
-            cells.sessions(grouped.times.data() + i, count, origin, emit);
+            cells.sessions(grouped.times.data() + i, count, eventBase, emit);
         const unsigned n = sessions.size();
         const uint64_t span = uint64_t(sessions.back().start) - uint64_t(sessions.front().start);
         constexpr unsigned shortLimit = 64;
@@ -528,7 +541,9 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
         for (auto &session : sessions) {
             const auto start = session.start, last = session.last;
             const uint32_t eventCount = session.count;
-            const int32_t day = utcDay(start);
+            int32_t day;
+            if constexpr(Compact) day=static_cast<int32_t>(frame.calendarDay+static_cast<int64_t>(start/uint32_t(dayMs)));
+            else day=utcDay(start);
             if (daily == nullptr || row.day != day) {
                 if (daily) result.users.append(row);
                 for (uint32_t c : touched) categoryRevenue[c] = 0;
@@ -628,4 +643,10 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
         }
         clickBegin = group.clickEnd;
     }
+}
+
+void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t campaignCount, int64_t origin,int64_t end) {
+    const CalendarFrame frame=CalendarFrame::from(origin,end);
+    if(frame.usable)aggregateMode<true>(bucket,result,categoryCount,campaignCount,origin,frame);
+    else aggregateMode<false>(bucket,result,categoryCount,campaignCount,origin,frame);
 }
