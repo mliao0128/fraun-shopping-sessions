@@ -256,10 +256,10 @@ class Slab {
     char* next = nullptr;
     char* end = nullptr;
 public:
-    void* take() {
-        if (!left) left = recycled.takeBatch(local.data(),local.size());
-        if (left) return local[--left];
-        if (next == end) {
+    // Raw event readers run before any ID blocks become recyclable.
+    // Reserve consecutive logical blocks only after a stream fills its first.
+    void* fresh(size_t bytes) {
+        if (!next || size_t(end-next) < bytes) {
             constexpr size_t huge = 2u << 20;
             void* raw = mmap(nullptr, extentBytes + huge, PROT_READ | PROT_WRITE,
                              MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
@@ -269,17 +269,23 @@ public:
             madvise(next, extentBytes, MADV_HUGEPAGE);
         }
         void* block = next;
-        next += blockBytes;
+        next += bytes;
         return block;
+    }
+    void* take() {
+        if (!left) left = recycled.takeBatch(local.data(),local.size());
+        if (left) return local[--left];
+        return fresh(blockBytes);
     }
 };
 
 template<class T> constexpr size_t rowsPerBlock = blockBytes / sizeof(T);
+constexpr size_t eventRunBlocks = 4;
 
 // Radix scatter with software write combining: rows collect in a small
 // per-partition buffer and leave as whole cache lines with non-temporal
 // stores, so the destination is never read and the open set stays in L2.
-template<class T, size_t Group> class Scatter {
+template<class T, size_t Group, bool adjacent = false> class Scatter {
     static_assert(std::is_trivially_copyable_v<T> && blockBytes % sizeof(T) == 0);
     static_assert((Group * sizeof(T)) % 64 == 0 && rowsPerBlock<T> % Group == 0);
     struct alignas(64) Buffer { T rows[Group]; };
@@ -287,13 +293,26 @@ template<class T, size_t Group> class Scatter {
     std::vector<Buffer> buffers;
     // Keep the active block address by the row count. Most group flushes
     // can now reach their cache line without traversing the block chain.
-    struct Cursor { T* active = nullptr; uint32_t count = 0; };
+    struct Cursor { T* active = nullptr; uint32_t count = 0, following = 0; };
     std::vector<Cursor> cursors;
     T* destination(size_t part, size_t start) {
         const size_t offset = start % rowsPerBlock<T>;
         auto& cursor = cursors[part];
         if (!offset) {
-            cursor.active = static_cast<T*>(slab.take());
+            if constexpr (adjacent) {
+                if (cursor.following) {
+                    cursor.active += rowsPerBlock<T>;
+                    --cursor.following;
+                } else if (start != 0) {
+                    constexpr size_t run = eventRunBlocks;
+                    cursor.active = static_cast<T*>(slab.fresh(run * blockBytes));
+                    cursor.following = run - 1;
+                } else {
+                    cursor.active = static_cast<T*>(slab.take());
+                }
+            } else {
+                cursor.active = static_cast<T*>(slab.take());
+            }
             blocks[part].push_back(cursor.active);
         }
         return cursor.active + offset;
@@ -338,10 +357,21 @@ public:
     T& at(size_t part, size_t index) { return blocks[part][index / rowsPerBlock<T>][index % rowsPerBlock<T>]; }
     template<class F> void pieces(size_t part, F&& visit) {
         size_t remaining = cursors[part].count;
-        for (T* block : blocks[part]) {
-            const size_t count = std::min(remaining, rowsPerBlock<T>);
-            visit(block, count);
-            remaining -= count;
+        if constexpr (adjacent) {
+            // Block zero was reserved alone. Every subsequent group of four
+            // logical blocks comes from one contiguous physical allocation.
+            for (size_t b = 0; remaining;) {
+                const size_t count = std::min(remaining, (b ? eventRunBlocks : 1) * rowsPerBlock<T>);
+                visit(blocks[part][b],count);
+                remaining -= count;
+                b += b ? eventRunBlocks : 1;
+            }
+        } else {
+            for (T* block : blocks[part]) {
+                const size_t count=std::min(remaining,rowsPerBlock<T>);
+                visit(block,count);
+                remaining-=count;
+            }
         }
     }
 };
@@ -393,7 +423,7 @@ static_assert(sizeof(IdRecord) == 16);
 
 struct Reader {
     Slab slab;
-    Scatter<Event, 16> events;
+    Scatter<Event, 16, true> events;
     Scatter<Click, 8> clicks;
     Scatter<IdRecord, 16> ids;
     std::vector<Extended> slow;
@@ -1174,7 +1204,7 @@ void deduplicate(size_t shard, int64_t origin, const Source &source,
 // so moving it cannot disturb the flags or cause a second donor move.
 size_t compactCancelled(Event* rows, size_t count, const uint8_t* cancelled) {
     constexpr size_t lanes = 32;
-    std::array<uint32_t, (rowsPerBlock<Event> + lanes - 1) / lanes> masks;
+    std::array<uint32_t, (eventRunBlocks * rowsPerBlock<Event> + lanes - 1) / lanes> masks;
     size_t removed = 0;
     for (size_t offset = 0; offset < count; offset += lanes) {
         const auto flags = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(cancelled + offset));
