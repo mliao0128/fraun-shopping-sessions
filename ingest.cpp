@@ -1178,7 +1178,6 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     parallel(readerCount, readerCount, [&](size_t r) {
         readers[r] = std::make_unique<Reader>(parts, idShards);
         Reader& reader = *readers[r];
-        ParsedEvent event;
         Click click;
         for (;;) {
             const size_t i = next.fetch_add(1, std::memory_order_relaxed);
@@ -1214,22 +1213,26 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 // consume the CSV. Each ID record is emitted together with its locator.
                 struct PendingShopper { ParsedEvent event; uint64_t offset, hash; };
                 constexpr unsigned depth = 8;
-                std::array<PendingShopper, depth> pending;
+                // The next physical slot is always separate from the eight live
+                // lookups, so a decoder can write into its final storage directly.
+                constexpr unsigned slots = 2 * depth;
+                std::array<PendingShopper, slots> pending;
                 unsigned queued = 0;
                 auto flush = [&](PendingShopper& item) {
                     item.event.user = Key::internHashedShopper(item.event.user.borrowed(), item.hash);
                     storeEvent(item.event, item.offset, item.hash);
                 };
-                auto accept = [&](const char *line) {
+                auto accept = [&](const char *line, ParsedEvent& event) {
                     const uint64_t offset = base + reinterpret_cast<uintptr_t>(line);
                     const uint64_t hash = event.valid ? event.user.hash() : 0;
                     if (event.valid && event.user.external() && Key::shopperSlots) {
                         const auto width = event.user.borrowed().size();
                         if (width > 9 && width <= 48) {
                             __builtin_prefetch(&Key::shopperSlots[hash & Key::shopperMask], 0, 3);
-                            auto& item = pending[queued % depth];
-                            if (queued >= depth) flush(item);
-                            item = {event, offset, hash};
+                            if (queued >= depth) flush(pending[(queued - depth) % slots]);
+                            auto& item = pending[queued % slots];
+                            item.offset = offset;
+                            item.hash = hash;
                             ++queued;
                             return;
                         }
@@ -1243,13 +1246,15 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 auto drainGeneric = [&] {
                     for (unsigned j = 0; j < genericCount; ++j) {
                         auto line = generic[j];
-                        if (genericEvent(line, ctx, event)) accept(line.data());
+                        auto& decoded = pending[queued % slots].event;
+                        if (genericEvent(line, ctx, decoded)) accept(line.data(),decoded);
                     }
                     genericCount = 0;
                 };
                 auto emit = [&](PreparedMasks& masks) {
                     if (masks.head) {
-                        if (parsePrepared(masks, ctx, event)) accept(masks.line.data());
+                        auto& decoded = pending[queued % slots].event;
+                        if (parsePrepared(masks, ctx, decoded)) accept(masks.line.data(),decoded);
                         return;
                     }
                     generic[genericCount++] = masks.line;
@@ -1266,7 +1271,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     emit(queue[j % ahead]);
                 drainGeneric();
                 for (unsigned j = queued - std::min(queued, depth); j < queued; ++j)
-                    flush(pending[j % depth]);
+                    flush(pending[j % slots]);
             }
         }
         reader.events.finish();
