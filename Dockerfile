@@ -16,10 +16,9 @@ COPY *.cpp *.hpp build.sh training.py ./
 RUN ARCH_FLAGS="$ARCH_FLAGS" sh build.sh /usr/local/bin/shopping-sessions && strip /usr/local/bin/shopping-sessions
 
 FROM docker.io/library/debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends libjemalloc2 && rm -rf /var/lib/apt/lists/*
-ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
+RUN apt-get update && apt-get install -y --no-install-recommends libmimalloc2.0 && rm -rf /var/lib/apt/lists/*
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libmimalloc.so.2
 COPY --from=build /usr/local/bin/shopping-sessions /usr/local/bin/shopping-sessions
-ENV MALLOC_CONF=thp:always,narenas:1
 ENV NCPU=8
 USER 1000:1000
 ENTRYPOINT ["/usr/local/bin/shopping-sessions"]
