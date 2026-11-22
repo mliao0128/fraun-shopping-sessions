@@ -397,6 +397,24 @@ struct Reader {
     Scatter<Click, 8> clicks;
     Scatter<IdRecord, 16> ids;
     std::vector<Extended> slow;
+    std::vector<size_t> cancelBases;
+    std::vector<uint8_t> cancelled;
+    void prepareCancellations(size_t partitions) {
+        cancelBases.resize(partitions);
+        size_t total = 0;
+        for (size_t bucket = 0; bucket < partitions; ++bucket) {
+            cancelBases[bucket] = total;
+            total += events.count(bucket);
+        }
+        // Give the final partial vector a bounded, readable tail.
+        cancelled.resize(total + 31);
+    }
+    void cancel(size_t bucket, size_t index) {
+        // Every exact losing occurrence is distinct, including when its
+        // previous winner is displaced. Workers never write the same byte.
+        cancelled[cancelBases[bucket] + index] = 0xff;
+    }
+
     static constexpr uint32_t witnessLimit = 1u << 28;
     bool rawOverflow = false;
     uint64_t directBase = 0;
@@ -946,10 +964,10 @@ int64_t arrival(uint64_t info, const Reader& reader, const Source& source, int64
 void invalidate(uint64_t info, Reader& reader) {
     const uint32_t low = info;
     if (low < sourceTag) {
-        reader.events.at(low >> indexBits, low & (indexLimit - 1)).person = Key{};
+        reader.cancel(low >> indexBits, low & (indexLimit - 1));
     } else if (low >= slowTag) {
         const auto& row = reader.slow[specialValue(info)];
-        reader.events.at(row.bucket,row.index).person = Key{};
+        reader.cancel(row.bucket,row.index);
     }
 }
 
@@ -1151,6 +1169,37 @@ void deduplicate(size_t shard, int64_t origin, const Source &source,
         }
     }
 }
+// A removed event never reaches the identity table. Compact an entire source
+// block once. A donor comes from the suffix beyond the final retained count,
+// so moving it cannot disturb the flags or cause a second donor move.
+size_t compactCancelled(Event* rows, size_t count, const uint8_t* cancelled) {
+    constexpr size_t lanes = 32;
+    std::array<uint32_t, (rowsPerBlock<Event> + lanes - 1) / lanes> masks;
+    size_t removed = 0;
+    for (size_t offset = 0; offset < count; offset += lanes) {
+        const auto flags = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(cancelled + offset));
+        uint32_t mask = static_cast<uint32_t>(_mm256_movemask_epi8(flags));
+        const size_t remaining = count - offset;
+        if (remaining < lanes) mask &= (uint32_t{1} << remaining) - 1;
+        masks[offset / lanes] = mask;
+        removed += std::popcount(mask);
+    }
+    if (!removed) return count;
+    const size_t kept = count - removed;
+    size_t donor = count;
+    for (size_t offset = 0; offset < kept; offset += lanes) {
+        uint32_t holes = masks[offset / lanes];
+        const size_t remaining = kept - offset;
+        if (remaining < lanes) holes &= (uint32_t{1} << remaining) - 1;
+        while (holes) {
+            const size_t index = offset + std::countr_zero(holes);
+            do { --donor; } while (cancelled[donor]);
+            rows[index] = rows[donor];
+            holes &= holes - 1;
+        }
+    }
+    return kept;
+}
 template<class T, size_t N, class Reject>
 void correct(T* rows, size_t count, size_t bucket, unsigned shift,
              const Identities& identities, Scatter<T,N>& moved, Pieces<T>& kept, Reject reject) {
@@ -1333,6 +1382,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         }
         reader.events.finish();
         reader.ids.finish();
+        reader.prepareCancellations(parts);
     });
     lap("parse");
 
@@ -1422,9 +1472,12 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
             const size_t p = nextPart.fetch_add(1, std::memory_order_relaxed);
             if (p >= parts) break;
             for (auto& reader : readers) {
+                size_t cancelOffset = reader->cancelBases[p];
                 reader->events.pieces(p, [&](Event* rows, size_t n) {
-                    correct(rows,n,p,shift,ctx.identities,router.events,out[p].events,
-                            [](const Event& row) { return row.person.empty(); });
+                    const size_t keep = compactCancelled(rows, n, reader->cancelled.data()+cancelOffset);
+                    cancelOffset += n;
+                    correct(rows,keep,p,shift,ctx.identities,router.events,out[p].events,
+                            [](const Event&) { return false; });
                 });
                 reader->clicks.pieces(p, [&](Click* rows, size_t n) {
                     correct(rows,n,p,shift,ctx.identities,router.clicks,out[p].clicks,
@@ -1441,7 +1494,10 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
             router->clicks.pieces(b, [&](const Click* rows, size_t n) { out[b].clicks.add(rows, n); });
         }
     // The blocks outlive this function: buckets point into them.
-    for (auto& reader : readers) (void)reader.release();
+    for (auto& reader : readers) {
+        std::vector<uint8_t>().swap(reader->cancelled);
+        (void)reader.release();
+    }
     for (auto& router : routers) (void)router.release();
     lap("route");
 }
