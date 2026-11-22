@@ -136,6 +136,15 @@ std::vector<InputChunk> chunks(const std::vector<std::string_view>& files, unsig
     return result;
 }
 
+// Input chunks start at page-aligned offsets in file mappings. Request
+// translations for the reader's own range immediately before scanning it.
+inline void populateChunk(const InputChunk& c) {
+#ifdef MADV_POPULATE_READ
+    if (c.end - c.begin >= (256u << 10))
+        (void)madvise(const_cast<char*>(c.file.data() + c.begin), c.end - c.begin, MADV_POPULATE_READ);
+#endif
+}
+
 template<class F> void chunkLines(const InputChunk& chunk, F&& visit) {
     const char* bytes = chunk.file.data();
     const size_t fileEnd = chunk.file.size();
@@ -1102,6 +1111,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
             if (i >= source.eventSpans)
                 break;
             const InputChunk& span = source.spans[i];
+            if (ctx.populateInput) populateChunk(span);
             if (i < source.eventSpans) {
                 const uint64_t base = spanStart[i] - reinterpret_cast<uintptr_t>(span.file.data());
                 constexpr unsigned ahead = 1;
@@ -1161,7 +1171,9 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         recycled.give(spent);
     };
     auto processClicks = [&](size_t part, Reader &reader) {
-        chunkLines(source.spans[source.eventSpans + part], [&](std::string_view line) {
+        const auto& span = source.spans[source.eventSpans + part];
+        if (ctx.populateInput) populateChunk(span);
+        chunkLines(span, [&](std::string_view line) {
             Click row;
             if (!parseClick(line, ctx, row))
                 return;

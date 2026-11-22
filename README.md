@@ -4,7 +4,7 @@ A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the moun
 
 Event IDs are opaque byte strings. Readers retain short IDs inline and borrow longer IDs from the mapped CSV files. Each reader records the hash beside its long IDs and routes them to the same shard as other copies. A shard checks equality on the original bytes before choosing the earliest revision, including revisions whose event fields are invalid. Reader threads can therefore record long IDs independently.
 
-On Linux the solver reads the header and midpoint of the first large input mapping. If either read incurs a major page fault, it requests sequential read-ahead on large input files. The kernel can then fetch the next pages while the workers process the current records.
+On Linux the solver reads the header and midpoint of the first large input mapping. If either read incurs a major page fault, it requests sequential read-ahead on large input files. Each CSV worker then asks the kernel to populate the pages for its next chunk before scanning it. The solver keeps those mappings available while later stages compare borrowed IDs. It can read the same files normally if the kernel does not support the page advice.
 
 ## Build and run
 

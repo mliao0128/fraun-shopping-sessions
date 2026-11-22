@@ -1,3 +1,4 @@
+#include <optional>
 #include "shared.hpp"
 
 #include <chrono>
@@ -87,7 +88,7 @@ bool inputNeededIO(const char* data, size_t size) {
 struct Mapping {
     const char* data = nullptr;
     size_t size = 0;
-    explicit Mapping(const fs::path& path) {
+    Mapping(const fs::path& path, std::optional<bool>& readAhead) {
         int fd = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
         if (fd < 0) throw std::runtime_error("Cannot open " + path.string());
         struct stat info{};
@@ -98,8 +99,8 @@ struct Mapping {
         size = static_cast<size_t>(info.st_size);
         if (size) data = static_cast<const char*>(mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0));
         if (data != MAP_FAILED && size >= (1u << 20)) {
-            static const bool useReadahead = inputNeededIO(data, size);
-            if (useReadahead) posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL);
+            if (!readAhead.has_value()) readAhead = inputNeededIO(data, size);
+            if (*readAhead) posix_fadvise(fd, 0, 0, POSIX_FADV_SEQUENTIAL);
         }
         close(fd);
         if (data == MAP_FAILED) throw std::runtime_error("Cannot map " + path.string());
@@ -108,9 +109,10 @@ struct Mapping {
     Mapping(const Mapping&) = delete;
 };
 struct Inputs {
+    std::optional<bool> readAhead;
     std::vector<std::unique_ptr<Mapping>> maps;
     SV file(const fs::path& path) {
-        auto& m = maps.emplace_back(std::make_unique<Mapping>(path));
+        auto& m = maps.emplace_back(std::make_unique<Mapping>(path, readAhead));
         return m->size ? SV(m->data, m->size) : SV{};
     }
     std::vector<SV> folder(const fs::path& path) {
@@ -236,6 +238,7 @@ int main(int argc, char** argv) try {
     }
 
     auto clicks = inputs.folder(data / "clicks");
+    ctx.populateInput = inputs.readAhead.value_or(false);
 
     // More buckets balance large people across workers. Keep small datasets
     // compact, since each active bucket accumulates its own campaign totals.

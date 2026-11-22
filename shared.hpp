@@ -398,6 +398,7 @@ struct Identities {
 };
 
 struct Context {
+    bool populateInput = false;
     struct ExecutionSettings {
         unsigned userBits, idBits, chunkBits, linkWorkers, clickLanes;
     };
