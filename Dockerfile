@@ -1,7 +1,7 @@
 FROM docker.io/library/gcc:15-bookworm@sha256:9ca91b05c7b07d2979f16413e8b2cd6ec8a7c80ffca4121ccab0aeba33f90460 AS toolchain
 RUN apt-get update && apt-get install -y --no-install-recommends python3 liblz4-dev && rm -rf /var/lib/apt/lists/*
 ADD https://www.joinbuilders.org/buildathon/tracks/shopping-sessions/files/generator.zip /tmp/profile-generator.zip
-RUN echo "13724cadbac5a99d847e27cea911cd2e338ff972b46c2039da87452011bb101e  /tmp/profile-generator.zip" | sha256sum -c - && python3 -m zipfile -e /tmp/profile-generator.zip /opt/profile-source
+RUN echo "78f973f75d14b48e792628284f19c75de71fa597d20952e16a9ced93c78bee4a  /tmp/profile-generator.zip" | sha256sum -c - && python3 -m zipfile -e /tmp/profile-generator.zip /opt/profile-source
 
 FROM docker.io/library/rust:1.85.1-slim-bookworm AS generator
 WORKDIR /work

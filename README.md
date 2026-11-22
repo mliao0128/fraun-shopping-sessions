@@ -2,6 +2,8 @@
 
 A C++20 entry for the Databricks Shopping Sessions Buildathon. It reads the mounted CSV files, resolves identities, and writes `user_daily` and `campaign_daily` as Parquet. This revision chooses the number of user and event-ID partitions, reader chunk size, and click workers from the input byte count. Fraun selected those settings offline using complete solver runs on public-generator inputs. For groups of four to eight events, a timestamp check can identify one or two sessions directly. Groups that need more work use the existing sort.
 
+Event IDs are opaque byte strings. Readers retain short IDs inline and borrow longer IDs from the mapped CSV files. Each reader records the hash beside its long IDs and routes them to the same shard as other copies. A shard checks equality on the original bytes before choosing the earliest revision, including revisions whose event fields are invalid. Reader threads can therefore record long IDs independently.
+
 On Linux the solver reads the header and midpoint of the first large input mapping. If either read incurs a major page fault, it requests sequential read-ahead on large input files. The kernel can then fetch the next pages while the workers process the current records.
 
 ## Build and run
