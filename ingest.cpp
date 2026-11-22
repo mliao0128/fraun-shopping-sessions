@@ -781,7 +781,78 @@ template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
         p = end + 1;
     }
 }
-inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, ParsedEvent &out, Reader& reader) {
+// Four already validated CSV layouts can share the same semantic pass when
+// event and guaranteed UTC arrival have the same real calendar date.
+struct UtcVisit {
+    const char *line, *event, *arrival, *kind;
+    std::string_view id, shopper;
+};
+inline uint64_t visitWord(const char* p) {
+    uint64_t v;
+    std::memcpy(&v,p,8);
+    return v;
+}
+inline uint32_t visitKind(const char* p) {
+    uint32_t v;
+    std::memcpy(&v,p,4);
+    return v;
+}
+template<bool Check> inline uint32_t fourClocks(__m256i raw, uint64_t (&out)[4]) {
+    const auto digits=_mm256_sub_epi8(raw,_mm256_set1_epi64x(0x30303a30303a3030LL));
+    const auto order=_mm_setr_epi8(0,1,3,4,6,7,-1,-1,8,9,11,12,14,15,-1,-1);
+    const auto fields=_mm256_shuffle_epi8(digits,_mm256_broadcastsi128_si256(order));
+    const auto pairs=_mm256_maddubs_epi16(fields,_mm256_set1_epi16(0x010a));
+    const auto partial=_mm256_madd_epi16(pairs,_mm256_set1_epi64x(0x00000001003c0e10LL));
+    const auto result=_mm256_add_epi32(partial,_mm256_srli_epi64(partial,32));
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(out),result);
+    if constexpr (!Check) return UINT32_MAX;
+    const auto excess=_mm256_subs_epu8(digits,_mm256_set1_epi64x(0x0905000905000902LL));
+    const auto badHour=_mm256_and_si256(_mm256_cmpgt_epi16(pairs,_mm256_set1_epi16(23)),
+                                         _mm256_set1_epi64x(0xff));
+    const auto ok=_mm256_cmpeq_epi8(_mm256_or_si256(excess,badHour),_mm256_setzero_si256());
+    return static_cast<uint32_t>(_mm256_movemask_epi8(ok));
+}
+template<class Accept> inline void consumeFour(std::array<UtcVisit,4>& rows, unsigned count,
+                                             const Context& ctx,Reader& reader,Accept& accept) {
+    if (!count) return;
+    for(unsigned i=count;i<4;++i)rows[i]=rows[0];
+    auto load=[&]<bool Arrival>() {
+        auto word=[&](unsigned i) {return visitWord((Arrival?rows[i].arrival:rows[i].event)+11);};
+        return _mm256_set_epi64x(word(3),word(2),word(1),word(0));
+    };
+    uint64_t eventSeconds[4],arrivalSeconds[4];
+    const uint32_t ok=fourClocks<true>(load.template operator()<false>(),eventSeconds);
+    fourClocks<false>(load.template operator()<true>(),arrivalSeconds);
+    const auto kinds=_mm_set_epi32(visitKind(rows[3].kind),visitKind(rows[2].kind),
+                                   visitKind(rows[1].kind),visitKind(rows[0].kind));
+    const auto known=_mm_or_si128(_mm_cmpeq_epi32(kinds,_mm_set1_epi32(0x77656976)),
+                                  _mm_cmpeq_epi32(kinds,_mm_set1_epi32(0x74726163)));
+    const unsigned validKinds=_mm_movemask_ps(_mm_castsi128_ps(known));
+    for(unsigned i=0;i<count;++i) {
+        const auto& row=rows[i];
+        ParsedEvent out;
+        prepareIdentity(row.id,reader,out);
+        out.valid=false;
+        out.arrival=invalidTime;
+        if (((ok>>(8*i))&255)==255) {
+            const int64_t day=midnight(row.arrival);
+            if(day!=invalidTime) {
+                const int64_t ts=day+1000LL*uint32_t(eventSeconds[i]);
+                if(ts>=ctx.start && ts<ctx.end) {
+                    out.arrival=day+1000LL*uint32_t(arrivalSeconds[i]);
+                    if(validKinds&(1u<<i)) {
+                        out.user=row.shopper.size()==9 ? Key::nine<'u'>(row.shopper.data())
+                                                       : Key::from(row.shopper);
+                        out.row={ts,0,0};
+                        out.valid=true;
+                    }
+                }
+            }
+        }
+        accept(out,row.line);
+    }
+}
+template<class Defer> inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, ParsedEvent &out, Reader& reader, Defer& defer) {
     auto s = packed.line;
     const size_t n = s.size();
     const char *p = s.data();
@@ -804,13 +875,19 @@ inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, Parse
         return false;
     if (!h.idLen)
         return false;
+    unsigned e2 = 30u + std::countr_zero(mc), a = e2 + 1 + t.quoted;
+    const char *tail = p + n - 30;
+    const char *ep=p+h.event,*ap=p+a;
+    if (t.kindLen==4 && h.userLen && t.productLen && e2-h.event-h.quoted==20 &&
+        n-30+t.arrivalEnd-a==20 && ep[19]=='Z' && !std::memcmp(ep,ap,11)) {
+        defer(UtcVisit{p,ep,ap,tail+t.kind,{p+h.id,h.idLen},{p+h.user,h.userLen}});
+        return false;
+    }
     prepareIdentity({p + h.id, h.idLen}, reader, out);
     out.valid = false;
     out.arrival = invalidTime;
     if (!t.productLen || !h.userLen)
         return true;
-    unsigned e2 = 30u + std::countr_zero(mc), a = e2 + 1 + t.quoted;
-    const char *tail = p + n - 30;
     int64_t ts;
     if (!eventTimes({p + h.event, e2 - h.event - h.quoted}, {p + a, n - 30 + t.arrivalEnd - a}, ctx, ts,
                     out.arrival))
@@ -1309,9 +1386,22 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     }
                     genericCount = 0;
                 };
+                std::array<UtcVisit,4> visits;
+                unsigned visitCount=0;
+                auto completeVisit=[&](const ParsedEvent& out,const char* line) {
+                    event=out;
+                    accept(line);
+                };
+                auto defer=[&](const UtcVisit& row) {
+                    visits[visitCount++]=row;
+                    if(visitCount==visits.size()) {
+                        consumeFour(visits,visitCount,ctx,reader,completeVisit);
+                        visitCount=0;
+                    }
+                };
                 auto emit = [&](PreparedMasks& masks) {
                     if (masks.head) {
-                        if (parsePrepared(masks, ctx, event, reader)) accept(masks.line.data());
+                        if (parsePrepared(masks, ctx, event, reader, defer)) accept(masks.line.data());
                         return;
                     }
                     generic[genericCount++] = masks.line;
@@ -1327,6 +1417,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 for (unsigned j = cursor - std::min(cursor, ahead); j < cursor; ++j)
                     emit(queue[j % ahead]);
                 drainGeneric();
+                consumeFour(visits,visitCount,ctx,reader,completeVisit);
                 for (unsigned j = queued - std::min(queued, depth); j < queued; ++j)
                     flush(pending[j % depth]);
             }
