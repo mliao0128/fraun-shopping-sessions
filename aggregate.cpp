@@ -452,7 +452,55 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
         bool narrow = grouped.circular && n <= shortLimit && group.clickEnd - clickBegin >= 1;
         const bool bitset =
             (group.clickEnd - clickBegin >= 32 && n <= maxSessions && span <= UINT32_MAX);
-        if (narrow) {
+        const bool laneWinners = narrow && n <= 8;
+        alignas(32) uint32_t winnerCampaign[8];
+        if (laneWinners) {
+            for (unsigned k = 0; k < n; ++k) relStarts[k] = uint32_t(sessions[k].start);
+            const auto times = _mm256_load_si256(reinterpret_cast<const __m256i*>(relStarts.data()));
+            const auto horizon = _mm256_set1_epi32(7 * dayMs);
+            auto nearest = _mm256_set1_epi32(7 * dayMs + 1);
+            auto campaigns = _mm256_setzero_si256();
+            auto ambiguous = _mm256_setzero_si256();
+            const unsigned active = (1u << n) - 1;
+            for (size_t j = clickBegin; j < group.clickEnd; ++j) {
+                const auto& click = clicks[j];
+                const auto distance = _mm256_sub_epi32(times, _mm256_set1_epi32(uint32_t(click.ts)));
+                const auto eligible = _mm256_cmpeq_epi32(_mm256_max_epu32(distance, horizon), horizon);
+                const unsigned mask = unsigned(_mm256_movemask_ps(_mm256_castsi256_ps(eligible))) & active;
+                if (!mask) continue;
+                auto& covered = narrowMask[click.campaign];
+                if (!covered) touchedClicks.push_back(click.campaign);
+                covered |= mask;
+                const auto newNearest = _mm256_min_epu32(nearest, distance);
+                const auto tied = _mm256_cmpeq_epi32(distance, nearest);
+                auto choose = _mm256_andnot_si256(tied, _mm256_cmpeq_epi32(distance, newNearest));
+                ambiguous = _mm256_or_si256(_mm256_andnot_si256(choose, ambiguous),
+                                            _mm256_and_si256(tied, eligible));
+                campaigns = _mm256_blendv_epi8(campaigns, _mm256_set1_epi32(click.campaign), choose);
+                nearest = newNearest;
+            }
+            _mm256_store_si256(reinterpret_cast<__m256i*>(winnerCampaign), campaigns);
+            unsigned ties = unsigned(_mm256_movemask_ps(_mm256_castsi256_ps(ambiguous))) & active;
+            if (ties) {
+                alignas(32) uint32_t ages[8];
+                _mm256_store_si256(reinterpret_cast<__m256i*>(ages), nearest);
+                while (ties) {
+                    const unsigned first = std::countr_zero(ties);
+                    const int64_t target = sessions[first].start - ages[first];
+                    const TimedClick* best = nullptr;
+                    for (size_t j = clickBegin; j < group.clickEnd; ++j) {
+                        const auto& click = clicks[j];
+                        if (click.ts == target && (!best || click.id < best->id)) best = &click;
+                    }
+                    for (unsigned k = first; k < n; ++k) {
+                        if ((ties & (1u << k)) && sessions[k].start - ages[k] == target) {
+                            winnerCampaign[k] = best->campaign;
+                            ties &= ~(1u << k);
+                        }
+                    }
+                }
+            }
+        } else if (narrow) {
             const int64_t base = sessions.front().start;
             std::fill_n(latest.begin(), n, nullptr);
             for (unsigned j = 0; j < n; ++j)
@@ -557,7 +605,9 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
             if (hasClicks) {
                 session.dayIndex = spans.size() - 1;
                 spans.back().end = ++nStarts;
-                if (bitset || narrow) {
+                if (laneWinners) {
+                    winner = winnerCampaign[nStarts - 1];
+                } else if (bitset || narrow) {
                     if (latest[nStarts - 1])
                         winnerClick = latest[nStarts - 1];
                     if (winnerClick && winnerClick->ts >= start - 7 * dayMs)
