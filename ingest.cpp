@@ -1200,14 +1200,8 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         reader.clicks.finish();
     });
     lap("dedup");
-    // Drop the file-backed PTEs after the last source reread. Borrowed keys
-    // remain valid because the read-only mappings themselves stay in place.
-    std::jthread releaseInput([&] {
-        for (const auto *files : {&eventFiles, &clickFiles})
-            for (auto f : *files)
-                if (!f.empty())
-                    madvise(const_cast<char *>(f.data()), f.size(), MADV_DONTNEED);
-    });
+    // Borrowed variable-width shopper and click spellings are still read by
+    // canonical routing, session attribution and the Parquet writer.
     awaitIdentities();
     lap("await-links");
 
@@ -1241,6 +1235,5 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     // The blocks outlive this function: buckets point into them.
     for (auto& reader : readers) (void)reader.release();
     for (auto& router : routers) (void)router.release();
-    releaseInput.join();
     lap("route");
 }
