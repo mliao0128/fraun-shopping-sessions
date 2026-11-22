@@ -67,6 +67,17 @@ struct Key {
         const size_t n = s.size();
         if (n < 8 || n > 64) return std::hash<std::string_view>{}(s);
         const auto seed = _mm_set_epi64x(INT64_C(0x2645ff95aabc9b37), int64_t(n));
+        // Three overlapping loads cover every byte between 33 and 48.
+        // Mix both ends independently, then mix their result across lanes.
+        if (n > 32 && n <= 48) {
+            const auto a = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data()));
+            const auto b = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data()+16));
+            const auto c = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data()+n-16));
+            const auto x = _mm_aesenc_si128(a, b);
+            const auto y = _mm_aesenc_si128(c, seed);
+            const auto mixed = _mm_aesenc_si128(_mm_aesenc_si128(x, y), seed);
+            return static_cast<uint64_t>(_mm_cvtsi128_si64(mixed));
+        }
         __m128i first, last;
         if (n > 32) {
             auto a = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data()));
