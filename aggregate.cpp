@@ -55,27 +55,31 @@ void sortSpan(Iterator begin, Iterator end, Less less) {
 
 // The caller already partitions by the low hash bits. Use the high bits here
 // so a whole bucket does not fall into the same few slots again.
-class PersonIndex {
-    std::vector<uint32_t> slots;
+struct NarrowIndexFull {};
+template<class Slot> class PersonIndex {
+    static constexpr Slot empty = std::numeric_limits<Slot>::max();
+    std::vector<Slot> slots;
     std::vector<Group>& groups;
 
     size_t slot(Key person, uint64_t hash) const {
         size_t pos = uint32_t(hash >> 32) & (slots.size() - 1);
-        while (slots[pos] != absent && !(groups[slots[pos]].person == person))
+        while (slots[pos] != empty && !(groups[slots[pos]].person == person))
             pos = (pos + 1) & (slots.size() - 1);
         return pos;
     }
 
 public:
-    PersonIndex(std::vector<Group>& groups, size_t rows) : slots(std::max<size_t>(16, std::bit_ceil(rows / 6 + 1)), absent), groups(groups) {}
+    PersonIndex(std::vector<Group>& groups, size_t rows) : slots(std::max<size_t>(16, std::bit_ceil(rows / 6 + 1)), empty), groups(groups) {}
 
-    uint32_t lookup(Key person, uint64_t h) const { return slots[slot(person, h)]; }
+    uint32_t lookup(Key person, uint64_t h) const { auto id = slots[slot(person,h)];return id == empty ? absent : static_cast<uint32_t>(id); }
 
     uint32_t add(Key person, uint64_t h) {
         size_t pos = slot(person, h);
-        if (slots[pos] != absent) return slots[pos];
+        if (slots[pos] != empty) return slots[pos];
+        if constexpr (sizeof(Slot) < sizeof(uint32_t))
+            if (groups.size() >= empty) throw NarrowIndexFull{};
         if (groups.size() * 10 >= slots.size() * 7) {
-            slots.assign(slots.size() * 2, absent);
+            slots.assign(slots.size() * 2, empty);
             for (uint32_t i = 0; i < groups.size(); ++i)
                 slots[slot(groups[i].person, groups[i].person.hash())] = i;
             pos = slot(person, h);
@@ -98,13 +102,13 @@ struct Grouped {
     bool wide = false, circular = false;
 };
 
-void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
+template<class Slot> void countAndGroup(const Bucket& bucket, Grouped& out, int64_t origin) {
     if (bucket.events.size >= absent || bucket.clicks.size >= absent)
         throw std::runtime_error("Too many rows in one bucket");
     auto& groups = out.groups;
     groups.clear();
     out.purchases.clear();
-    PersonIndex index(groups,bucket.events.size);
+    PersonIndex<Slot> index(groups,bucket.events.size);
     out.pending.resize(bucket.events.size);
     uint64_t usedBits = 0;
     size_t at = 0;
@@ -363,7 +367,11 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
     // Scratch space is kept per thread: buckets are alike in size, and reusing
     // it spares the allocator and the kernel a round trip per bucket.
     static thread_local Grouped grouped;
-    groupRows(bucket, grouped, origin);
+    try {
+        countAndGroup<uint16_t>(bucket, grouped, origin);
+    } catch (const NarrowIndexFull&) {
+        countAndGroup<uint32_t>(bucket, grouped, origin);
+    }
     result.startBucket(bucket.events.size);
     const auto &groups = grouped.groups;
     const auto& purchases = grouped.purchases;
