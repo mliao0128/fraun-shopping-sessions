@@ -965,6 +965,9 @@ void deduplicate(size_t shard, int64_t origin, const Source &source,
     static thread_local std::vector<FingerGroup> groups;
     const size_t cap = std::max<size_t>(16, std::bit_ceil(dir.count + dir.count / 4 + 1));
     groups.assign(cap / 16, FingerGroup{});
+    struct Match {uint32_t slot, ref;};
+    static thread_local std::vector<Match> matches;
+    matches.clear();
     const uint32_t mask = groups.size() - 1;
     const Reader *previousReader = nullptr;
     const uint32_t *externalHashes = nullptr;
@@ -996,8 +999,9 @@ void deduplicate(size_t shard, int64_t origin, const Source &source,
                         unsigned k = std::countr_zero(unsigned(hits));
                         uint32_t old = g.ref(k);
                         if (dir.get(old).id == block.rows[first + j].id) {
-                            if (dir.earlier(ref, old, source, origin))
-                                g.set(k, ref);
+                            // Until replay every key keeps its first representative.
+                            // Equal IDs can have different pointers but identical bytes.
+                            matches.push_back({pos * 16 + k, ref});
                             goto complete;
                         }
                         hits &= hits - 1;
@@ -1013,6 +1017,11 @@ void deduplicate(size_t shard, int64_t origin, const Source &source,
             complete:;
             }
         }
+    }
+    for (auto m:matches) {
+        auto &g=groups[m.slot / 16];
+        const auto lane=m.slot % 16;
+        if (dir.earlier(m.ref,g.ref(lane),source,origin)) g.set(lane,m.ref);
     }
 }
 template<class T, size_t N, class Reject>
