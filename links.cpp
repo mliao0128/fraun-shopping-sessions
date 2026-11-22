@@ -66,7 +66,7 @@ template <class F> void linkRows(SV file, F action) {
             valid = csv(file.substr(0, end), fields);
         }
         if (valid && !fields[0].empty() && !fields[1].empty()) {
-            action(Key::from(fields[0]), Key::from(fields[1]));
+            action(Key::shopper(fields[0]), Key::shopper(fields[1]));
         }
         file.remove_prefix(std::min(end + 1, file.size()));
     }
@@ -111,7 +111,7 @@ void endpoints(Batch& batch) {
         }
         if (valid && !fields[0].empty() && !fields[1].empty()) {
             for (SV f : fields) {
-                Key k = Key::from(f);
+                Key k = Key::shopper(f);
                 const auto shard = static_cast<uint8_t>(Identities::shard(k.hash()));
                 batch.parts[shard].push_back(k);
                 batch.order.push_back(shard);

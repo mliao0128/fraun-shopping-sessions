@@ -552,7 +552,7 @@ inline Key eventID(std::string_view text) { return Key::from(text); }
     } else if (f[4] != "view" && f[4] != "cart") {
         return true;
     }
-    out.user = Key::from(f[1]);
+    out.user = Key::shopper(f[1]);
     out.row = {ts, price, category};
     out.valid = true;
     return true;
@@ -560,6 +560,8 @@ inline Key eventID(std::string_view text) { return Key::from(text); }
 template <unsigned Hint> inline Key inlineAsciiKey(const char *p, unsigned n) {
     if (n == 9)
         return Key::nine<Hint>(p);
+    if constexpr (Hint == 'u')
+        if (n > 9) return Key::internShopper({p, n});
     return Key::from({p, n});
 }
 struct HeadLayout {
@@ -755,7 +757,7 @@ inline int64_t ingestTime(std::string_view text) {
     if (ts < ctx.start - 7 * dayMs || ts >= ctx.end) return false;
     const auto campaign = ctx.campaigns.lookup(f[2], line.data() + line.size());
     if (campaign == UINT32_MAX) return false;
-    row = {Key::from(f[1]), Key::from(f[0]), ts, campaign};
+    row = {Key::shopper(f[1]), Key::from(f[0]), ts, campaign};
     return true;
 }
 

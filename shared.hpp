@@ -6,6 +6,7 @@
 #include <bit>
 #include <cstdint>
 #include <cstring>
+#include <cstdlib>
 #include <exception>
 #include <filesystem>
 #include <functional>
@@ -28,12 +29,64 @@ struct Key {
     static constexpr uint64_t shortTag = uint64_t{1} << 63;
     static constexpr uint64_t referenceTag = uint64_t{3} << 62;
     static constexpr uint64_t indirectTag = uint64_t{11} << 60;
+    static constexpr uint64_t shopperTag = uint64_t{10} << 60;
     static constexpr uint64_t pointerMask = (uint64_t{1} << 48) - 1;
     static constexpr uint64_t asciiMask = 0x7f7f7f7f7f7f7f7fULL;
     static constexpr uint64_t eightTag = uint64_t{0x88} << 56;
     uint64_t bits = shortTag;
     bool eightAscii() const { return (bits >> 56) == 0x88; }
     bool needsDecoding() const { return nineAscii() || eightAscii(); }
+
+    // Slots never move or change after publication. Exact equal shopper spellings
+    // encountered by different workers can therefore share a single Key.
+    struct ShopperSlot {
+        uint32_t state;
+        uint32_t pad;
+        uint64_t hash;
+        char spelling[48];
+    };
+    static_assert(sizeof(ShopperSlot) == 64);
+    static inline ShopperSlot* shopperSlots = nullptr;
+    static inline size_t shopperMask = 0;
+    static void initializeShoppers(size_t inputBytes) {
+        if (inputBytes < (1u << 20)) return;
+        const size_t count = std::bit_floor(std::clamp<size_t>(inputBytes / 2048, 1024, 1u << 21));
+        auto* pool = static_cast<ShopperSlot*>(std::calloc(count, sizeof(ShopperSlot)));
+        if (!pool) return;
+        if (reinterpret_cast<uintptr_t>(pool + count - 1) > pointerMask) {
+            std::free(pool);
+            return;
+        }
+        shopperSlots = pool;
+        shopperMask = count - 1;
+    }
+    static Key internShopper(std::string_view text) {
+        if (text.size() > 48 || !shopperSlots) return fromReference(text);
+        const uint64_t hash = std::hash<std::string_view>{}(text);
+        const uint32_t ready = static_cast<uint32_t>(text.size()) + 2;
+        for (const size_t index : {size_t(hash) & shopperMask, size_t(hash >> 32) & shopperMask}) {
+            auto& slot = shopperSlots[index];
+            std::atomic_ref<uint32_t> state(slot.state);
+            uint32_t found = state.load(std::memory_order_acquire);
+            if (!found && state.compare_exchange_strong(found, 1, std::memory_order_acq_rel)) {
+                std::memcpy(slot.spelling, text.data(), text.size());
+                slot.hash = hash;
+                state.store(ready, std::memory_order_release);
+            } else if (found != ready || slot.hash != hash ||
+                       std::memcmp(slot.spelling, text.data(), text.size()) != 0) {
+                continue;
+            }
+            return {shopperTag | (uint64_t{text.size()} << 48) | reinterpret_cast<uintptr_t>(&slot)};
+        }
+        return fromReference(text);
+    }
+    static Key shopper(std::string_view text) {
+        return text.size() > 9 ? internShopper(text) : from(text);
+    }
+    bool interned() const { return bits >> 60 == shopperTag >> 60; }
+    const ShopperSlot* shopperSlot() const {
+        return reinterpret_cast<const ShopperSlot*>(bits & pointerMask);
+    }
 
     static constexpr uint64_t headerMask = 0x0080808080808080ULL;
     static constexpr uint64_t scatterPrefix(unsigned char c) {
@@ -103,8 +156,9 @@ struct Key {
     }
     bool empty() const { return bits == shortTag; }
     bool nineAscii() const { return !(bits & shortTag); }
-    bool external() const { return bits >= indirectTag; }
+    bool external() const { return bits >= shopperTag; }
     std::string_view borrowed() const {
+        if (interned()) return {shopperSlot()->spelling, (bits >> 48) & 63};
         if (bits >= referenceTag)
             return {reinterpret_cast<const char*>(bits & pointerMask), (bits >> 48) & 0x3fff};
         if (external())
@@ -122,6 +176,7 @@ struct Key {
         return {buffer.data(),9};
     }
     uint64_t hash() const {
+        if (interned()) return shopperSlot()->hash;
         if (external()) return std::hash<std::string_view>{}(borrowed());
         const __uint128_t product = static_cast<__uint128_t>(bits ^ 0xa0761d6478bd642fULL)
                                     * (bits ^ 0xe7037ed1a0b428dbULL);

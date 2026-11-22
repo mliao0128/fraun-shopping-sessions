@@ -210,6 +210,7 @@ int main(int argc, char** argv) try {
     auto events = inputs.folder(data / "events");
     size_t bytes = 0;
     for (auto e : events) bytes += e.size();
+    Key::initializeShoppers(bytes);
     // Small inputs use the original resource settings. On larger inputs the
     // two schedules are fixed offline using complete, timed solver runs.
     if (bytes >= (256u << 20)) {
