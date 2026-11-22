@@ -125,7 +125,7 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
     out.clickOwner.resize(bucket.clicks.size);
     at = 0;
     bucket.clicks.each([&](const Click &c) {
-        clickBits |= uint64_t(c.ts) - uint64_t(origin) + 7 * dayMs;
+        clickBits |= uint64_t(c.timestamp()) - uint64_t(origin) + 7 * dayMs;
         const uint32_t g = index.lookup(c.person, c.routingHash());
         out.clickOwner[at++] = g;
         if (g!=absent)
@@ -156,7 +156,7 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
     at=0;
     bucket.clicks.each([&](const Click& c) {
         uint32_t g=out.clickOwner[at++];
-        if (g!=absent) out.clicks[groups[g].clickEnd++] = {c.ts,c.campaign,c.id};
+        if (g!=absent) out.clicks[groups[g].clickEnd++] = {c.timestamp(),c.campaignId(),c.id};
     });
     // Group purchases with a counting scatter. Only purchases by the
     // same person need time ordering, and most such spans are short.
