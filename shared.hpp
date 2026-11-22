@@ -558,9 +558,9 @@ struct Click {
 };
 // A bucket's rows stay in the blocks the ingest wrote them to.
 template<class T> struct Pieces {
-    std::vector<std::pair<const T*, size_t>> spans;
+    std::vector<std::pair<T*, size_t>> spans;
     size_t size = 0;
-    void add(const T* rows, size_t count) { spans.emplace_back(rows, count); size += count; }
+    void add(T* rows, size_t count) { spans.emplace_back(rows, count); size += count; }
     template<class F> void each(F&& visit) const {
         for (auto [rows, count] : spans)
             for (size_t i = 0; i < count; ++i) visit(rows[i]);
@@ -668,5 +668,5 @@ void linkPeople(const std::vector<std::string_view>&, Context&, unsigned);
 int64_t timestamp(std::string_view value);
 void ingest(const Context&, const std::vector<std::string_view>&, const std::vector<std::string_view>&,
             std::vector<Bucket>&, unsigned, const std::function<void()>& awaitIdentities);
-void aggregate(Bucket&, Result&, size_t categoryCount, size_t campaignCount, int64_t origin);
+void aggregate(Bucket&, Result&, size_t categoryCount, size_t campaignCount, int64_t origin, bool boundedWindow = false);
 void writeOutputs(const std::filesystem::path&, const Context&, std::vector<Result>&, unsigned, const std::function<bool(size_t)>&);

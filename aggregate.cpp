@@ -98,28 +98,43 @@ struct Grouped {
     bool wide = false, circular = false;
 };
 
-void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
+template<bool Consume> void groupRows(Bucket& bucket, Grouped& out, int64_t origin) {
     if (bucket.events.size >= absent || bucket.clicks.size >= absent)
         throw std::runtime_error("Too many rows in one bucket");
     auto& groups = out.groups;
     groups.clear();
     out.purchases.clear();
     PersonIndex index(groups,bucket.events.size);
-    out.pending.resize(bucket.events.size);
+    if constexpr (!Consume) out.pending.resize(bucket.events.size);
     uint64_t usedBits = 0;
     size_t at = 0;
-    bucket.events.each([&](const Event &e) {
+    auto assign = [&](const Event& e) {
         uint32_t g = index.add(e.person, e.routingHash());
         const EventData row = e.unpack(origin);
         const uint64_t delta = uint64_t(row.ts)-uint64_t(origin);
         usedBits |= delta;
-        out.pending[at++] = {g,static_cast<uint32_t>(delta)};
         ++groups[g].eventEnd;
         if (row.price) {
             ++groups[g].purchaseEnd;
             out.purchases.push_back({row.ts, row.price, row.category, g});
         }
-    });
+        return OwnedTime{g, static_cast<uint32_t>(delta)};
+    };
+    if constexpr (Consume) {
+        // Canonical spans are disjoint. After the routing barrier each span
+        // has exactly one consumer, and each 8-byte write stays behind the
+        // next unread 16-byte event. memcpy preserves the object-alias rules.
+        static_assert(sizeof(Event) == 2 * sizeof(OwnedTime));
+        for (auto [events, count] : bucket.events.spans) {
+            auto* compact = reinterpret_cast<std::byte*>(events);
+            for (size_t i = 0; i < count; ++i) {
+                const auto row = assign(events[i]);
+                std::memcpy(compact + i * sizeof(row), &row, sizeof(row));
+            }
+        }
+    } else {
+        bucket.events.each([&](const Event& e) { out.pending[at++] = assign(e); });
+    }
     out.wide = usedBits > UINT32_MAX;
     uint64_t clickBits = 0;
     out.clickOwner.resize(bucket.clicks.size);
@@ -138,7 +153,17 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
         g.eventEnd=nEvents; g.clickEnd=nClicks;
         nEvents+=ne; nClicks+=nc;
     }
-    if (!out.wide) {
+    if constexpr (Consume) {
+        out.times.resize(nEvents);
+        for (auto [events, count] : bucket.events.spans) {
+            const auto* compact = reinterpret_cast<const std::byte*>(events);
+            for (size_t i = 0; i < count; ++i) {
+                OwnedTime row;
+                std::memcpy(&row, compact + i * sizeof(row), sizeof(row));
+                out.times[groups[row.group].eventEnd++] = row.offset;
+            }
+        }
+    } else if (!out.wide) {
         out.times.resize(nEvents);
         for (auto row : out.pending)
             out.times[groups[row.group].eventEnd++] = row.offset;
@@ -358,12 +383,13 @@ int32_t utcDay(int64_t ts) {
 
 }  // namespace
 
-void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t campaignCount, int64_t origin) {
+void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t campaignCount, int64_t origin, bool boundedWindow) {
     if (!bucket.events.size) return;
     // Scratch space is kept per thread: buckets are alike in size, and reusing
     // it spares the allocator and the kernel a round trip per bucket.
     static thread_local Grouped grouped;
-    groupRows(bucket, grouped, origin);
+    if (boundedWindow) groupRows<true>(bucket, grouped, origin);
+    else groupRows<false>(bucket, grouped, origin);
     result.startBucket(bucket.events.size);
     const auto &groups = grouped.groups;
     const auto& purchases = grouped.purchases;

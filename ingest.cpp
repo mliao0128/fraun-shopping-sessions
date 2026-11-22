@@ -1375,8 +1375,8 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     });
     for (size_t b = 0; b < out.size(); ++b)
         for (auto& router : routers) {
-            router->events.pieces(b, [&](const Event* rows, size_t n) { out[b].events.add(rows, n); });
-            router->clicks.pieces(b, [&](const Click* rows, size_t n) { out[b].clicks.add(rows, n); });
+            router->events.pieces(b, [&](Event* rows, size_t n) { out[b].events.add(rows, n); });
+            router->clicks.pieces(b, [&](Click* rows, size_t n) { out[b].clicks.add(rows, n); });
         }
     // The blocks outlive this function: buckets point into them.
     for (auto& reader : readers) (void)reader.release();
