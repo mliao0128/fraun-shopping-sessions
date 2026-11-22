@@ -547,15 +547,59 @@ struct Event {
 };
 struct Click {
     Key person, id;
-    int64_t ts;
-    uint32_t campaign;
-    uint32_t hash32{};
-    uint64_t routingHash() const { return uint64_t(hash32) << 32; }
-    void rename(Key to, uint64_t h) {
-        person = to;
-        hash32 = h >> 32;
+    uint64_t payload = 0;
+    struct alignas(16) Wide { int64_t time; uint32_t campaign,hash; };
+    static constexpr uint32_t escape = 0xf0000000;
+    static inline uint64_t origin;
+
+    static void configure(size_t, int64_t start, int64_t, size_t) {
+        const __int128 lower = std::max(__int128(INT64_MIN),__int128(start) - 7 * 86400000);
+        const int64_t ms = int64_t(lower);
+        const int64_t fraction = (ms % 1000 + 1000) % 1000;
+        origin = uint64_t(ms) - uint64_t(fraction);
+    }
+    static Wide* allocate(int64_t time,uint32_t campaign) {
+        static thread_local Wide* page = nullptr;
+        static thread_local unsigned used = 1024;
+        if (used == 1024) { page = new Wide[1024]; used=0; }
+        Wide* entry = &page[used++];
+        *entry = {time,campaign,0};
+        return entry;
+    }
+    bool externalTime() const { return uint32_t(payload) >= escape; }
+    Wide* wide() const {
+        uint64_t address = ((payload >> 32) << 28) | (uint32_t(payload) & 0xfffffff);
+        return reinterpret_cast<Wide*>(uintptr_t(address << 4));
+    }
+    Click() = default;
+    Click(Key person,Key id,int64_t time,uint32_t campaign):person(person),id(id) {
+        uint64_t off = uint64_t(time) - origin;
+        if (off < uint64_t(escape >> 11)*1000 && off % 1000 == 0 && campaign < 2048) {
+            payload = (off / 1000 << 11) | campaign;
+        } else {
+            uint64_t address = reinterpret_cast<uintptr_t>(allocate(time,campaign)) >> 4;
+            payload = ((address >> 28) << 32) | escape | (address & 0xfffffff);
+        }
+    }
+    int64_t timestamp() const {
+        return externalTime() ? wide()->time : int64_t(origin + uint64_t(uint32_t(payload) >> 11)*1000);
+    }
+    uint32_t campaignId() const {
+        return externalTime() ? wide()->campaign : uint32_t(payload) & 2047;
+    }
+    void cacheHash(uint64_t hash) {
+        if(externalTime())wide()->hash=uint32_t(hash>>32);
+        else payload = (hash & 0xffffffff00000000ULL) | uint32_t(payload);
+    }
+    uint64_t routingHash() const {
+        return externalTime() ? uint64_t(wide()->hash)<<32 : payload & 0xffffffff00000000ULL;
+    }
+    void rename(Key to,uint64_t hash) {
+        person=to;
+        cacheHash(hash);
     }
 };
+static_assert(sizeof(Click)==24 && sizeof(Click::Wide)==16);
 // A bucket's rows stay in the blocks the ingest wrote them to.
 template<class T> struct Pieces {
     std::vector<std::pair<const T*, size_t>> spans;

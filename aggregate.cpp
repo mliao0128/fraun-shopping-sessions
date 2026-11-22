@@ -142,7 +142,7 @@ template<bool Compact,bool Tight> void groupRows(const Bucket& bucket,Grouped<Co
     out.clickOwner.resize(bucket.clicks.size);
     at = 0;
     bucket.clicks.each([&](const Click &c) {
-        if constexpr(!Compact) clickBits |= uint64_t(c.ts) - uint64_t(origin) + 7 * dayMs;
+        if constexpr(!Compact) clickBits |= uint64_t(c.timestamp()) - uint64_t(origin) + 7 * dayMs;
         const uint32_t g = index.lookup(c.person, c.routingHash());
         out.clickOwner[at++] = g;
         if (g!=absent)
@@ -177,13 +177,13 @@ template<bool Compact,bool Tight> void groupRows(const Bucket& bucket,Grouped<Co
             for(size_t row=0;row<count;++row) {
                 const auto& click=source[row];const uint32_t g=out.clickOwner[at++];
                 if(g!=absent)out.clicks[groups[g].clickEnd++]={
-                    storedTime(click.ts),(click.campaign<<21)|(uint32_t(piece)<<9)|uint32_t(row)};
+                    storedTime(click.timestamp()),(click.campaignId()<<21)|(uint32_t(piece)<<10)|uint32_t(row)};
             }
         }
     } else {
     bucket.clicks.each([&](const Click& c) {
         uint32_t g=out.clickOwner[at++];
-        if (g!=absent) out.clicks[groups[g].clickEnd++] = {storedTime(c.ts),c.campaign,c.id};
+        if (g!=absent) out.clicks[groups[g].clickEnd++] = {storedTime(c.timestamp()),c.campaignId(),c.id};
     });
     }
     // Group purchases with a counting scatter. Only purchases by the
@@ -412,7 +412,7 @@ template<bool Compact,bool Tight=false> void aggregateMode(Bucket& bucket, Resul
     auto idOf=[&](const TimedClick& click) {
         if constexpr(Tight) {
             uint32_t loc=click.payload&0x1fffffu;
-            return bucket.clicks.spans[loc>>9].first[loc&511].id;
+            return bucket.clicks.spans[loc>>10].first[loc&1023].id;
         } else return click.id;
     };
     static thread_local CellTable cells;
@@ -684,7 +684,7 @@ template<bool Compact,bool Tight=false> void aggregateMode(Bucket& bucket, Resul
 void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t campaignCount, int64_t origin,int64_t end) {
     const CalendarFrame frame=CalendarFrame::from(origin,end);
     bool eligible=frame.usable && categoryCount<=256 && campaignCount<=2048 &&
-        bucket.clicks.spans.size()<=4096 && std::all_of(bucket.clicks.spans.begin(),bucket.clicks.spans.end(),[](const auto& s){return s.second<=512;});
+        bucket.clicks.spans.size()<=2048 && std::all_of(bucket.clicks.spans.begin(),bucket.clicks.spans.end(),[](const auto& s){return s.second<=1024;});
     if(eligible)aggregateMode<true,true>(bucket,result,categoryCount,campaignCount,origin,frame);
     else if(frame.usable)aggregateMode<true>(bucket,result,categoryCount,campaignCount,origin,frame);
     else aggregateMode<false>(bucket,result,categoryCount,campaignCount,origin,frame);

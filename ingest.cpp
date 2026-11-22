@@ -274,13 +274,13 @@ public:
     }
 };
 
-template<class T> constexpr size_t rowsPerBlock = blockBytes / sizeof(T);
+template<class T> constexpr size_t rowsPerBlock = std::is_same_v<T,Click> ? (blockBytes / sizeof(T) / 8 * 8) : blockBytes / sizeof(T);
 
 // Radix scatter with software write combining: rows collect in a small
 // per-partition buffer and leave as whole cache lines with non-temporal
 // stores, so the destination is never read and the open set stays in L2.
 template<class T, size_t Group> class Scatter {
-    static_assert(std::is_trivially_copyable_v<T> && blockBytes % sizeof(T) == 0);
+    static_assert(std::is_trivially_copyable_v<T> && (std::is_same_v<T,Click> || blockBytes % sizeof(T) == 0));
     static_assert((Group * sizeof(T)) % 64 == 0 && rowsPerBlock<T> % Group == 0);
     struct alignas(64) Buffer { T rows[Group]; };
     Slab& slab;
@@ -1092,6 +1092,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     // Raw and canonical buckets share high hash bits, so most rows can stay
     // in their original blocks while a worker probes its identity-table slice.
     const size_t parts = out.size();
+    Click::configure(parts, ctx.start, ctx.end, ctx.campaignNames.size());
     const int64_t arrivalOrigin = std::clamp<int64_t>(ctx.start, INT64_MIN + (int64_t{1} << 31),
                                                      INT64_MAX - INT32_MAX);
     const unsigned shift = 63 - std::countr_zero(parts);
@@ -1210,7 +1211,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 if(text.size()>9 && text.size()<=48)
                     row.person=Key::internHashedShopper(text,item.hash);
             }
-            row.hash32=uint32_t(item.hash>>32);
+            row.cacheHash(item.hash);
             reader.clicks.add(partOf(item.hash),row);
         };
         chunkLines(span,[&](std::string_view line) {
