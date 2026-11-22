@@ -1082,6 +1082,26 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     source.eventSpans = source.spans.size();
     for (auto& span : chunks(clickFiles, ctx.settings.chunkBits)) source.spans.push_back(span);
     if (source.spans.empty()) { awaitIdentities(); return; }
+    // Issue contiguous chunks from four files in rotation. The original chunk
+    // index still identifies its file and byte offset for duplicate resolution.
+    constexpr size_t fileWindow = 4;
+    std::vector<size_t> order;
+    order.reserve(source.eventSpans);
+    size_t i = 0;
+    for (size_t file = 0; file < source.files.size(); file += fileWindow) {
+        std::vector<std::vector<size_t>> waves;
+        const size_t limit = std::min(fileWindow, source.files.size() - file);
+        for (size_t f = file; f < file + limit; ++f) {
+            size_t local = 0;
+            while (i < source.eventSpans && source.spans[i].file.data() == source.files[f].data() &&
+                   source.spans[i].file.size() == source.files[f].size()) {
+                if (local == waves.size()) waves.emplace_back();
+                waves[local++].push_back(i++);
+            }
+        }
+        for (const auto& wave : waves) order.insert(order.end(), wave.begin(), wave.end());
+    }
+    if (order.size() != source.eventSpans) throw std::logic_error("Incomplete event schedule");
     std::vector<uint64_t> spanStart(source.eventSpans);
     for (size_t i = 0, f = 0; i < source.eventSpans; ++i) {
         while (source.files[f].data() != source.spans[i].file.data() ||
@@ -1109,9 +1129,10 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         ParsedEvent event;
         Click click;
         for (;;) {
-            const size_t i = next.fetch_add(1, std::memory_order_relaxed);
-            if (i >= source.eventSpans)
+            const size_t claim = next.fetch_add(1, std::memory_order_relaxed);
+            if (claim >= source.eventSpans)
                 break;
+            const size_t i = order[claim];
             const InputChunk& span = source.spans[i];
             if (ctx.populateInput) populateChunk(span);
             if (i < source.eventSpans) {
