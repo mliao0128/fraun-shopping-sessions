@@ -305,6 +305,40 @@ bool shortSessions(const uint32_t* times, unsigned n, int64_t origin, Emit emit)
     return true;
 }
 
+// An observed timestamp within one session gap of both extrema connects
+// the whole group. Two compact clusters need only their facing endpoints.
+template<class Emit>
+bool twoPackSessions(const uint32_t* times, unsigned n, int64_t origin, Emit emit) {
+    const __m256i a = loadTimes(times, 8);
+    const __m256i b = loadTimes(times + 8, n - 8);
+    const auto live = _mm256_cmpgt_epi32(_mm256_set1_epi32(n - 8),
+                                         _mm256_setr_epi32(0,1,2,3,4,5,6,7));
+    const uint32_t lo = laneExtreme<true>(_mm256_min_epu32(a, b));
+    const uint32_t hi = laneExtreme<false>(_mm256_max_epu32(a, _mm256_and_si256(b, live)));
+    if (hi - lo <= maxGap) {
+        emit(origin + lo, origin + hi, n);
+        return true;
+    }
+    // Since hi exceeds lo + maxGap, the addition fits and padding is excluded.
+    const auto end = _mm256_set1_epi32(lo + uint32_t(maxGap));
+    auto left = [&](auto x) { return _mm256_cmpeq_epi32(x, _mm256_min_epu32(x, end)); };
+    const auto am = left(a), bm = left(b);
+    const uint32_t next = laneExtreme<true>(
+        _mm256_min_epu32(_mm256_or_si256(a, am), _mm256_or_si256(b, bm)));
+    if (hi - next > maxGap) return false;
+    const uint32_t last = laneExtreme<false>(
+        _mm256_max_epu32(_mm256_and_si256(a, am), _mm256_and_si256(b, bm)));
+    if (next - last <= maxGap) {
+        emit(origin + lo, origin + hi, n);
+    } else {
+        const unsigned count = std::popcount(unsigned(_mm256_movemask_ps(_mm256_castsi256_ps(am))))
+                             + std::popcount(unsigned(_mm256_movemask_ps(_mm256_castsi256_ps(bm))));
+        emit(origin + lo, origin + last, count);
+        emit(origin + next, origin + hi, n - count);
+    }
+    return true;
+}
+
 struct TimeCell {
     uint32_t first = UINT32_MAX, last = 0, count = 0;
 };
@@ -442,9 +476,11 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
             auto* times = grouped.times.data() + i;
             if (!shortSessions(times, count, origin, emit))
                 networkSessions(times, count, origin, emit);
-        } else if (count <= 16)
-            networkSessions(grouped.times.data() + i, count, origin, emit);
-        else
+        } else if (count <= 16) {
+            auto* times = grouped.times.data() + i;
+            if (!twoPackSessions(times, count, origin, emit))
+                networkSessions(times, count, origin, emit);
+        } else
             cells.sessions(grouped.times.data() + i, count, origin, emit);
         const unsigned n = sessions.size();
         const uint64_t span = uint64_t(sessions.back().start) - uint64_t(sessions.front().start);
