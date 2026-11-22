@@ -16,15 +16,18 @@ inline bool eventFields(std::string_view s, std::array<std::string_view,7>& f) {
     if (std::popcount(low) != 2 || (low & 0x80000001u) || (high & 1)) return csv(s,f);
     if (std::popcount(high) != 4) return false;
     const uint64_t highQuotes = middle.quote | (uint64_t(tail.quote) << (n - 64));
-    const uint32_t lowStarts = (low << 1) | 1, lowEnds = low >> 1;
-    const uint64_t highStarts = high << 1;
-    const uint64_t highEnds = (high >> 1) | (uint64_t{1} << (n - 33));
-    const unsigned opened = _pext_u32(head.quote,lowStarts) |
-                            (_pext_u64(highQuotes,highStarts) << 3);
-    const unsigned closed = _pext_u32(head.quote,lowEnds) |
-                            (_pext_u64(highQuotes,highEnds) << 2);
-    if (opened != closed || (head.quote & ~(lowStarts ^ lowEnds)) ||
-        (highQuotes & ~(highStarts ^ highEnds))) return false;
+    unsigned opened = 0;
+    if (head.quote || highQuotes) {
+        const uint32_t lowStarts = (low << 1) | 1, lowEnds = low >> 1;
+        const uint64_t highStarts = high << 1;
+        const uint64_t highEnds = (high >> 1) | (uint64_t{1} << (n - 33));
+        opened = _pext_u32(head.quote,lowStarts) |
+                                (_pext_u64(highQuotes,highStarts) << 3);
+        const unsigned closed = _pext_u32(head.quote,lowEnds) |
+                                (_pext_u64(highQuotes,highEnds) << 2);
+        if (opened != closed || (head.quote & ~(lowStarts ^ lowEnds)) ||
+            (highQuotes & ~(highStarts ^ highEnds))) return false;
+    }
     const uint64_t second = high & (high - 1);
     const uint64_t third = second & (second - 1);
     const unsigned ends[] = {

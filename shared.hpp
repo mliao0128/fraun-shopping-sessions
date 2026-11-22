@@ -314,25 +314,28 @@ bool csvPacked(std::string_view line, std::array<std::string_view,N>& fields) {
     // Compress the quotes at possible field boundaries to one bit per field.
     // The first empty field can have no closing byte. An open quote with no
     // distinct matching close, or any quote in the interior, invalidates the row.
-    uint64_t starts = (commas<<1) | 1, ends = (commas>>1);
-    unsigned wrapped, closed;
-    if constexpr (Long) {
-        ends |= upperCommas << 63;
-        uint64_t upperStarts = (upperCommas<<1) | (commas>>63);
-        uint64_t upperEnds = (upperCommas>>1) | (uint64_t{1}<<(size-65));
-        if (upperQuotes & ~(upperStarts ^ upperEnds)) return false;
-        wrapped = _pext_u64(quotes, starts) | (_pext_u64(upperQuotes, upperStarts) << std::popcount(starts));
-        closed = _pext_u64(quotes, ends) | (_pext_u64(upperQuotes, upperEnds) << std::popcount(ends));
-    } else {
-        ends |= uint64_t{1} << (size-1);
-        wrapped = _pext_u64(quotes, starts);
-        closed = _pext_u64(quotes, ends);
-    }
-    closed <<= (commas & 1);
-    // Each quote must occupy exactly one boundary. A single-byte field
-    // containing only a quote is simultaneously a start and an end.
-    if (wrapped != closed || (quotes & ~(starts ^ ends))) return false;
+    unsigned wrapped = 0;
+    if (quotes || upperQuotes) {
+        uint64_t starts = (commas<<1) | 1, ends = (commas>>1);
+        unsigned closed;
+        if constexpr (Long) {
+            ends |= upperCommas << 63;
+            uint64_t upperStarts = (upperCommas<<1) | (commas>>63);
+            uint64_t upperEnds = (upperCommas>>1) | (uint64_t{1}<<(size-65));
+            if (upperQuotes & ~(upperStarts ^ upperEnds)) return false;
+            wrapped = _pext_u64(quotes, starts) | (_pext_u64(upperQuotes, upperStarts) << std::popcount(starts));
+            closed = _pext_u64(quotes, ends) | (_pext_u64(upperQuotes, upperEnds) << std::popcount(ends));
+        } else {
+            ends |= uint64_t{1} << (size-1);
+            wrapped = _pext_u64(quotes, starts);
+            closed = _pext_u64(quotes, ends);
+        }
+        closed <<= (commas & 1);
+        // Each quote must occupy exactly one boundary. A single-byte field
+        // containing only a quote is simultaneously a start and an end.
+        if (wrapped != closed || (quotes & ~(starts ^ ends))) return false;
 
+    }
     size_t begin = 0;
     for (size_t i = 0; i < N; ++i) {
         size_t end = size;

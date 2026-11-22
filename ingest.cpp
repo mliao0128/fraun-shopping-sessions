@@ -771,10 +771,13 @@ inline bool parseClick(std::string_view line, const Context &ctx, Click &row) {
     uint64_t quotes = first.quote | (uint64_t(last.quote) << (n - 32));
     if (std::popcount(commas) != 3 || (commas & 1))
         return false;
-    uint64_t starts = 1 | (commas << 1), ends = (commas >> 1) | (1ull << (n - 1));
-    unsigned trim = _pext_u64(quotes, starts);
-    if (trim != _pext_u64(quotes, ends) || (quotes & ~(starts ^ ends)))
-        return false;
+    unsigned trim = 0;
+    if (quotes) {
+        uint64_t starts = 1 | (commas << 1), ends = (commas >> 1) | (1ull << (n - 1));
+        trim = _pext_u64(quotes, starts);
+        if (trim != _pext_u64(quotes, ends) || (quotes & ~(starts ^ ends)))
+            return false;
+    }
     unsigned e0 = std::countr_zero(commas), e1 = std::countr_zero(commas & (commas - 1)),
              e2 = 63 - std::countl_zero(commas);
     unsigned t0 = trim & 1, t1 = (trim >> 1) & 1, t2 = (trim >> 2) & 1, t3 = trim >> 3;
