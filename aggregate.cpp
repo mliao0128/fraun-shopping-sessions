@@ -447,6 +447,26 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
         else
             cells.sessions(grouped.times.data() + i, count, origin, emit);
         const unsigned n = sessions.size();
+        uint32_t singleWinner = 0;
+        if (n == 1 && clickBegin < group.clickEnd) {
+            const auto start = sessions.front().start;
+            auto* stats = dailyStats(utcDay(start));
+            const TimedClick* best = nullptr;
+            for (; clickBegin < group.clickEnd; ++clickBegin) {
+                const auto& click = clicks[clickBegin];
+                if (click.ts > start || uint64_t(start) - uint64_t(click.ts) > 7 * dayMs)
+                    continue;
+                auto& previous = covered[click.campaign];
+                if (previous.owner != g) {
+                    stats->addAssists(click.campaign, 1);
+                    previous = {g, 1};
+                }
+                if (!best || best->ts < click.ts || (best->ts == click.ts && click.id < best->id))
+                    best = &click;
+            }
+            if (best)
+                singleWinner = best->campaign;
+        }
         const uint64_t span = uint64_t(sessions.back().start) - uint64_t(sessions.front().start);
         constexpr unsigned shortLimit = 64;
         bool narrow = grouped.circular && n <= shortLimit && group.clickEnd - clickBegin >= 1;
@@ -553,7 +573,7 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
             ++row.sessions;
             row.events += eventCount;
             row.revenue += sessionRevenue;
-            uint32_t winner = 0;
+            uint32_t winner = singleWinner;
             if (hasClicks) {
                 session.dayIndex = spans.size() - 1;
                 spans.back().end = ++nStarts;
