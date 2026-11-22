@@ -180,7 +180,20 @@ void numberEndpoints(size_t s, std::vector<Batch>& input, Shard& shard) {
 }
 } // namespace
 
+Key Identities::fallbackPerson(const Key& raw, uint64_t& hash) const {
+    const auto& group = (*fallback)[shard(hash)];
+    if (group.slots.empty()) return raw;
+    const size_t mask = group.slots.size() - 1;
+    const size_t pos = (hash >> group.shift) & mask;
+    if (!(group.fingerprints[pos] & fingerprint(hash))) return raw;
+    return probe(group.slots.data(), mask, pos, raw, hash);
+}
+
 void fallbackLinks(const std::vector<std::string_view> &files, Context &ctx, unsigned workers) {
+    // All producers of the direct table have joined. Release its allocation
+    // before constructing the exact graph and its replacement directory.
+    std::vector<Identities::Alias>().swap(ctx.identities.slots);
+    std::vector<uint16_t>().swap(ctx.identities.fingerprints);
     auto input = batches(files);
     parallel(input.size(), workers, [&](size_t i) { endpoints(input[i]); });
     std::array<Shard, shards> groups;
@@ -242,25 +255,28 @@ void fallbackLinks(const std::vector<std::string_view> &files, Context &ctx, uns
             if (!(key == name)) g.aliases.push_back({key,name});
         }
     });
-    size_t mostAliases = 0;
-    for (const auto& g : groups) mostAliases = std::max(mostAliases, g.aliases.size());
-    if (!mostAliases) return;
-    auto& dict = ctx.identities;
-    dict.shardSize = std::bit_ceil(mostAliases + mostAliases / 2 + 1);
-    dict.slotShift = 64 - Identities::shardBits - std::countr_zero(dict.shardSize);
-    dict.slots.resize(dict.shardSize * shards);
-    dict.fingerprints.resize(dict.slots.size());
+    if (std::all_of(groups.begin(), groups.end(), [](const Shard& group) {
+        return group.aliases.empty();
+    })) return;
+
+    auto directory = std::make_unique<std::array<Identities::FallbackShard, shards>>();
     parallel(shards, workers, [&](size_t s) {
-        auto* table = dict.slots.data() + s * dict.shardSize;
-        size_t mask = dict.shardSize - 1;
+        const size_t capacity = Identities::FallbackShard::capacity(groups[s].aliases.size());
+        if (!capacity) return;
+        auto& group = (*directory)[s];
+        group.slots.resize(capacity);
+        group.fingerprints.resize(capacity);
+        group.shift = 64 - Identities::shardBits - std::countr_zero(capacity);
+        const size_t mask = capacity - 1;
         for (const auto& [k,m] : groups[s].aliases) {
             const uint64_t hash = shopperRoutingHash(k);
-            size_t pos = dict.home(hash);
-            dict.fingerprints[s * dict.shardSize + pos] |= Identities::fingerprint(hash);
-            while (!table[pos].raw.empty()) pos = (pos + 1) & mask;
-            table[pos] = {k, m};
+            size_t pos = (hash >> group.shift) & mask;
+            group.fingerprints[pos] |= Identities::fingerprint(hash);
+            while (!group.slots[pos].raw.empty()) pos = (pos + 1) & mask;
+            group.slots[pos] = {k, m};
         }
     });
+    ctx.identities.fallback = std::move(directory);
 }
 
 void linkPeople(const std::vector<std::string_view> &files, Context &ctx, unsigned workers) {
@@ -356,7 +372,6 @@ void linkPeople(const std::vector<std::string_view> &files, Context &ctx, unsign
         flush();
     });
     if (overflow.load(std::memory_order_relaxed)) {
-        dict.slots.clear();
         fallbackLinks(files, ctx, workers);
         return;
     }
@@ -432,8 +447,6 @@ void linkPeople(const std::vector<std::string_view> &files, Context &ctx, unsign
             overflow.store(true, std::memory_order_relaxed);
     });
     if (overflow.load(std::memory_order_relaxed)) {
-        dict.slots.clear();
-        dict.fingerprints.clear();
         fallbackLinks(files, ctx, workers);
     }
 }

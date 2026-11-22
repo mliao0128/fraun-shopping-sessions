@@ -12,6 +12,7 @@
 #include <functional>
 #include <immintrin.h>
 #include <limits>
+#include <memory>
 #include <mutex>
 #include <stdexcept>
 #include <string>
@@ -486,20 +487,33 @@ struct Identities {
     // including keys ultimately displaced by linear probing. This compact
     // directory can reject most missing keys without touching any Key.
     std::vector<uint16_t> fingerprints;
+    struct FallbackShard {
+        std::vector<Alias> slots;
+        std::vector<uint16_t> fingerprints;
+        unsigned shift = 0;
+        static size_t capacity(size_t aliases) {
+            return aliases ? std::bit_ceil(aliases + aliases / 2 + 1) : 0;
+        }
+    };
+    std::unique_ptr<std::array<FallbackShard, shards>> fallback;
     static uint16_t fingerprint(uint64_t hash) { return static_cast<uint16_t>(1u << ((hash >> 32) & 15)); }
     size_t shardSize = 0;
     unsigned slotShift = 0;  // 64 - shardBits - log2(shardSize)
     size_t home(uint64_t hash) const { return (hash >> slotShift) & (shardSize - 1); }
 
     static size_t shard(uint64_t hash) { return hash >> (64 - shardBits); }
+    Key fallbackPerson(const Key& raw, uint64_t& hash) const;
     // hash initially belongs to raw. Return the canonical key and its hash
     // together so unlinked rows never hash their person twice.
     Key person(const Key& raw, uint64_t& hash) const {
-        if (slots.empty()) return raw;
+        if (slots.empty()) return fallback ? fallbackPerson(raw, hash) : raw;
         const size_t start = shard(hash) * shardSize;
         size_t mask = shardSize - 1, pos = home(hash);
         if (!(fingerprints[start + pos] & fingerprint(hash))) return raw;
         const Alias* table = slots.data() + start;
+        return probe(table, mask, pos, raw, hash);
+    }
+    static Key probe(const Alias* table, size_t mask, size_t pos, const Key& raw, uint64_t& hash) {
         while (!table[pos].raw.empty()) {
             if (table[pos].raw == raw) {
                 hash = shopperRoutingHash(table[pos].name);
