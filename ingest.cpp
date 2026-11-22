@@ -678,8 +678,10 @@ inline void saveMasks(PreparedMasks &packed, CsvMask mh, CsvMask mm, CsvMask mt)
     static thread_local std::array<TailLayout, 2048> tails{};
     packed.ht = mh.comma | (uint64_t(mh.quote) << 32);
     packed.tt = mt.comma | (uint64_t(mt.quote) << 32);
-    packed.head = &heads[_mm_crc32_u64(0, packed.ht) & 255];
-    packed.tail = &tails[_mm_crc32_u64(0, packed.tt) & 2047];
+    // Multiplicative indices spread common punctuation layouts across cache slots.
+    // The parser compares the entire tag before reusing any field boundaries.
+    packed.head = &heads[(packed.ht * UINT64_C(0xe3bd8b680db2f053)) >> 56];
+    packed.tail = &tails[(packed.tt * UINT64_C(0xe4310069386049f9)) >> 53];
     packed.commas = mm.comma;
     packed.quotes = mm.quote;
     __builtin_prefetch(packed.head, 0, 3);
