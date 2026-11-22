@@ -572,7 +572,7 @@ template<class T> struct Pieces {
 struct Bucket {
     Pieces<Event> events;
     Pieces<Click> clicks;
-    Pieces<uint64_t> compact;
+    Pieces<ShopperReceipt> compact;
     size_t partition{};
     size_t eventCount() const { return events.size+compact.size; }
 };

@@ -120,9 +120,9 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
             out.purchases.push_back({row.ts, row.price, row.category, g});
         }
     });
-    bucket.compact.each([&](uint64_t row){
-        const Key name{shopperCodec.decode(row)};
-        const auto g=index.add(name,name.hash());
+    bucket.compact.each([&](ShopperReceipt row){
+        const Key name=shopperCodec.decode(row);
+        const auto g=index.add(name,shopperCodec.hash(bucket.partition,row));
         const uint32_t delta=shopperCodec.milliseconds(row);
         usedBits|=delta;
         out.pending[at++]={g,delta};
@@ -159,7 +159,7 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
             uint32_t g=out.pending[at++].group;
             out.wideTimes[groups[g].eventEnd++] = e.unpack(origin).ts;
         });
-        bucket.compact.each([&](uint64_t row){
+        bucket.compact.each([&](ShopperReceipt row){
             auto g=out.pending[at++].group;
             out.wideTimes[groups[g].eventEnd++]=origin+shopperCodec.milliseconds(row);
         });

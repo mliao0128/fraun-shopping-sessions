@@ -275,12 +275,13 @@ public:
 };
 
 template<class T> constexpr size_t rowsPerBlock = blockBytes / sizeof(T);
+template<> constexpr size_t rowsPerBlock<ShopperReceipt> = blockBytes/sizeof(ShopperReceipt)/16*16;
 
 // Radix scatter with software write combining: rows collect in a small
 // per-partition buffer and leave as whole cache lines with non-temporal
 // stores, so the destination is never read and the open set stays in L2.
 template<class T, size_t Group> class Scatter {
-    static_assert(std::is_trivially_copyable_v<T> && blockBytes % sizeof(T) == 0);
+    static_assert(std::is_trivially_copyable_v<T> && (std::is_same_v<T,ShopperReceipt> || blockBytes % sizeof(T) == 0));
     static_assert((Group * sizeof(T)) % 64 == 0 && rowsPerBlock<T> % Group == 0);
     struct alignas(64) Buffer { T rows[Group]; };
     Slab& slab;
@@ -394,7 +395,7 @@ static_assert(sizeof(IdRecord) == 16);
 struct Reader {
     Slab slab;
     Scatter<Event, 16> events;
-    Scatter<uint64_t, 32> compact;
+    Scatter<ShopperReceipt, 16> compact;
     Scatter<Click, 8> clicks;
     Scatter<IdRecord, 16> ids;
     std::vector<Extended> slow;
@@ -481,7 +482,7 @@ uint64_t location(Reader& reader, int64_t arrival, int64_t origin, uint32_t buck
 struct Router {
     Slab slab;
     Scatter<Event, 16> events;
-    Scatter<uint64_t, 32> compact;
+    Scatter<ShopperReceipt, 16> compact;
     Scatter<Click, 8> clicks;
     explicit Router(size_t buckets) : events(slab, buckets), compact(slab,shopperCodec.buckets), clicks(slab, buckets) {}
 };
@@ -1290,8 +1291,8 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                         auto bucket=uint32_t(partOf(rawHash));
                         const auto delta=uint64_t(event.row.ts)-uint64_t(ctx.start);
                         uint32_t index;
-                        uint64_t receipt;
-                        if(!event.row.price && shopperCodec.pack(event.user.bits,delta,receipt)) {
+                        ShopperReceipt receipt;
+                        if(!event.row.price && shopperCodec.pack(event.user,rawHash,delta,receipt)) {
                             index=reader.compact.add(bucket,receipt);
                             bucket+=parts;
                         } else {
@@ -1468,19 +1469,18 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 });
                 if(p<shopperCodec.buckets){
                     size_t cancelOffset=reader->cancelBases[parts+p];
-                    reader->compact.pieces(p,[&](uint64_t* rows,size_t n){
+                    reader->compact.pieces(p,[&](ShopperReceipt* rows,size_t n){
                         size_t alive=compactCancelled(rows,n,reader->cancelled.data()+cancelOffset);
                         cancelOffset+=n;
                         for(size_t i=0;i<alive;){
-                            uint64_t row=rows[i];
-                            const Key raw{shopperCodec.decode(row)};
-                            uint64_t hash=raw.hash();
+                            ShopperReceipt row=rows[i];
+                            const Key raw=shopperCodec.decode(row);
+                            uint64_t hash=shopperCodec.hash(p,row);
                             const Key canonical=ctx.identities.person(raw,hash);
                             if(canonical.bits==raw.bits){++i;continue;}
                             size_t destination=partOf(hash);
-                            uint64_t canonicalCode;
-                            if(shopperCodec.encode(canonical.bits,canonicalCode)){
-                                uint64_t renamed=(row&~shopperCodec.valueMask)|canonicalCode;
+                            ShopperReceipt renamed;
+                            if(shopperCodec.pack(canonical,hash,shopperCodec.milliseconds(row),renamed)){
                                 if(p==destination){rows[i++]=renamed;continue;}
                                 router.compact.add(destination,renamed);
                             }else{
@@ -1505,7 +1505,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     for (size_t b = 0; b < out.size(); ++b)
         for (auto& router : routers) {
             router->events.pieces(b, [&](const Event* rows, size_t n) { out[b].events.add(rows, n); });
-            if(b<shopperCodec.buckets)router->compact.pieces(b,[&](const uint64_t* rows,size_t n){out[b].compact.add(rows,n);});
+            if(b<shopperCodec.buckets)router->compact.pieces(b,[&](const ShopperReceipt* rows,size_t n){out[b].compact.add(rows,n);});
             router->clicks.pieces(b, [&](const Click* rows, size_t n) { out[b].clicks.add(rows, n); });
         }
     // The blocks outlive this function: buckets point into them.
