@@ -455,6 +455,78 @@ uint64_t location(Reader& reader, int64_t arrival, int64_t origin, uint32_t buck
     return special(offset,slowTag);
 }
 
+// The three large ingest phases use the same number of logical lanes. Keeping
+// their workers alive also keeps each lane's allocator and cached pages local.
+class IngestWorkers {
+    std::vector<std::thread> threads;
+    alignas(64) std::atomic<unsigned> generation{0};
+    alignas(64) std::atomic<unsigned> outstanding{0};
+    std::function<void(size_t)> work;
+    std::mutex errorLock;
+    std::exception_ptr error;
+    static constexpr unsigned stopped = UINT32_MAX;
+
+    void execute(size_t lane) {
+        try {
+            work(lane);
+        } catch (...) {
+            std::lock_guard guard(errorLock);
+            if (!error) error = std::current_exception();
+        }
+    }
+
+    void worker(size_t lane) {
+        unsigned previous = 0;
+        for (;;) {
+            generation.wait(previous, std::memory_order_acquire);
+            const unsigned next = generation.load(std::memory_order_acquire);
+            if (next == stopped) return;
+            execute(lane);
+            previous = next;
+            if (outstanding.fetch_sub(1, std::memory_order_acq_rel) == 1)
+                outstanding.notify_one();
+        }
+    }
+
+    void stop() {
+        generation.store(stopped, std::memory_order_release);
+        generation.notify_all();
+        for (auto& thread : threads)
+            if (thread.joinable()) thread.join();
+    }
+
+  public:
+    explicit IngestWorkers(unsigned lanes) {
+        threads.reserve(lanes ? lanes - 1 : 0);
+        try {
+            for (unsigned lane = 1; lane < lanes; ++lane)
+                threads.emplace_back([this, lane] { worker(lane); });
+        } catch (...) {
+            stop();
+            throw;
+        }
+    }
+    ~IngestWorkers() { stop(); }
+
+    template<class F> void run(unsigned lanes, F&& fn) {
+        if (threads.empty() || lanes != threads.size() + 1) {
+            parallel(lanes, lanes, fn);
+            return;
+        }
+        work = std::ref(fn);
+        error = nullptr;
+        outstanding.store(static_cast<unsigned>(threads.size()), std::memory_order_relaxed);
+        generation.fetch_add(1, std::memory_order_release);
+        generation.notify_all();
+        execute(0);
+        for (unsigned left = outstanding.load(std::memory_order_acquire); left;
+             left = outstanding.load(std::memory_order_acquire))
+            outstanding.wait(left, std::memory_order_acquire);
+        work = {};
+        if (error) std::rethrow_exception(error);
+    }
+};
+
 struct Router {
     Slab slab;
     Scatter<Event, 16> events;
@@ -1174,8 +1246,9 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
 
     const unsigned readerCount = static_cast<unsigned>(std::min<size_t>(source.spans.size(), workers));
     std::vector<std::unique_ptr<Reader>> readers(readerCount);
+    IngestWorkers team(bytes >= (256u << 20) && readerCount == workers ? workers : 0);
     std::atomic<size_t> next = 0;
-    parallel(readerCount, readerCount, [&](size_t r) {
+    team.run(readerCount, [&](size_t r) {
         readers[r] = std::make_unique<Reader>(parts, idShards);
         Reader& reader = *readers[r];
         ParsedEvent event;
@@ -1320,7 +1393,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     const unsigned clickLanes = bytes < (256u << 20)
         ? std::max(1u, readerCount / 3) : ctx.settings.clickLanes;
     std::atomic<size_t> nextShard = 0, nextClick = 0;
-    parallel(readerCount, readerCount, [&](size_t w) {
+    team.run(readerCount, [&](size_t w) {
         Reader &reader = *readers[w];
         auto drainClicks = [&] {
             for (;;) {
@@ -1353,7 +1426,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
 
     std::vector<std::unique_ptr<Router>> routers(workers);
     std::atomic<size_t> nextPart = 0;
-    parallel(workers, workers, [&](size_t w) {
+    team.run(workers, [&](size_t w) {
         routers[w] = std::make_unique<Router>(out.size());
         Router& router = *routers[w];
         for (;;) {
