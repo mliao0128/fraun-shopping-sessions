@@ -674,12 +674,14 @@ struct PreparedMasks {
     TailLayout *tail;
 };
 inline void saveMasks(PreparedMasks &packed, CsvMask mh, CsvMask mm, CsvMask mt) {
-    static thread_local std::array<HeadLayout, 256> heads{};
-    static thread_local std::array<TailLayout, 2048> tails{};
+    static thread_local std::array<HeadLayout, 128> heads{};
+    static thread_local std::array<TailLayout, 1024> tails{};
     packed.ht = mh.comma | (uint64_t(mh.quote) << 32);
     packed.tt = mt.comma | (uint64_t(mt.quote) << 32);
-    packed.head = &heads[_mm_crc32_u64(0, packed.ht) & 255];
-    packed.tail = &tails[_mm_crc32_u64(0, packed.tt) & 2047];
+    // Multiplicative indices spread common punctuation layouts across cache slots.
+    // The parser compares the entire tag before reusing any field boundaries.
+    packed.head = &heads[(packed.ht * UINT64_C(0xb484dd3bc7944ce7)) >> 57];
+    packed.tail = &tails[(packed.tt * UINT64_C(0xf4da395d76e92a65)) >> 54];
     packed.commas = mm.comma;
     packed.quotes = mm.quote;
     __builtin_prefetch(packed.head, 0, 3);
