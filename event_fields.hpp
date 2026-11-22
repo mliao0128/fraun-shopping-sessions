@@ -1,10 +1,44 @@
 #pragma once
 #include "shared.hpp"
+// The complete quote count certifies that no quote was left in an interior
+// position. Every counted pair belongs to a distinct, nonoverlapping field.
+[[gnu::target("avx512f,avx512bw"),gnu::noinline]]
+inline bool wideEventFields(std::string_view row, std::array<std::string_view,7>& fields) {
+    const char *p = row.data();
+    const unsigned n = static_cast<unsigned>(row.size());
+    unsigned stops[7], count = 0, quotes = 0;
+    for (unsigned at = 0; at < n; at += 64) {
+        const unsigned span = std::min(64u, n - at);
+        const uint64_t live = _bzhi_u64(~uint64_t{0}, span);
+        const __m512i bytes = _mm512_maskz_loadu_epi8(live, p + at);
+        uint64_t commas = _mm512_cmpeq_epi8_mask(bytes, _mm512_set1_epi8(','));
+        if (count + std::popcount(commas) > 6) return false;
+        quotes += std::popcount(_mm512_cmpeq_epi8_mask(bytes, _mm512_set1_epi8('"')));
+        while (commas) {
+            stops[count++] = at + std::countr_zero(commas);
+            commas &= commas - 1;
+        }
+    }
+    if (count != 6) return false;
+    stops[6] = n;
+    unsigned begin = 0, wrapped = 0;
+    for (unsigned i = 0; i < 7; ++i) {
+        const unsigned end = stops[i];
+        const unsigned width = end - begin;
+        const unsigned trim = width >= 2 && p[begin] == '"' && p[end-1] == '"';
+        fields[i] = {p + begin + trim, width - 2 * trim};
+        wrapped += trim;
+        begin = end + 1;
+    }
+    return quotes == 2 * wrapped;
+}
 // Most event rows place the first two delimiters in the first 32 bytes.
 // Parse those and the remaining four independently. The split lies inside
 // the third field, so it introduces no new quote boundary.
 inline bool eventFields(std::string_view s, std::array<std::string_view,7>& f) {
     const size_t n = s.size();
+    if (n > 96 && n <= 512 && __builtin_cpu_supports("avx512bw") && __builtin_cpu_supports("avx512f"))
+        return wideEventFields(s, f);
     if (n > 96 && n <= 128) return csvPacked<7,true,true>(s,f);
     if (n <= 64 || n > 96) return csv(s,f);
     const char* p = s.data();
