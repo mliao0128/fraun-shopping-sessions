@@ -228,6 +228,9 @@ struct Key {
     }
 };
 static_assert(sizeof(Key)==8 && std::endian::native==std::endian::little);
+#include "shopper_codec.hpp"
+inline ShopperCodec shopperCodec;
+void learnShopperEncoding(const std::vector<std::string_view>&,size_t,size_t);
 
 // Count all quotes, then account for the only two legal positions around each field.
 // SIMD searches for delimiters without treating CR, spaces or non-ASCII bytes specially.
@@ -484,6 +487,7 @@ struct Identities {
     }
 };
 
+void indexCompactAliases(const Identities&);
 struct Context {
     bool populateInput = false;
     struct ExecutionSettings {
@@ -566,7 +570,13 @@ template<class T> struct Pieces {
             for (size_t i = 0; i < count; ++i) visit(rows[i]);
     }
 };
-struct Bucket { Pieces<Event> events; Pieces<Click> clicks; };
+struct Bucket {
+    Pieces<Event> events;
+    Pieces<Click> clicks;
+    Pieces<uint64_t> compact;
+    size_t partition{};
+    size_t eventCount() const { return events.size+compact.size; }
+};
 struct UserRow { Key person; int32_t day; uint32_t sessions, events; int64_t revenue; uint32_t top; };
 struct CampaignStats { int64_t sessions=0, purchasing=0, revenue=0, assists=0; };
 struct DayCounters {

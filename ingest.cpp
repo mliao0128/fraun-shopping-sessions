@@ -394,17 +394,22 @@ static_assert(sizeof(IdRecord) == 16);
 struct Reader {
     Slab slab;
     Scatter<Event, 16> events;
+    Scatter<uint64_t, 32> compact;
     Scatter<Click, 8> clicks;
     Scatter<IdRecord, 16> ids;
     std::vector<Extended> slow;
     std::vector<size_t> cancelBases;
     std::vector<uint8_t> cancelled;
     void prepareCancellations(size_t partitions) {
-        cancelBases.resize(partitions);
+        cancelBases.resize(partitions+shopperCodec.buckets);
         size_t total = 0;
         for (size_t bucket = 0; bucket < partitions; ++bucket) {
             cancelBases[bucket] = total;
             total += events.count(bucket);
+        }
+        for(size_t b=0;b<shopperCodec.buckets;++b){
+            cancelBases[partitions+b]=total;
+            total+=compact.count(b);
         }
         // Give the final partial vector a bounded, readable tail.
         cancelled.resize(total + 31);
@@ -452,7 +457,7 @@ struct Reader {
         }
         return token.witness() ? EventToken{originalBits(token.witnessIndex())} : token;
     }
-    Reader(size_t parts, size_t idShards) : events(slab, parts), clicks(slab, parts), ids(slab, idShards) {}
+    Reader(size_t parts, size_t idShards) : events(slab, parts), compact(slab,shopperCodec.buckets), clicks(slab, parts), ids(slab, idShards) {}
 };
 
 uint64_t special(uint64_t value, uint32_t tag) {
@@ -476,8 +481,9 @@ uint64_t location(Reader& reader, int64_t arrival, int64_t origin, uint32_t buck
 struct Router {
     Slab slab;
     Scatter<Event, 16> events;
+    Scatter<uint64_t, 32> compact;
     Scatter<Click, 8> clicks;
-    explicit Router(size_t buckets) : events(slab, buckets), clicks(slab, buckets) {}
+    explicit Router(size_t buckets) : events(slab, buckets), compact(slab,shopperCodec.buckets), clicks(slab, buckets) {}
 };
 
 struct ParsedEvent {
@@ -1123,9 +1129,9 @@ void deduplicate(size_t shard, int64_t origin, const Source &source,
 // A removed event never reaches the identity table. Compact an entire source
 // block once. A donor comes from the suffix beyond the final retained count,
 // so moving it cannot disturb the flags or cause a second donor move.
-size_t compactCancelled(Event* rows, size_t count, const uint8_t* cancelled) {
+template<class T> size_t compactCancelled(T* rows, size_t count, const uint8_t* cancelled) {
     constexpr size_t lanes = 32;
-    std::array<uint32_t, (rowsPerBlock<Event> + lanes - 1) / lanes> masks;
+    std::array<uint32_t, (rowsPerBlock<T> + lanes - 1) / lanes> masks;
     size_t removed = 0;
     for (size_t offset = 0; offset < count; offset += lanes) {
         const auto flags = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(cancelled + offset));
@@ -1151,6 +1157,58 @@ size_t compactCancelled(Event* rows, size_t count, const uint8_t* cancelled) {
     }
     return kept;
 }
+unsigned shopperPartitionShift=0;
+struct Destination {uint64_t key;uint32_t bucket;bool compact;};
+size_t fullPartition(Key k,uint64_t hash,unsigned oldShift){
+    uint64_t code;
+    if(shopperCodec.buckets && shopperCodec.encode(k.bits,code))return code>>32;
+    return (hash>>1)>>oldShift;
+}
+struct CompactAliasDirectory {
+    struct Cell {uint32_t source{}, flags{};uint64_t dest{};};
+    struct Shard {std::vector<Cell> cells;};
+    std::vector<Shard> shards;
+    uint64_t aliases{},bytes{},buildCPU{};
+    static size_t start(uint32_t key,size_t mask){return size_t(_mm_crc32_u32(0,key))&mask;}
+    void build(const Identities& graph){
+
+        std::vector<uint32_t> counts(shopperCodec.buckets);
+        shards.clear();shards.resize(shopperCodec.buckets);
+        for(const auto& assignment:graph.slots){
+            uint64_t sourceCode;
+            if(!assignment.raw.empty() && shopperCodec.encode(assignment.raw.bits,sourceCode))++counts[sourceCode>>32];
+        }
+        for(unsigned b=0;b<counts.size();++b)if(counts[b]){
+            auto n=std::bit_ceil(size_t(counts[b])+counts[b]/3+1);
+            shards[b].cells.resize(n);bytes+=n*sizeof(Cell);
+        }
+        for(const auto& a:graph.slots){
+            uint64_t source,target;
+            if(a.raw.empty()||!shopperCodec.encode(a.raw.bits,source))continue;
+            Destination dst;
+            if(shopperCodec.encode(a.name.bits,target))dst={uint32_t(target),uint32_t(target>>32),true};
+            else dst={a.name.bits,uint32_t((a.name.hash()>>1)>>shopperPartitionShift),false};
+            auto& cells=shards[source>>32].cells;auto mask=cells.size()-1;
+            auto i=start(source,mask);
+            while(cells[i].flags){i=(i+1)&mask;}
+            cells[i]={uint32_t(source),(dst.bucket+1)|(dst.compact?UINT32_C(0x80000000):0),dst.key};++aliases;
+        }
+
+    }
+    Destination find(uint32_t b,uint32_t key) const {
+        const auto& cells=shards[b].cells;
+        if(cells.empty())return {key,b,true};
+        auto mask=cells.size()-1,i=start(key,mask);
+        for(;;i=(i+1)&mask){
+            const auto& slot=cells[i];
+            if(!slot.flags)return {key,b,true};
+            if(slot.source==key)
+                return {slot.dest,(slot.flags&0x7fffffff)-1,(slot.flags>>31)!=0};
+        }
+    }
+};
+static CompactAliasDirectory compactAliases;
+
 template<class T, size_t N, class Reject>
 void correct(T* rows, size_t count, size_t bucket, unsigned shift,
              const Identities& identities, Scatter<T,N>& moved, Pieces<T>& kept, Reject reject) {
@@ -1163,7 +1221,7 @@ void correct(T* rows, size_t count, size_t bucket, unsigned shift,
             const Key canonical = identities.person(row.person, hash);
             if (canonical.bits == row.person.bits) { ++i; continue; }
             row.rename(canonical, hash);
-            const size_t target = (hash >> 1) >> shift;
+            const size_t target = fullPartition(canonical,hash,shift);
             if (target == bucket) { ++i; continue; }
             moved.add(target,row);
         }
@@ -1199,6 +1257,29 @@ int64_t timestamp(std::string_view s) {
     return base + 1000LL * (seconds - 60 * offset);
 }
 
+
+void learnShopperEncoding(const std::vector<std::string_view>& files,size_t bytes,size_t parts) {
+    if(bytes<(1u<<20)||parts>512)return;
+    std::vector<std::string_view> sample;
+    for(auto file:files) {
+        size_t start=file.find('\n');
+        if(start==file.npos)continue;
+        ++start;
+        for(unsigned i=0;i<16 && start<file.size();++i) {
+            auto end=file.find('\n',start);if(end==file.npos)end=file.size();
+            std::array<std::string_view,7> fields;
+            if(eventFields(file.substr(start,end-start),fields)&&!fields[1].empty())sample.push_back(fields[1]);
+            start=end+1;
+        }
+        if(sample.size()>=2048)break;
+    }
+    shopperCodec.learn(sample);
+    if(shopperCodec.buckets>parts || parts+shopperCodec.buckets>1024)shopperCodec.buckets=0;
+    shopperPartitionShift=63-std::countr_zero(parts);
+}
+void indexCompactAliases(const Identities& graph) {
+    if(shopperCodec.buckets)compactAliases.build(graph);
+}
 
 void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
             const std::vector<std::string_view>& clickFiles, std::vector<Bucket>& out,
@@ -1260,9 +1341,17 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     const size_t idShard = uint64_t{event.idHash} >> idShift;
                     uint64_t info;
                     if (event.valid) {
-                        const auto bucket = static_cast<uint32_t>(partOf(rawHash));
-                        const uint32_t index =
-                            reader.events.add(bucket, Event::pack(event.user, ctx.start, event.row, rawHash));
+                        uint64_t code;
+                        const bool encoded=shopperCodec.buckets && shopperCodec.encode(event.user.bits,code);
+                        auto bucket=uint32_t(encoded?code>>32:partOf(rawHash));
+                        const auto delta=uint64_t(event.row.ts)-uint64_t(ctx.start);
+                        uint32_t index;
+                        if(encoded && !event.row.price && delta<(uint64_t{1}<<31)) {
+                            index=reader.compact.add(bucket,(delta<<32)|uint32_t(code));
+                            bucket+=parts;
+                        } else {
+                            index=reader.events.add(bucket,Event::pack(event.user,ctx.start,event.row,rawHash));
+                        }
                         info = location(reader,event.arrival,arrivalOrigin,bucket,index);
                     } else {
                         const uint64_t relative = relativeArrival(event.arrival,arrivalOrigin);
@@ -1332,6 +1421,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
             }
         }
         reader.events.finish();
+        reader.compact.finish();
         reader.ids.finish();
         reader.prepareCancellations(parts);
     });
@@ -1360,7 +1450,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     row.person=Key::internHashedShopper(text,item.hash);
             }
             row.hash32=uint32_t(item.hash>>32);
-            reader.clicks.add(partOf(item.hash),row);
+            reader.clicks.add(fullPartition(row.person,item.hash,shift),row);
         };
         chunkLines(span,[&](std::string_view line) {
             Click row;
@@ -1430,6 +1520,31 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     correct(rows,keep,p,shift,ctx.identities,router.events,out[p].events,
                             [](const Event&) { return false; });
                 });
+                if(p<shopperCodec.buckets){
+                    size_t cancelOffset=reader->cancelBases[parts+p];
+                    reader->compact.pieces(p,[&](uint64_t* rows,size_t n){
+                        size_t alive=compactCancelled(rows,n,reader->cancelled.data()+cancelOffset);
+                        cancelOffset+=n;
+                        for(size_t i=0;i<alive;){
+                            uint64_t row=rows[i];
+                            auto dst=compactAliases.find(p,uint32_t(row));
+                            if(dst.compact){
+                                uint64_t renamed=(row&UINT64_C(0xffffffff00000000))|uint32_t(dst.key);
+                                if(dst.bucket==p){
+                                    if(renamed!=row)rows[i]=renamed;
+                                    ++i;continue;
+                                }
+                                router.compact.add(dst.bucket,renamed);
+                            } else {
+                                Key person{dst.key};
+                                int64_t ts=ctx.start+int64_t(row>>32);
+                                router.events.add(dst.bucket,Event::pack(person,ctx.start,{ts,0,0},person.hash()));
+                            }
+                            if(--alive!=i)rows[i]=rows[alive];
+                        }
+                        if(alive)out[p].compact.add(rows,alive);
+                    });
+                }
                 reader->clicks.pieces(p, [&](Click* rows, size_t n) {
                     correct(rows,n,p,shift,ctx.identities,router.clicks,out[p].clicks,
                             [](const Click&) { return false; });
@@ -1437,11 +1552,13 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
             }
         }
         router.events.finish();
+        router.compact.finish();
         router.clicks.finish();
     });
     for (size_t b = 0; b < out.size(); ++b)
         for (auto& router : routers) {
             router->events.pieces(b, [&](const Event* rows, size_t n) { out[b].events.add(rows, n); });
+            if(b<shopperCodec.buckets)router->compact.pieces(b,[&](const uint64_t* rows,size_t n){out[b].compact.add(rows,n);});
             router->clicks.pieces(b, [&](const Click* rows, size_t n) { out[b].clicks.add(rows, n); });
         }
     // The blocks outlive this function: buckets point into them.

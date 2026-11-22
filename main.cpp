@@ -217,11 +217,14 @@ int main(int argc, char** argv) try {
         if (bytes > 3000000000ULL) ctx.settings = {9, 10, 22, 3, 0};
         else ctx.settings = {8, 9, 22, 3, 2};
     }
+    size_t bucketCount = std::clamp(std::bit_ceil(bytes / (1u << 20)), size_t{1}, size_t{1} << ctx.settings.userBits);
+    learnShopperEncoding(events,bytes,bucketCount);
     auto links = inputs.folder(data / "links");
     std::exception_ptr linkError;
     std::thread linker([&] {
         try {
             linkPeople(links, ctx, std::min(workers, ctx.settings.linkWorkers));
+            indexCompactAliases(ctx.identities);
         } catch (...) {
             linkError = std::current_exception();
         }
@@ -243,8 +246,8 @@ int main(int argc, char** argv) try {
 
     // More buckets balance large people across workers. Keep small datasets
     // compact, since each active bucket accumulates its own campaign totals.
-    size_t bucketCount = std::clamp(std::bit_ceil(bytes / (1u << 20)), size_t{1}, size_t{1} << ctx.settings.userBits);
     std::vector<Bucket> buckets(bucketCount);
+    for(size_t b=0;b<bucketCount;++b)buckets[b].partition=b;
     stage("dimensions");
     try {
         ingest(ctx, events, clicks, buckets, workers, awaitIdentities);
