@@ -623,7 +623,7 @@ struct DayCounters {
 // Parquet worker can pass them directly to WriteBatch.
 #include "delta_names.hpp"
 struct UserColumns {
-    DeltaNames names;
+    RunNames names;
     void person(Key key, uint32_t count) {
         Key::Buffer buffer;
         names.append(key.view(buffer),count);

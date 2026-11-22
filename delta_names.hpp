@@ -160,3 +160,75 @@ struct DeltaNames {
         }
     }
 };
+
+// A shopper contributes one consecutive run of output days. Encode that run
+// once at its source. A dictionary is local to one Parquet column chunk.
+struct RunNames {
+    struct Group {
+        std::string dictionary;
+        std::string codes;
+        uint32_t entries = 0, rows = 0;
+        std::vector<DeltaNames::Page> fallback;
+    };
+    static constexpr size_t dictionaryLimit = 1 << 20;
+    Group current;
+    DeltaNames wideNames;
+    bool wide = false;
+    std::vector<Group> groups;
+
+    void promote() {
+        size_t textAt = 0, codeAt = 1;
+        for (uint32_t entry = 0; entry < current.entries; ++entry) {
+            uint32_t size;
+            std::memcpy(&size, current.dictionary.data() + textAt, sizeof(size));
+            textAt += sizeof(size);
+            uint32_t run = 0;
+            for (unsigned shift = 0;; shift += 7) {
+                const auto byte = static_cast<uint8_t>(current.codes[codeAt++]);
+                run |= uint32_t(byte & 127) << shift;
+                if (!(byte & 128)) break;
+            }
+            codeAt += sizeof(uint16_t);
+            wideNames.append(std::string_view(current.dictionary).substr(textAt, size), run >> 1);
+            textAt += size;
+        }
+        current.dictionary.clear();
+        current.codes.clear();
+        wide = true;
+    }
+
+    void sealGroup() {
+        if (!current.rows) return;
+        if (wide) {
+            wideNames.sealGroup();
+            current.fallback = std::move(wideNames.groups.front());
+            wideNames.groups.clear();
+        }
+        groups.emplace_back(std::move(current));
+        current = {};
+        wide = false;
+    }
+
+    void append(std::string_view name, uint32_t count) {
+        while (count) {
+            const auto take = std::min<uint32_t>(count, DeltaNames::rowGroup - current.rows);
+            if (!wide && (name.size() > dictionaryLimit - 4 ||
+                current.dictionary.size() > dictionaryLimit - 4 - name.size()))
+                promote();
+            if (wide) {
+                wideNames.append(name, take);
+            } else {
+                const auto size = static_cast<uint32_t>(name.size());
+                current.dictionary.append(reinterpret_cast<const char*>(&size), sizeof(size));
+                current.dictionary.append(name);
+                if (!current.entries) current.codes.push_back(16);
+                DeltaNames::varint(current.codes, uint64_t(take) << 1);
+                const auto id = static_cast<uint16_t>(current.entries++);
+                current.codes.append(reinterpret_cast<const char*>(&id), sizeof(id));
+            }
+            current.rows += take;
+            count -= take;
+            if (current.rows == DeltaNames::rowGroup) sealGroup();
+        }
+    }
+};

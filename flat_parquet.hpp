@@ -195,6 +195,15 @@ public:
         for (const auto& pageBytes : pages)
             page(chunk, pageBytes.bytes, pageBytes.count, deltaByteArray);
     }
+    template <class Group> void runNames(const Group& group) {
+        if (!group.fallback.empty()) {
+            encodedNames(group.fallback);
+            return;
+        }
+        auto& c = column();
+        page(c, group.dictionary, group.entries, plain, true);
+        page(c, group.codes, group.rows, 8);
+    }
     void userRuns(size_t n, const std::vector<Key> &keys, const std::vector<uint32_t> &counts, size_t &run,
                   size_t &consumed, const std::vector<char> &dictionary, const std::vector<size_t> &ends) {
         const size_t initial = run, skip = consumed;

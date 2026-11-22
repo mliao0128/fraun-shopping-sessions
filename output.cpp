@@ -34,7 +34,7 @@ void writeOutputs(const fs::path& root, const Context& ctx, std::vector<Result>&
             for (size_t start = 0; start < rows.days.size(); start += rowsPerGroup) {
                 const size_t n = std::min(rowsPerGroup, rows.days.size() - start);
                 file.group(n);
-                file.encodedNames(rows.names.groups[start / rowsPerGroup]);
+                file.runNames(rows.names.groups[start / rowsPerGroup]);
                 file.days(rows.days.data() + start, n);
                 file.counts64(rows.sessions.data() + start, n);
                 file.counts64(rows.events.data() + start, n);
