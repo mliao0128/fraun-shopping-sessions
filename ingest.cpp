@@ -1169,7 +1169,7 @@ void correct(T* rows, size_t count, size_t bucket, unsigned shift,
             const Key canonical=identities.person(row.person,hash);
             if(canonical.bits==row.person.bits){++i;continue;}
             row.rename(canonical,hash);
-            const size_t target=physicalOwnerBucket(canonical,hash,shift);
+            const size_t target=(hash>>1)>>shift;
             if (target == bucket) { ++i; continue; }
             moved.add(target,row);
         }
@@ -1224,9 +1224,7 @@ void learnShopperEncoding(const std::vector<std::string_view>& files,size_t byte
     shopperCodec.learn(sample);
     shopperCodec.place(parts);
     if(!shopperCodec.buckets)return;
-    unsigned partBits=std::countr_zero(parts);
-    compactBucketShift=partBits?32-partBits:0;
-    compactRemainder=UINT32_MAX>>partBits;
+
 }
 
 void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
@@ -1289,17 +1287,15 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     const size_t idShard = uint64_t{event.idHash} >> idShift;
                     uint64_t info;
                     if (event.valid) {
-                        const bool eligible=fitsShopperReceipt(event.user);
-                        auto bucket=uint32_t(eligible?receiptBucket(event.user):partOf(rawHash));
+                        auto bucket=uint32_t(partOf(rawHash));
                         const auto delta=uint64_t(event.row.ts)-uint64_t(ctx.start);
                         uint32_t index;
                         uint64_t receipt;
-                        if(!event.row.price && eligible &&
-                           shopperCodec.pack(_pext_u64(event.user.bits,shopperCodec.lowRawMask),delta,receipt)) {
+                        if(!event.row.price && shopperCodec.pack(event.user.bits,delta,receipt)) {
                             index=reader.compact.add(bucket,receipt);
                             bucket+=parts;
                         } else {
-                            index=reader.events.add(bucket,Event::pack(event.user,ctx.start,event.row,eligible?event.user.hash():rawHash));
+                            index=reader.events.add(bucket,Event::pack(event.user,ctx.start,event.row,rawHash));
                         }
                         info = location(reader,event.arrival,arrivalOrigin,bucket,index);
                     } else {
@@ -1322,7 +1318,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 };
                 auto accept = [&](const char *line) {
                     const uint64_t offset = base + reinterpret_cast<uintptr_t>(line);
-                    const uint64_t hash = event.valid && !fitsShopperReceipt(event.user) ? event.user.hash() : 0;
+                    const uint64_t hash = event.valid ? event.user.hash() : 0;
                     if (event.valid && event.user.external() && Key::shopperSlots) {
                         const auto width = event.user.borrowed().size();
                         if (width > 9 && width <= 48) {
@@ -1399,7 +1395,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     row.person=Key::internHashedShopper(text,item.hash);
             }
             row.hash32=uint32_t(item.hash>>32);
-            const size_t destination=physicalOwnerBucket(row.person,item.hash,shift);
+            const size_t destination=partOf(item.hash);
             reader.clicks.add(destination,row);
         };
         chunkLines(span,[&](std::string_view line) {
@@ -1477,13 +1473,14 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                         cancelOffset+=n;
                         for(size_t i=0;i<alive;){
                             uint64_t row=rows[i];
-                            const Key raw=restoreReceiptOwner(p,row);
+                            const Key raw{shopperCodec.decode(row)};
                             uint64_t hash=raw.hash();
                             const Key canonical=ctx.identities.person(raw,hash);
                             if(canonical.bits==raw.bits){++i;continue;}
-                            size_t destination=physicalOwnerBucket(canonical,hash,shift);
-                            if(fitsShopperReceipt(canonical)){
-                                uint64_t renamed=(row&~shopperCodec.lowMask)|_pext_u64(canonical.bits,shopperCodec.lowRawMask);
+                            size_t destination=partOf(hash);
+                            uint64_t canonicalCode;
+                            if(shopperCodec.encode(canonical.bits,canonicalCode)){
+                                uint64_t renamed=(row&~shopperCodec.valueMask)|canonicalCode;
                                 if(p==destination){rows[i++]=renamed;continue;}
                                 router.compact.add(destination,renamed);
                             }else{

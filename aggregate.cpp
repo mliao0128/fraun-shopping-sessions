@@ -121,7 +121,7 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
         }
     });
     bucket.compact.each([&](uint64_t row){
-        const Key name=restoreReceiptOwner(bucket.partition,row);
+        const Key name{shopperCodec.decode(row)};
         const auto g=index.add(name,name.hash());
         const uint32_t delta=shopperCodec.milliseconds(row);
         usedBits|=delta;

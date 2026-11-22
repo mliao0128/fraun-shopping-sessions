@@ -230,27 +230,6 @@ struct Key {
 static_assert(sizeof(Key)==8 && std::endian::native==std::endian::little);
 #include "shopper_codec.hpp"
 inline ShopperCodec shopperCodec;
-inline uint32_t compactBucketShift=0, compactRemainder=UINT32_MAX;
-inline bool fitsShopperReceipt(Key person) {
-    return shopperCodec.buckets && (person.bits & ~shopperCodec.variable)==shopperCodec.invariant;
-}
-inline uint32_t receiptBucket(Key person) {
-    const uint32_t mixed=_mm_crc32_u64(0,person.bits&shopperCodec.lowRawMask);
-    const uint32_t upper=uint32_t(_pext_u64(person.bits,shopperCodec.highRawMask));
-    const auto bits=shopperCodec.partBits;
-    return upper^(bits?mixed>>(32-bits):0);
-}
-inline size_t physicalOwnerBucket(Key person,uint64_t originalHash,unsigned shift) {
-    if (fitsShopperReceipt(person)) return receiptBucket(person);
-    return (originalHash>>1)>>shift;
-}
-inline Key restoreReceiptOwner(uint32_t partition,uint64_t receipt) {
-    const uint64_t low=_pdep_u64(receipt,shopperCodec.lowRawMask);
-    const uint32_t mixed=_mm_crc32_u64(0,low);
-    const auto bits=shopperCodec.partBits;
-    const uint32_t upper=partition^(bits?mixed>>(32-bits):0);
-    return Key{shopperCodec.invariant|low|_pdep_u64(upper,shopperCodec.highRawMask)};
-}
 void learnShopperEncoding(const std::vector<std::string_view>&,size_t,size_t);
 
 // Count all quotes, then account for the only two legal positions around each field.
