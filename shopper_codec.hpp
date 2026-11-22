@@ -8,6 +8,7 @@
 struct ShopperCodec {
     uint64_t invariant{},variable{},lowMask{};
     unsigned width{},lowBits{},partBits{};
+    uint64_t lowRawMask{},highRawMask{};
     uint32_t buckets{};
     void learn(const std::vector<std::string_view>& sample) {
         *this=ShopperCodec{};
@@ -38,6 +39,8 @@ struct ShopperCodec {
         buckets=uint32_t{1}<<partBits;
         lowBits=width-partBits;
         lowMask=(uint64_t{1}<<lowBits)-1;
+        lowRawMask=_pdep_u64(lowMask,variable);
+        highRawMask=variable^lowRawMask;
     }
     bool encode(uint64_t raw,uint64_t& out) const {
         if((raw&~variable)!=invariant)return false;

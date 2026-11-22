@@ -40,7 +40,7 @@ template <class F> void linkRows(SV file, F action) {
     const auto consume=[&](const Pending& item) {
         const auto resolve=[&](unsigned i) {
             const auto text=item.fields[i];
-            return eligible(text) ? Key::internHashedShopper(text,item.hashes[i]) : encodeShopper(Key::from(text));
+            return eligible(text) ? Key::internHashedShopper(text,item.hashes[i]) : Key::from(text);
         };
         const auto left=resolve(0);
         action(left,resolve(1));
@@ -139,8 +139,8 @@ void endpoints(Batch& batch) {
         }
         if (valid && !fields[0].empty() && !fields[1].empty()) {
             for (SV f : fields) {
-                Key k = encodeShopper(Key::shopper(f));
-                const auto shard = static_cast<uint8_t>(Identities::shard(k.hash()));
+                Key k = Key::shopper(f);
+                const auto shard = static_cast<uint8_t>(Identities::shard(shopperRoutingHash(k)));
                 batch.parts[shard].push_back(k);
                 batch.order.push_back(shard);
             }
@@ -165,7 +165,7 @@ void numberEndpoints(size_t s, std::vector<Batch>& input, Shard& shard) {
     for (auto& b : input) {
         for (Key& entry : b.parts[s]) {
             const Key key = entry;
-            size_t pos = key.hash() & (capacity - 1);
+            size_t pos = shopperRoutingHash(key) & (capacity - 1);
             while (table[pos] != UINT32_MAX && !(names[table[pos]] == key))
                 pos = (pos + 1) & (capacity - 1);
             if (table[pos] == UINT32_MAX) {
@@ -254,7 +254,7 @@ void fallbackLinks(const std::vector<std::string_view> &files, Context &ctx, uns
         auto* table = dict.slots.data() + s * dict.shardSize;
         size_t mask = dict.shardSize - 1;
         for (const auto& [k,m] : groups[s].aliases) {
-            const uint64_t hash = k.hash();
+            const uint64_t hash = shopperRoutingHash(k);
             size_t pos = dict.home(hash);
             dict.fingerprints[s * dict.shardSize + pos] |= Identities::fingerprint(hash);
             while (!table[pos].raw.empty()) pos = (pos + 1) & mask;
@@ -327,7 +327,7 @@ void linkPeople(const std::vector<std::string_view> &files, Context &ctx, unsign
                     break;
                 }
             }
-            hash = high.hash();
+            hash = shopperRoutingHash(high);
         }
     };
     parallel(chunks.size(), workers, [&](size_t n) {
@@ -347,7 +347,7 @@ void linkPeople(const std::vector<std::string_view> &files, Context &ctx, unsign
                 return;
             if (a < b)
                 std::swap(a, b);
-            const uint64_t h = a.hash();
+            const uint64_t h = shopperRoutingHash(a);
             __builtin_prefetch(&dict.slots[Identities::shard(h) * cap + dict.home(h)], 1);
             pending[used++] = {a, b, h};
             if (used == pending.size())
@@ -366,7 +366,7 @@ void linkPeople(const std::vector<std::string_view> &files, Context &ctx, unsign
         for (size_t i = base; i < base + cap; ++i) {
             auto raw = dict.slots[i].raw;
             if (!raw.empty()) {
-                uint64_t h = raw.hash();
+                uint64_t h = shopperRoutingHash(raw);
                 dict.fingerprints[base + dict.home(h)] |= Identities::fingerprint(h);
             }
         }
@@ -408,7 +408,7 @@ void linkPeople(const std::vector<std::string_view> &files, Context &ctx, unsign
                     } else {
                         path.next = {std::atomic_ref<uint64_t>(dict.slots[idx].name.bits)
                                          .load(std::memory_order_relaxed)};
-                        path.hash = path.next.hash();
+                        path.hash = shopperRoutingHash(path.next);
                         __builtin_prefetch(&dict.fingerprints[path.hash >> dict.slotShift], 0, 3);
                         paths[active++] = path;
                     }
@@ -421,7 +421,7 @@ void linkPeople(const std::vector<std::string_view> &files, Context &ctx, unsign
                 continue;
             ++live;
             Key next{std::atomic_ref<uint64_t>(dict.slots[i].name.bits).load(std::memory_order_relaxed)};
-            auto h = next.hash();
+            auto h = shopperRoutingHash(next);
             __builtin_prefetch(&dict.fingerprints[h >> dict.slotShift], 0, 3);
             paths[pending++] = {uint32_t(i), next, h};
             if (pending == width)

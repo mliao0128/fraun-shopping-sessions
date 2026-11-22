@@ -77,7 +77,7 @@ public:
         if (groups.size() * 10 >= slots.size() * 7) {
             slots.assign(slots.size() * 2, absent);
             for (uint32_t i = 0; i < groups.size(); ++i)
-                slots[slot(groups[i].person, groups[i].person.hash())] = i;
+                slots[slot(groups[i].person, shopperRoutingHash(groups[i].person))] = i;
             pos = slot(person, h);
         }
         uint32_t index = static_cast<uint32_t>(groups.size());
@@ -121,9 +121,9 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
         }
     });
     bucket.compact.each([&](uint64_t row){
-        const auto code=completeCompactCode(bucket.partition,row);
-        const Key name=compactShopper(code);
-        const auto g=index.add(name,name.hash());
+        uint64_t hash;
+        const Key name=restoreReceiptOwner(bucket.partition,row,hash);
+        const auto g=index.add(name,hash);
         const uint32_t delta=shopperCodec.milliseconds(row);
         usedBits|=delta;
         out.pending[at++]={g,delta};
@@ -191,9 +191,7 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
         }
         first = group.purchaseEnd;
     }
-    // Output and lexical comparisons always consume ordinary exact Key spellings.
-    for(auto& group:groups)if(isCompactShopper(group.person))
-        group.person=Key{shopperCodec.decode(group.person.bits&compactKeyPayload)};
+
 }
 
 // Sorting a few timestamps is cheaper than setting up an occupancy bitmap.

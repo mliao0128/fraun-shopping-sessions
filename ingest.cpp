@@ -1289,17 +1289,16 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     const size_t idShard = uint64_t{event.idHash} >> idShift;
                     uint64_t info;
                     if (event.valid) {
-                        const bool encoded=isCompactShopper(event.user);
-                        const uint64_t code=event.user.bits&compactKeyPayload;
-                        auto bucket=uint32_t(encoded?compactPartition(code):partOf(rawHash));
+                        auto bucket=uint32_t(partOf(rawHash));
                         const auto delta=uint64_t(event.row.ts)-uint64_t(ctx.start);
                         uint32_t index;
                         uint64_t receipt;
-                        if(encoded && !event.row.price && shopperCodec.pack(code,delta,receipt)) {
+                        if(!event.row.price && fitsShopperReceipt(event.user) &&
+                           shopperCodec.pack(_pext_u64(event.user.bits,shopperCodec.lowRawMask),delta,receipt)) {
                             index=reader.compact.add(bucket,receipt);
                             bucket+=parts;
                         } else {
-                            index=reader.events.add(bucket,Event::pack(event.user,ctx.start,event.row,encoded?event.user.hash():rawHash));
+                            index=reader.events.add(bucket,Event::pack(event.user,ctx.start,event.row,rawHash));
                         }
                         info = location(reader,event.arrival,arrivalOrigin,bucket,index);
                     } else {
@@ -1322,8 +1321,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 };
                 auto accept = [&](const char *line) {
                     const uint64_t offset = base + reinterpret_cast<uintptr_t>(line);
-                    if(event.valid)event.user=encodeShopper(event.user);
-                    const uint64_t hash = event.valid && !isCompactShopper(event.user) ? event.user.hash() : 0;
+                    const uint64_t hash = event.valid ? shopperRoutingHash(event.user) : 0;
                     if (event.valid && event.user.external() && Key::shopperSlots) {
                         const auto width = event.user.borrowed().size();
                         if (width > 9 && width <= 48) {
@@ -1406,8 +1404,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         chunkLines(span,[&](std::string_view line) {
             Click row;
             if(!parseClick(line,ctx,row)) return;
-            row.person=encodeShopper(row.person);
-            const auto hash=row.person.hash();
+            const auto hash=shopperRoutingHash(row.person);
             if(row.person.external() && Key::shopperSlots) {
                 auto text=row.person.borrowed();
                 if(text.size()>9 && text.size()<=48)
@@ -1479,13 +1476,13 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                         cancelOffset+=n;
                         for(size_t i=0;i<alive;){
                             uint64_t row=rows[i];
-                            const Key raw=compactShopper(completeCompactCode(p,row));
-                            uint64_t hash=raw.hash();
+                            uint64_t hash;
+                            const Key raw=restoreReceiptOwner(p,row,hash);
                             const Key canonical=ctx.identities.person(raw,hash);
                             if(canonical.bits==raw.bits){++i;continue;}
                             size_t destination=partOf(hash);
-                            if(isCompactShopper(canonical)){
-                                uint64_t renamed=(row&~shopperCodec.lowMask)|(canonical.bits&shopperCodec.lowMask);
+                            if(fitsShopperReceipt(canonical)){
+                                uint64_t renamed=(row&~shopperCodec.lowMask)|_pext_u64(canonical.bits,shopperCodec.lowRawMask);
                                 if(p==destination){rows[i++]=renamed;continue;}
                                 router.compact.add(destination,renamed);
                             }else{
