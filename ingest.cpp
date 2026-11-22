@@ -700,7 +700,50 @@ inline void prepMasks(std::string_view s, PreparedMasks &packed) {
     mt.quote >>= 2;
     saveMasks(packed, mh, mm, mt);
 }
-template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
+// A 512-bit register holds the same field window from two separately checked
+// records. The parser still consumes each record in its original order.
+struct RowPairMasks {
+    CsvMask head, middle, tail;
+    unsigned length;
+};
+#define EVENT_PAIR_TARGET __attribute__((target("avx512f,avx512bw,avx512dq")))
+EVENT_PAIR_TARGET inline __m512i pairBytes(const char *first, const char *second) {
+    __m256i low = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(first));
+    __m256i high = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(second));
+    return _mm512_inserti64x4(_mm512_castsi256_si512(low), high, 1);
+}
+EVENT_PAIR_TARGET inline void pairPunctuation(__m512i bytes, uint32_t keep, CsvMask &first, CsvMask &second) {
+    uint64_t comma = _mm512_cmpeq_epi8_mask(bytes, _mm512_set1_epi8(','));
+    uint64_t quote = _mm512_cmpeq_epi8_mask(bytes, _mm512_set1_epi8('"'));
+    first = {uint32_t(comma) & keep, uint32_t(quote) & keep};
+    second = {uint32_t(comma >> 32) & keep, uint32_t(quote >> 32) & keep};
+}
+inline unsigned possibleShortLength(const char *p) {
+    __m256i bytes = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p + 60));
+    uint32_t lf = _mm256_movemask_epi8(_mm256_cmpeq_epi8(bytes, _mm256_set1_epi8('\n')));
+    return lf && !(lf & 3) ? 60 + std::countr_zero(lf) : 0;
+}
+EVENT_PAIR_TARGET [[gnu::noinline]] bool classifyEventPair(const char *p, const char *finish, RowPairMasks (&pair)[2]) {
+    unsigned a = possibleShortLength(p);
+    if (!a || p + a + 1 >= finish) return false;
+    const char *next = p + a + 1;
+    unsigned b = possibleShortLength(next);
+    if (!b) return false;
+    const __m512i heads = pairBytes(p, next), middles = pairBytes(p + 30, next + 30);
+    const __m512i newline = _mm512_set1_epi8('\n');
+    if (_mm512_cmpeq_epi8_mask(heads, newline) | _mm512_cmpeq_epi8_mask(middles, newline)) return false;
+    // Neither row has an earlier LF. The tail loads extend only through the
+    // byte immediately after each LF; the caller reserves that byte as well.
+    const __m512i tails = pairBytes(p + a - 30, next + b - 30);
+    pairPunctuation(heads, 0x3fffffffu, pair[0].head, pair[1].head);
+    pairPunctuation(middles, 0xffffffffu, pair[0].middle, pair[1].middle);
+    pairPunctuation(tails, 0x3fffffffu, pair[0].tail, pair[1].tail);
+    pair[0].length = a;
+    pair[1].length = b;
+    return true;
+}
+#undef EVENT_PAIR_TARGET
+template <bool PairRows, class F> void eventLinesImpl(const InputChunk &chunk, F &&visit) {
     const char *p = chunk.file.data() + chunk.begin;
     const char *finish = chunk.file.data() + chunk.end;
     const char *limit = chunk.file.data() + chunk.file.size();
@@ -717,6 +760,20 @@ template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
     while (p < finish) {
         if (limit - p > 2048)
             __builtin_prefetch(p + 2048, 0, 3);
+        if constexpr (PairRows) {
+            // Max first length 91, next start 92, max second LF at 183.
+            // 185 readable bytes also cover the extra byte in its tail load.
+            RowPairMasks records[2];
+            if (limit - p >= 185 && classifyEventPair(p, finish, records)) {
+                for (const RowPairMasks &record : records) {
+                    PreparedMasks &row = visit();
+                    row.line = {p, record.length};
+                    saveMasks(row, record.head, record.middle, record.tail);
+                    p += record.length + 1;
+                }
+                continue;
+            }
+        }
         if (limit - p >= 92) {
             auto h = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p));
             auto m = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p + 30));
@@ -747,6 +804,12 @@ template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
             break;
         p = end + 1;
     }
+}
+template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
+    if (__builtin_cpu_supports("avx512bw") && __builtin_cpu_supports("avx512dq") && __builtin_cpu_supports("avx512f"))
+        eventLinesImpl<true>(chunk, visit);
+    else
+        eventLinesImpl<false>(chunk, visit);
 }
 inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, ParsedEvent &out) {
     auto s = packed.line;
