@@ -234,24 +234,21 @@ inline uint32_t compactBucketShift=0, compactRemainder=UINT32_MAX;
 inline bool fitsShopperReceipt(Key person) {
     return shopperCodec.buckets && (person.bits & ~shopperCodec.variable)==shopperCodec.invariant;
 }
-inline uint64_t receiptOwnerHash(uint32_t partition, uint32_t mixed) {
-    const uint32_t home=(partition<<compactBucketShift)|(mixed&compactRemainder);
-    return (uint64_t(home)<<32)|mixed;
-}
-inline uint64_t shopperRoutingHash(Key person) {
-    if (!fitsShopperReceipt(person)) return person.hash();
+inline uint32_t receiptBucket(Key person) {
     const uint32_t mixed=_mm_crc32_u64(0,person.bits&shopperCodec.lowRawMask);
-    const auto upper=uint32_t(_pext_u64(person.bits,shopperCodec.highRawMask));
+    const uint32_t upper=uint32_t(_pext_u64(person.bits,shopperCodec.highRawMask));
     const auto bits=shopperCodec.partBits;
-    const uint32_t partition=upper^(bits?mixed>>(32-bits):0);
-    return receiptOwnerHash(partition,mixed);
+    return upper^(bits?mixed>>(32-bits):0);
 }
-inline Key restoreReceiptOwner(uint32_t partition,uint64_t receipt,uint64_t& hash) {
+inline size_t physicalOwnerBucket(Key person,uint64_t originalHash,unsigned shift) {
+    if (fitsShopperReceipt(person)) return receiptBucket(person);
+    return (originalHash>>1)>>shift;
+}
+inline Key restoreReceiptOwner(uint32_t partition,uint64_t receipt) {
     const uint64_t low=_pdep_u64(receipt,shopperCodec.lowRawMask);
     const uint32_t mixed=_mm_crc32_u64(0,low);
     const auto bits=shopperCodec.partBits;
     const uint32_t upper=partition^(bits?mixed>>(32-bits):0);
-    hash=receiptOwnerHash(partition,mixed);
     return Key{shopperCodec.invariant|low|_pdep_u64(upper,shopperCodec.highRawMask)};
 }
 void learnShopperEncoding(const std::vector<std::string_view>&,size_t,size_t);
@@ -502,7 +499,7 @@ struct Identities {
         const Alias* table = slots.data() + start;
         while (!table[pos].raw.empty()) {
             if (table[pos].raw == raw) {
-                hash = shopperRoutingHash(table[pos].name);
+                hash = table[pos].name.hash();
                 return table[pos].name;
             }
             pos = (pos + 1) & mask;
@@ -557,7 +554,7 @@ struct Event {
     uint64_t routingHash() const {
         if (!(bits >> 63))
             return uint64_t(uint32_t(bits >> 31)) << 32;
-        return shopperRoutingHash(person);
+        return person.hash();
     }
     void rename(Key to, uint64_t hash) {
         person = to;
