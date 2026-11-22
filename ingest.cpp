@@ -159,17 +159,12 @@ template<class F> void chunkLines(const InputChunk& chunk, F&& visit) {
     }
     // Newlines are found 64 bytes at a time; `pos` is the open line's start.
     auto newlinesIn = [](const char* p) -> uint64_t {
-#ifdef __AVX512BW__
-        return _mm512_cmpeq_epi8_mask(_mm512_loadu_si512(reinterpret_cast<const void*>(p)),
-                                      _mm512_set1_epi8('\n'));
-#else   // local builds for emulators without AVX-512
         const __m256i newline = _mm256_set1_epi8('\n');
         const uint32_t a = _mm256_movemask_epi8(_mm256_cmpeq_epi8(
             _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p)), newline));
         const uint32_t b = _mm256_movemask_epi8(_mm256_cmpeq_epi8(
             _mm256_loadu_si256(reinterpret_cast<const __m256i*>(p + 32)), newline));
         return a | (uint64_t{b} << 32);
-#endif
     };
     size_t scan = pos;
     while (pos < chunk.end) {
@@ -310,17 +305,10 @@ public:
         Buffer& buffer = buffers[part];
         buffer.rows[slot] = row;
         if (slot == Group - 1) {
-#ifdef __AVX512F__
-            auto* from = reinterpret_cast<const __m512i*>(&buffer);
-            auto* to = reinterpret_cast<__m512i*>(destination(part, index - slot));
-            for (size_t i = 0; i < Group * sizeof(T) / 64; ++i)
-                _mm512_stream_si512(to + i, _mm512_load_si512(from + i));
-#else
             auto* from = reinterpret_cast<const __m256i*>(&buffer);
             auto* to = reinterpret_cast<__m256i*>(destination(part, index - slot));
             for (size_t i = 0; i < Group * sizeof(T) / 32; ++i)
                 _mm256_stream_si256(to + i, _mm256_load_si256(from + i));
-#endif
         }
         return index;
     }
