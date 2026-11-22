@@ -1,5 +1,7 @@
 #pragma once
 #include <array>
+#include <climits>
+#include <immintrin.h>
 #include <bit>
 #include <span>
 #include <string>
@@ -70,24 +72,75 @@ struct DeltaNames {
             }
         }
     }
+    static void narrowDeltas(std::string& out,std::span<const uint8_t> src) {
+        varint(out,128);varint(out,4);varint(out,src.size());varint(out,zigzag(src.front()));
+        for(size_t start=1;start<src.size();start+=128){
+            const size_t n=std::min<size_t>(128,src.size()-start);
+            if(n==128){
+                __m256i d[4];
+                for(unsigned m=0;m<4;++m){
+                    auto* p=src.data()+start+32*m;
+                    d[m]=_mm256_sub_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(p)),_mm256_loadu_si256(reinterpret_cast<const __m256i*>(p-1)));
+                }
+                auto m=_mm256_min_epi8(_mm256_min_epi8(d[0],d[1]),_mm256_min_epi8(d[2],d[3]));
+                auto v=_mm_min_epi8(_mm256_castsi256_si128(m),_mm256_extracti128_si256(m,1));
+                v=_mm_min_epi8(v,_mm_srli_si128(v,8));v=_mm_min_epi8(v,_mm_srli_si128(v,4));
+                v=_mm_min_epi8(v,_mm_srli_si128(v,2));v=_mm_min_epi8(v,_mm_srli_si128(v,1));
+                const int8_t minimum=int8_t(_mm_cvtsi128_si32(v));
+                varint(out,zigzag(minimum));
+                const size_t head=out.size();out.resize(head+4);
+                auto base=_mm256_set1_epi8(minimum);
+                for(unsigned k=0;k<4;++k){
+                    auto residual=_mm256_sub_epi8(d[k],base);
+                    bool any=!_mm256_testz_si256(residual,residual);
+                    out[head+k]=any?8:0;
+                    if(any){size_t at=out.size();out.resize(at+32);_mm256_storeu_si256(reinterpret_cast<__m256i*>(out.data()+at),residual);}
+                }
+            }else{
+                std::array<int8_t,128> d{};
+                int minimum=INT_MAX;
+                for(size_t k=0;k<n;++k){int value=int(src[start+k])-int(src[start+k-1]);d[k]=int8_t(value);minimum=std::min(minimum,value);}
+                varint(out,zigzag(minimum));
+                const size_t head=out.size();out.resize(head+4,0);
+                for(size_t k=0;k<n;k+=32){
+                    std::array<uint8_t,32> residual{};unsigned mask=0;
+                    for(size_t j=0;j<std::min<size_t>(32,n-k);++j){residual[j]=uint8_t(int(d[k+j])-minimum);mask|=residual[j];}
+                    if(mask){out[head+k/32]=8;out.append(reinterpret_cast<const char*>(residual.data()),32);}
+                }
+            }
+        }
+    }
+    std::vector<uint8_t> smallPrefix,smallSuffix;
+    bool wideLengths=false;
+    size_t pageRows() const {return wideLengths?prefix.size():smallPrefix.size();}
+    void promoteLengths() {
+        prefix.assign(smallPrefix.begin(),smallPrefix.end());
+        suffix.assign(smallSuffix.begin(),smallSuffix.end());
+        smallPrefix.clear();smallSuffix.clear();wideLengths=true;
+    }
     void finishPage() {
-        if(prefix.empty()) return;
+        size_t n=pageRows();if(!n)return;
         encoded.clear();
-        deltas(encoded,prefix); deltas(encoded,suffix); encoded.append(bytes);
-        pages.push_back({std::move(encoded),uint32_t(prefix.size())});
-        prefix.clear(); suffix.clear(); bytes.clear();
+        if(wideLengths){deltas(encoded,prefix);deltas(encoded,suffix);prefix.clear();suffix.clear();}
+        else {narrowDeltas(encoded,smallPrefix);narrowDeltas(encoded,smallSuffix);smallPrefix.clear();smallSuffix.clear();}
+        encoded.append(bytes);pages.push_back({std::move(encoded),uint32_t(n)});
+        bytes.clear();wideLengths=false;
     }
     void appendToGroup(std::string_view name,uint32_t count) {
-        if(name.size()>INT32_MAX) throw std::length_error("Parquet string too long");
-        while(count) {
-            if(!prefix.empty() && (prefix.size()>=16384 || bytes.size()+name.size()>1048576)) finishPage();
-            const uint32_t take=std::min<uint32_t>(count,16384-prefix.size());
-            const uint32_t length=name.size();
-            bytes.append(name);
-            const size_t pos=prefix.size();
-            prefix.insert(prefix.end(),take,length);
-            suffix.insert(suffix.end(),take,0);
-            prefix[pos]=0; suffix[pos]=length;
+        if(name.size()>INT32_MAX)throw std::length_error("Parquet string too long");
+        while(count){
+            size_t pos=pageRows();
+            if(pos && (pos>=16384 || bytes.size()+name.size()>1048576)){finishPage();pos=0;}
+            if(!wideLengths && name.size()>127)promoteLengths();
+            const uint32_t take=std::min<uint32_t>(count,16384-pos);
+            const uint32_t length=name.size();bytes.append(name);
+            if(wideLengths){
+                prefix.insert(prefix.end(),take,length);suffix.insert(suffix.end(),take,0);
+                prefix[pos]=0;suffix[pos]=length;
+            }else{
+                smallPrefix.insert(smallPrefix.end(),take,uint8_t(length));smallSuffix.insert(smallSuffix.end(),take,0);
+                smallPrefix[pos]=0;smallSuffix[pos]=uint8_t(length);
+            }
             count-=take;
         }
     }
