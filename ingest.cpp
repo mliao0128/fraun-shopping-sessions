@@ -700,13 +700,16 @@ template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
     while (p < finish) {
         if (limit - p > 2048)
             __builtin_prefetch(p + 2048, 0, 3);
+        const char* searchStart = p;
+        const char* end = nullptr;
         if (limit - p >= 92) {
             auto h = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p));
             auto m = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p + 30));
             auto z = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p + 60));
             auto early = _mm256_or_si256(_mm256_cmpeq_epi8(h, newline), _mm256_cmpeq_epi8(m, newline));
             uint32_t last = byteMask(z, '\n');
-            if (!(_mm256_movemask_epi8(early) & 0x3fffffffu) && last && !(last & 3)) {
+            const uint32_t earlyMask = _mm256_movemask_epi8(early) & 0x3fffffffu;
+            if (!earlyMask && last && !(last & 3)) {
                 unsigned l = std::countr_zero(last), n = 60 + l;
                 CsvMask mh{byteMask(h, ',') & 0x3fffffffu, byteMask(h, '"') & 0x3fffffffu};
                 CsvMask mm{byteMask(m, ','), byteMask(m, '"')};
@@ -721,8 +724,20 @@ template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
                 p += n + 1;
                 continue;
             }
+            // The three inspected vectors already locate each early newline
+            // or certify that all of the first 92 bytes lack one.
+            if (earlyMask) {
+                const uint32_t first = byteMask(h, '\n') & 0x3fffffffu;
+                end = first ? p + std::countr_zero(first)
+                            : p + 30 + std::countr_zero(byteMask(m, '\n'));
+            } else if (last) {
+                end = p + 60 + std::countr_zero(last);
+            } else {
+                searchStart = p + 92;
+            }
         }
-        const char *end = static_cast<const char *>(std::memchr(p, '\n', limit - p));
+        if (!end)
+            end = static_cast<const char*>(std::memchr(searchStart, '\n', limit - searchStart));
         if (!end)
             end = limit;
         prepMasks({p, static_cast<size_t>(end - p)}, visit());
