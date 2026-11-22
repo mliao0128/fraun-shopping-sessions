@@ -221,6 +221,9 @@ int main(int argc, char** argv) try {
     std::exception_ptr linkError;
     std::thread linker([&] {
         try {
+            // Give the row readers the first share of a busy CPU. Each child
+            // link worker inherits this thread's Linux scheduling weight.
+            if (workers > 1) (void)nice(3);
             linkPeople(links, ctx, std::min(workers, ctx.settings.linkWorkers));
         } catch (...) {
             linkError = std::current_exception();
