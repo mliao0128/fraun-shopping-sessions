@@ -60,6 +60,36 @@ struct Key {
         shopperSlots = pool;
         shopperMask = count - 1;
     }
+    static uint64_t spellingHash(std::string_view s) {
+#if !defined(__AES__)
+        return std::hash<std::string_view>{}(s);
+#else
+        const size_t n = s.size();
+        if (n < 8 || n > 64) return std::hash<std::string_view>{}(s);
+        const auto seed = _mm_set_epi64x(INT64_C(0x2645ff95aabc9b37), int64_t(n));
+        __m128i first, last;
+        if (n > 32) {
+            auto a = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data()));
+            auto b = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data()+16));
+            auto c = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data()+n-32));
+            auto d = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data()+n-16));
+            first = _mm_aesenc_si128(a,b);
+            last = _mm_aesenc_si128(c,d);
+        } else if (n <= 16) {
+            first = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(s.data()));
+            last = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(s.data()+n-8));
+            first = _mm_unpacklo_epi64(first,last);
+            last = seed;
+        } else {
+            first = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data()));
+            last = _mm_loadu_si128(reinterpret_cast<const __m128i*>(s.data()+n-16));
+        }
+        auto mixed = _mm_aesenc_si128(first,seed);
+        mixed = _mm_aesenc_si128(mixed,last);
+        mixed = _mm_aesenc_si128(mixed,seed);
+        return static_cast<uint64_t>(_mm_cvtsi128_si64(mixed));
+#endif
+    }
     static Key internHashedShopper(std::string_view text, uint64_t hash) {
         const uint32_t ready = static_cast<uint32_t>(text.size()) + 2;
         for (const size_t index : {size_t(hash) & shopperMask, size_t(hash >> 32) & shopperMask}) {
@@ -80,7 +110,7 @@ struct Key {
     }
     static Key internShopper(std::string_view text) {
         if (text.size() > 48 || !shopperSlots) return fromReference(text);
-        return internHashedShopper(text, std::hash<std::string_view>{}(text));
+        return internHashedShopper(text, spellingHash(text));
     }
     static Key shopper(std::string_view text) {
         return text.size() > 9 ? internShopper(text) : from(text);
@@ -179,7 +209,7 @@ struct Key {
     }
     uint64_t hash() const {
         if (interned()) return shopperSlot()->hash;
-        if (external()) return std::hash<std::string_view>{}(borrowed());
+        if (external()) return spellingHash(borrowed());
         const __uint128_t product = static_cast<__uint128_t>(bits ^ 0xa0761d6478bd642fULL)
                                     * (bits ^ 0xe7037ed1a0b428dbULL);
         return static_cast<uint64_t>(product) ^ static_cast<uint64_t>(product >> 64);
@@ -591,46 +621,18 @@ struct DayCounters {
 
 // Numeric buffers are kept in their output order through aggregation so the
 // Parquet worker can pass them directly to WriteBatch.
+#include "delta_names.hpp"
 struct UserColumns {
-    std::vector<Key> people;
-    std::vector<char> dictionary;
-    std::vector<size_t> ends;
-    size_t dictionaryUsed = 0;
-    void prepare(size_t count) {
-        size_t required = dictionaryUsed + 13 * count;
-        if (dictionary.size() < required)
-            dictionary.resize(required);
-    }
-    void person(Key key) {
-        people.push_back(key);
-        char *p = dictionary.data() + dictionaryUsed;
-        uint32_t n = 0;
-        if (key.nineAscii()) {
-            n = 9;
-            key.writeNine(p + 4);
-        } else if (key.eightAscii()) {
-            n = 8;
-            uint64_t v = _pdep_u64(key.bits, Key::asciiMask);
-            std::memcpy(p + 4, &v, 8);
-        } else if (!key.external()) {
-            n = uint32_t(key.bits >> 56) & 7;
-            std::memcpy(p + 4, &key.bits, 8);
-        }
-        if (n) {
-            std::memcpy(p, &n, 4);
-            dictionaryUsed += 4 + n;
-        }
-        ends.push_back(dictionaryUsed);
+    DeltaNames names;
+    void person(Key key, uint32_t count) {
+        Key::Buffer buffer;
+        names.append(key.view(buffer),count);
     }
     std::vector<int32_t> days;
-    std::vector<uint32_t> userCounts, sessions, events;
+    std::vector<uint32_t> sessions, events;
     std::vector<int64_t> revenue;
     std::vector<uint32_t> top;
     void reserve(size_t n) {
-        people.reserve(n);
-        ends.reserve(n);
-        dictionary.reserve(n * 13);
-        userCounts.reserve(n);
         days.reserve(n);
         sessions.reserve(n);
         events.reserve(n);

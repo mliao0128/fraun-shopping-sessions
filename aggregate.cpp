@@ -366,7 +366,6 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
     groupRows(bucket, grouped, origin);
     result.startBucket(bucket.events.size);
     const auto &groups = grouped.groups;
-    result.users.prepare(groups.size());
     const auto& purchases = grouped.purchases;
     const auto& clicks = grouped.clicks;
     static thread_local CellTable cells;
@@ -624,8 +623,7 @@ void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t camp
         i=group.eventEnd;
         if (daily) {
             result.users.append(row);
-            result.users.person(group.person);
-            result.users.userCounts.push_back(
+            result.users.person(group.person,
                 static_cast<uint32_t>(result.users.days.size() - firstOutput));
         }
         clickBegin = group.clickEnd;

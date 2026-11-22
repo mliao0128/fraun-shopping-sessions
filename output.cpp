@@ -30,21 +30,18 @@ void writeOutputs(const fs::path& root, const Context& ctx, std::vector<Result>&
             const bool more = aggregateNext(part);
             if (more && rows.days.size() < 32768)
                 continue;
-            size_t run = 0, consumed = 0;
+            rows.names.sealGroup();
             for (size_t start = 0; start < rows.days.size(); start += rowsPerGroup) {
                 const size_t n = std::min(rowsPerGroup, rows.days.size() - start);
                 file.group(n);
-                file.userRuns(n, rows.people, rows.userCounts, run, consumed, rows.dictionary, rows.ends);
+                file.encodedNames(rows.names.groups[start / rowsPerGroup]);
                 file.days(rows.days.data() + start, n);
                 file.counts64(rows.sessions.data() + start, n);
                 file.counts64(rows.events.data() + start, n);
                 file.numbers(rows.revenue.data() + start, n);
                 file.categories(rows.top.data() + start, n, ctx.categories);
             }
-            rows.userCounts.clear();
-            rows.people.clear();
-            rows.dictionaryUsed = 0;
-            rows.ends.clear();
+            rows.names.groups.clear();
             rows.days.clear();
             rows.sessions.clear();
             rows.events.clear();

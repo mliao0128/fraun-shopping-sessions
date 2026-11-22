@@ -87,7 +87,7 @@ template <class F> void linkRows(SV file, F action) {
                 item.fields=fields;
                 for(unsigned i=0;i<2;++i) {
                     if(!eligible(fields[i])) continue;
-                    const auto hash=std::hash<SV>{}(fields[i]);
+                    const auto hash=Key::spellingHash(fields[i]);
                     item.hashes[i]=hash;
                     __builtin_prefetch(&Key::shopperSlots[hash&Key::shopperMask],0,3);
                 }

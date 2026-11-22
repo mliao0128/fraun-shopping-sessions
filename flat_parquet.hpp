@@ -188,6 +188,13 @@ public:
         for (size_t i = 0; i < n; ++i)
             dst[i] = static_cast<char>(static_cast<U>(src[i]) >> (Plane * 8));
     }
+    template <class P> void encodedNames(const P& pages) {
+        auto& chunk = column();
+        constexpr unsigned deltaByteArray = 7;
+        chunk.dataEncoding = deltaByteArray;
+        for (const auto& pageBytes : pages)
+            page(chunk, pageBytes.bytes, pageBytes.count, deltaByteArray);
+    }
     void userRuns(size_t n, const std::vector<Key> &keys, const std::vector<uint32_t> &counts, size_t &run,
                   size_t &consumed, const std::vector<char> &dictionary, const std::vector<size_t> &ends) {
         const size_t initial = run, skip = consumed;
