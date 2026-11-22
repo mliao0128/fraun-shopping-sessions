@@ -358,7 +358,11 @@ constexpr uint32_t sourceTag = 0x80000000u, invalidArrivalTag = 0xa0000000u, slo
 struct EventToken {
     uint64_t bits{};
     bool external() const { return bits >= Key::indirectTag; }
-    bool witness() const { return (bits >> 60) == 9; }
+    static constexpr unsigned hashBits = 23;
+    static constexpr uint64_t hashMask = (uint64_t{1} << hashBits) - 1;
+    static constexpr uint64_t addressMask = (uint64_t{1} << (60 - hashBits)) - 1;
+    bool direct() const { return (bits >> 60) == 10; }
+    bool witness() const { return (bits >> 60) == 9 || direct(); }
     uint32_t witnessIndex() const { return uint32_t(bits >> 32) & 0x0fffffffu; }
     bool operator==(EventToken other) const {
         return bits == other.bits ||
@@ -395,6 +399,7 @@ struct Reader {
     std::vector<Extended> slow;
     static constexpr uint32_t witnessLimit = 1u << 28;
     bool rawOverflow = false;
+    uint64_t directBase = 0;
     static constexpr unsigned pageBits = 13;
     static constexpr size_t pageSize = size_t{1} << pageBits;
     uint32_t count = 0;
@@ -412,12 +417,21 @@ struct Reader {
     uint64_t originalBits(uint32_t ordinal) const { return pages[ordinal >> pageBits][ordinal & (pageSize - 1)]; }
     void releaseOpaque() { pages.clear(); active = nullptr; }
     EventToken rememberOpaque(EventToken full, uint32_t hash) {
+        const uint64_t base = full.bits & ~EventToken::addressMask;
+        if (!directBase) directBase = base;
+        if (base == directBase) {
+            return {UINT64_C(0xa000000000000000) | ((full.bits & EventToken::addressMask) << EventToken::hashBits) |
+                    (hash & EventToken::hashMask)};
+        }
         const size_t ordinal = opaqueCount();
         if (ordinal >= witnessLimit) { rawOverflow = true; return full; }
         saveOpaque(full.bits);
         return {UINT64_C(0x9000000000000000) | (uint64_t(ordinal) << 32) | hash};
     }
     EventToken original(EventToken token) const {
+        if (token.direct()) {
+            return {directBase | ((token.bits >> EventToken::hashBits) & EventToken::addressMask)};
+        }
         return token.witness() ? EventToken{originalBits(token.witnessIndex())} : token;
     }
     Reader(size_t parts, size_t idShards) : events(slab, parts), clicks(slab, parts), ids(slab, idShards) {}
@@ -957,7 +971,7 @@ struct RecordDirectory {
         const auto left = a.rows[newer & within].id;
         const auto right = b.rows[older & within].id;
         if (!left.witness() && !right.witness()) return left == right;
-        if (left.witness() && right.witness() && uint32_t(left.bits) != uint32_t(right.bits)) return false;
+        if (left.witness() && right.witness() && ((left.bits ^ right.bits) & EventToken::hashMask) != 0) return false;
         return a.owner->original(left) == b.owner->original(right);
     }
     bool earlier(uint32_t newer, uint32_t prior, const Source &source, int64_t origin) const {
@@ -1000,6 +1014,12 @@ void deduplicate(size_t shard, int64_t origin, const Source &source,
     }
     static thread_local std::vector<FingerGroup> groups;
     const size_t cap = std::max<size_t>(16, std::bit_ceil(dir.count + dir.count / 4 + 1));
+    // A directory this large would probe beyond the retained hash bits.
+    // The existing fallback filter uses at most 2^23 bits and then compares full keys.
+    if (cap / 16 > (1u << (EventToken::hashBits - 8))) {
+        dedupOriginal(shard, origin, source, readers);
+        return;
+    }
     groups.assign(cap / 16, FingerGroup{});
     const uint32_t mask = groups.size() - 1;
     for (uint32_t b = 0; b < dir.blocks.size(); ++b) {
