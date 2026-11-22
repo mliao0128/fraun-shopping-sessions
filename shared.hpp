@@ -230,6 +230,16 @@ struct Key {
 static_assert(sizeof(Key)==8 && std::endian::native==std::endian::little);
 #include "shopper_codec.hpp"
 inline ShopperCodec shopperCodec;
+// 0x80..0x87 are the ordinary short spellings and 0x88 denotes eight ASCII
+// bytes. The private 0x89 domain exists only between parsed rows and grouping.
+inline constexpr uint64_t compactKeyTag=UINT64_C(0x8900000000000000);
+inline constexpr uint64_t compactKeyPayload=UINT64_C(0x00ffffffffffffff);
+inline bool isCompactShopper(Key raw){return (raw.bits>>56)==0x89;}
+inline Key compactShopper(uint64_t code){return Key{compactKeyTag|code};}
+inline Key encodeShopper(Key raw){
+    uint64_t code;
+    return shopperCodec.buckets && shopperCodec.encode(raw.bits,code) ? compactShopper(code) : raw;
+}
 void learnShopperEncoding(const std::vector<std::string_view>&,size_t,size_t);
 
 // Count all quotes, then account for the only two legal positions around each field.

@@ -1159,11 +1159,6 @@ template<class T> size_t compactCancelled(T* rows, size_t count, const uint8_t* 
 }
 unsigned shopperPartitionShift=0;
 struct Destination {uint64_t key;uint32_t bucket;bool compact;};
-size_t fullPartition(Key k,uint64_t hash,unsigned oldShift){
-    uint64_t code;
-    if(shopperCodec.buckets && shopperCodec.encode(k.bits,code))return code>>32;
-    return (hash>>1)>>oldShift;
-}
 struct CompactAliasDirectory {
     struct Cell {uint32_t source{}, flags{};uint64_t dest{};};
     struct Shard {std::vector<Cell> cells;};
@@ -1217,11 +1212,29 @@ void correct(T* rows, size_t count, size_t bucket, unsigned shift,
     while (i < count) {
         T& row = rows[i];
         if (!reject(row)) {
-            uint64_t hash = row.routingHash();
-            const Key canonical = identities.person(row.person, hash);
-            if (canonical.bits == row.person.bits) { ++i; continue; }
-            row.rename(canonical, hash);
-            const size_t target = fullPartition(canonical,hash,shift);
+            size_t target;
+            Key canonical;
+            uint64_t hash;
+            if(isCompactShopper(row.person)){
+                const uint32_t low=uint32_t(row.person.bits);
+                auto dst=compactAliases.find(bucket,low);
+                target=dst.bucket;
+                if(dst.compact){
+                    if(target==bucket && uint32_t(dst.key)==low){++i;continue;}
+                    canonical=compactShopper((uint64_t(target)<<32)|uint32_t(dst.key));
+                }else canonical=Key{dst.key};
+                hash=canonical.hash();
+            }else{
+                hash=row.routingHash();
+                canonical=identities.person(row.person,hash);
+                if(canonical.bits==row.person.bits){++i;continue;}
+                canonical=encodeShopper(canonical);
+                if(isCompactShopper(canonical)){
+                    target=(canonical.bits&compactKeyPayload)>>32;
+                    hash=canonical.hash();
+                }else target=(hash>>1)>>shift;
+            }
+            row.rename(canonical,hash);
             if (target == bucket) { ++i; continue; }
             moved.add(target,row);
         }
@@ -1341,8 +1354,8 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     const size_t idShard = uint64_t{event.idHash} >> idShift;
                     uint64_t info;
                     if (event.valid) {
-                        uint64_t code;
-                        const bool encoded=shopperCodec.buckets && shopperCodec.encode(event.user.bits,code);
+                        const bool encoded=isCompactShopper(event.user);
+                        const uint64_t code=event.user.bits&compactKeyPayload;
                         auto bucket=uint32_t(encoded?code>>32:partOf(rawHash));
                         const auto delta=uint64_t(event.row.ts)-uint64_t(ctx.start);
                         uint32_t index;
@@ -1350,7 +1363,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                             index=reader.compact.add(bucket,(delta<<32)|uint32_t(code));
                             bucket+=parts;
                         } else {
-                            index=reader.events.add(bucket,Event::pack(event.user,ctx.start,event.row,rawHash));
+                            index=reader.events.add(bucket,Event::pack(event.user,ctx.start,event.row,encoded?event.user.hash():rawHash));
                         }
                         info = location(reader,event.arrival,arrivalOrigin,bucket,index);
                     } else {
@@ -1373,7 +1386,8 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 };
                 auto accept = [&](const char *line) {
                     const uint64_t offset = base + reinterpret_cast<uintptr_t>(line);
-                    const uint64_t hash = event.valid ? event.user.hash() : 0;
+                    if(event.valid)event.user=encodeShopper(event.user);
+                    const uint64_t hash = event.valid && !isCompactShopper(event.user) ? event.user.hash() : 0;
                     if (event.valid && event.user.external() && Key::shopperSlots) {
                         const auto width = event.user.borrowed().size();
                         if (width > 9 && width <= 48) {
@@ -1450,11 +1464,13 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     row.person=Key::internHashedShopper(text,item.hash);
             }
             row.hash32=uint32_t(item.hash>>32);
-            reader.clicks.add(fullPartition(row.person,item.hash,shift),row);
+            const size_t destination=isCompactShopper(row.person) ? (row.person.bits&compactKeyPayload)>>32 : partOf(item.hash);
+            reader.clicks.add(destination,row);
         };
         chunkLines(span,[&](std::string_view line) {
             Click row;
             if(!parseClick(line,ctx,row)) return;
+            row.person=encodeShopper(row.person);
             const auto hash=row.person.hash();
             if(row.person.external() && Key::shopperSlots) {
                 auto text=row.person.borrowed();

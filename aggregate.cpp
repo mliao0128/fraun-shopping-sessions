@@ -120,33 +120,15 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
             out.purchases.push_back({row.ts, row.price, row.category, g});
         }
     });
-    if(bucket.compact.size) {
-        struct Slot {uint32_t key{}, value=absent;};
-        std::vector<Slot> table(std::bit_ceil(std::max<size_t>(32,bucket.compact.size/5)));
-        size_t occupied=0;
-        auto slotFor=[&](uint32_t key){
-            size_t at=size_t(_mm_crc32_u32(0,key))&(table.size()-1);
-            while(table[at].value!=absent && table[at].key!=key)at=(at+1)&(table.size()-1);
-            return at;
-        };
-        bucket.compact.each([&](uint64_t row){
-            uint32_t code=uint32_t(row);
-            if(occupied*4>=table.size()*3) {
-                auto previous=std::move(table);table.assign(previous.size()*2,Slot{});
-                for(auto entry:previous)if(entry.value!=absent)table[slotFor(entry.key)]=entry;
-            }
-            auto& entry=table[slotFor(code)];
-            if(entry.value==absent){
-                auto whole=(uint64_t(bucket.partition)<<32)|code;
-                Key raw{shopperCodec.decode(whole)};
-                entry={code,index.add(raw,raw.hash())};
-                ++occupied;
-            }
-            auto g=entry.value;uint32_t delta=uint32_t(row>>32);
-            usedBits|=delta;
-            out.pending[at++]={g,delta};++groups[g].eventEnd;
-        });
-    }
+    bucket.compact.each([&](uint64_t row){
+        const auto code=(uint64_t(bucket.partition)<<32)|uint32_t(row);
+        const Key name=compactShopper(code);
+        const auto g=index.add(name,name.hash());
+        const uint32_t delta=row>>32;
+        usedBits|=delta;
+        out.pending[at++]={g,delta};
+        ++groups[g].eventEnd;
+    });
     out.wide = usedBits > UINT32_MAX;
     uint64_t clickBits = 0;
     out.clickOwner.resize(bucket.clicks.size);
@@ -209,7 +191,9 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
         }
         first = group.purchaseEnd;
     }
-
+    // Output and lexical comparisons always consume ordinary exact Key spellings.
+    for(auto& group:groups)if(isCompactShopper(group.person))
+        group.person=Key{shopperCodec.decode(group.person.bits&compactKeyPayload)};
 }
 
 // Sorting a few timestamps is cheaper than setting up an occupancy bitmap.
