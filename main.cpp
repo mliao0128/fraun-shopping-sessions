@@ -267,7 +267,8 @@ int main(int argc, char** argv) try {
     writeOutputs(output,ctx,results,workers,[&](size_t w) {
         const size_t i=nextBucket.fetch_add(1,std::memory_order_relaxed);
         if (i >= bucketCount) return false;
-        aggregate(buckets[order[i]],results[w],ctx.categories.size(),ctx.campaignNames.size(),ctx.start);
+        const bool bounded = ctx.end >= ctx.start && uint64_t(ctx.end) - uint64_t(ctx.start) <= UINT32_MAX;
+        aggregate(buckets[order[i]],results[w],ctx.categories.size(),ctx.campaignNames.size(),ctx.start,bounded);
         return true;
     });
     stage("aggregate-output");
