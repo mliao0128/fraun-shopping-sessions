@@ -88,13 +88,19 @@ public:
     }
 };
 
+struct TinyPurchase { uint32_t ts,payload; };
+struct OwnedPurchase { TinyPurchase value; uint32_t group; };
+struct TinyClick { uint32_t ts,payload; };
+static_assert(sizeof(TinyPurchase)==8 && sizeof(OwnedPurchase)==12 && sizeof(TinyClick)==8);
+
 struct OwnedTime { uint32_t group, offset; };
-template<bool Compact> struct Grouped {
+template<bool Compact,bool Tight> struct Grouped {
     using Timestamp=std::conditional_t<Compact,uint32_t,int64_t>;
-    using Purchase=PurchaseRow<Timestamp>;
-    using TimedClick=ClickRow<Timestamp>;
+    using Purchase=std::conditional_t<Tight,TinyPurchase,PurchaseRow<Timestamp>>;
+    using TimedClick=std::conditional_t<Tight,TinyClick,ClickRow<Timestamp>>;
     std::vector<Group> groups;
     std::vector<Purchase> purchases;
+    std::vector<OwnedPurchase> staged;
     std::vector<TimedClick> clicks;
     std::vector<OwnedTime> pending;
     std::vector<uint32_t> times, clickOwner;
@@ -102,8 +108,8 @@ template<bool Compact> struct Grouped {
     bool wide = false, circular = false;
 };
 
-template<bool Compact> void groupRows(const Bucket& bucket,Grouped<Compact>& out,int64_t origin,const CalendarFrame& frame) {
-    using Purchase=typename Grouped<Compact>::Purchase;
+template<bool Compact,bool Tight> void groupRows(const Bucket& bucket,Grouped<Compact,Tight>& out,int64_t origin,const CalendarFrame& frame) {
+    using Purchase=typename Grouped<Compact,Tight>::Purchase;
     auto storedTime=[&](int64_t time) {
         if constexpr(Compact) return static_cast<uint32_t>(uint64_t(time)-uint64_t(frame.anchor));
         else return time;
@@ -113,6 +119,7 @@ template<bool Compact> void groupRows(const Bucket& bucket,Grouped<Compact>& out
     auto& groups = out.groups;
     groups.clear();
     out.purchases.clear();
+    if constexpr(Tight)out.staged.clear();
     PersonIndex index(groups,bucket.events.size);
     out.pending.resize(bucket.events.size);
     uint64_t usedBits = 0;
@@ -126,7 +133,8 @@ template<bool Compact> void groupRows(const Bucket& bucket,Grouped<Compact>& out
         ++groups[g].eventEnd;
         if (row.price) {
             ++groups[g].purchaseEnd;
-            out.purchases.push_back({storedTime(row.ts), row.price, row.category, g});
+            if constexpr(Tight) out.staged.push_back({{storedTime(row.ts),row.price|(row.category<<24)},g});
+            else out.purchases.push_back({storedTime(row.ts),row.price,row.category,g});
         }
     });
     out.wide = usedBits > UINT32_MAX;
@@ -163,10 +171,21 @@ template<bool Compact> void groupRows(const Bucket& bucket,Grouped<Compact>& out
     }
     out.clicks.resize(nClicks);
     at=0;
+    if constexpr(Tight) {
+        for(size_t piece=0;piece<bucket.clicks.spans.size();++piece) {
+            auto [source,count]=bucket.clicks.spans[piece];
+            for(size_t row=0;row<count;++row) {
+                const auto& click=source[row];const uint32_t g=out.clickOwner[at++];
+                if(g!=absent)out.clicks[groups[g].clickEnd++]={
+                    storedTime(click.ts),(click.campaign<<21)|(uint32_t(piece)<<9)|uint32_t(row)};
+            }
+        }
+    } else {
     bucket.clicks.each([&](const Click& c) {
         uint32_t g=out.clickOwner[at++];
         if (g!=absent) out.clicks[groups[g].clickEnd++] = {storedTime(c.ts),c.campaign,c.id};
     });
+    }
     // Group purchases with a counting scatter. Only purchases by the
     // same person need time ordering, and most such spans are short.
     uint32_t cursor = 0;
@@ -175,10 +194,15 @@ template<bool Compact> void groupRows(const Bucket& bucket,Grouped<Compact>& out
         group.purchaseEnd = cursor;
         cursor += count;
     }
+    if constexpr(Tight) {
+        out.purchases.resize(out.staged.size());
+        for(const auto& row:out.staged)out.purchases[groups[row.group].purchaseEnd++]=row.value;
+    } else {
     static thread_local std::vector<Purchase> ordered;
     ordered.resize(out.purchases.size());
     for (const Purchase& row : out.purchases) ordered[groups[row.group].purchaseEnd++] = row;
     out.purchases.swap(ordered);
+    }
     size_t first = 0;
     for (const Group& group : groups) {
         if (group.purchaseEnd - first > 1) {
@@ -367,20 +391,30 @@ int32_t utcDay(int64_t ts) {
 
 }  // namespace
 
-template<bool Compact> void aggregateMode(Bucket& bucket, Result& result,size_t categoryCount,size_t campaignCount,int64_t origin,const CalendarFrame& frame) {
+template<bool Compact,bool Tight=false> void aggregateMode(Bucket& bucket, Result& result,size_t categoryCount,size_t campaignCount,int64_t origin,const CalendarFrame& frame) {
     if (!bucket.events.size) return;
     // Scratch space is kept per thread: buckets are alike in size, and reusing
     // it spares the allocator and the kernel a round trip per bucket.
-    using Timestamp=typename Grouped<Compact>::Timestamp;
-    using TimedClick=typename Grouped<Compact>::TimedClick;
-    static_assert(!Compact || (sizeof(TimedClick)==16 && sizeof(typename Grouped<Compact>::Purchase)==16));
+    using Timestamp=typename Grouped<Compact,Tight>::Timestamp;
+    using TimedClick=typename Grouped<Compact,Tight>::TimedClick;
+    static_assert(!Compact || (sizeof(TimedClick)==(Tight?8:16) && sizeof(typename Grouped<Compact,Tight>::Purchase)==(Tight?8:16)));
     const int64_t eventBase=Compact?origin-frame.anchor:origin;
-    static thread_local Grouped<Compact> grouped;
+    static thread_local Grouped<Compact,Tight> grouped;
     groupRows(bucket, grouped, origin,frame);
     result.startBucket(bucket.events.size);
     const auto &groups = grouped.groups;
     const auto& purchases = grouped.purchases;
     const auto& clicks = grouped.clicks;
+    auto campaignOf=[](const TimedClick& click) {
+        if constexpr(Tight)return click.payload>>21;
+        else return click.campaign;
+    };
+    auto idOf=[&](const TimedClick& click) {
+        if constexpr(Tight) {
+            uint32_t loc=click.payload&0x1fffffu;
+            return bucket.clicks.spans[loc>>9].first[loc&511].id;
+        } else return click.id;
+    };
     static thread_local CellTable cells;
 
     std::vector<int64_t> categoryRevenue(categoryCount);
@@ -485,13 +519,13 @@ template<bool Compact> void aggregateMode(Bucket& bucket, Result& result,size_t 
                 mask &= all;
                 if (!mask)
                     continue;
-                auto &covered = narrowMask[click.campaign];
+                auto &covered = narrowMask[campaignOf(click)];
                 if (!covered)
-                    touchedClicks.push_back(click.campaign);
+                    touchedClicks.push_back(campaignOf(click));
                 covered |= mask;
                 const unsigned at = std::countr_zero(mask);
                 const TimedClick *old = latest[at];
-                if (!old || old->ts < click.ts || (old->ts == click.ts && click.id < old->id))
+                if (!old || old->ts < click.ts || (old->ts == click.ts && idOf(click) < idOf(*old)))
                     latest[at] = &click;
             }
         } else if (bitset) {
@@ -517,20 +551,20 @@ template<bool Compact> void aggregateMode(Bucket& bucket, Result& result,size_t 
                 unsigned hi = click.ts > INT64_MAX - 7 * dayMs ? n : bound(click.ts + 7 * dayMs, true);
                 if (lo == hi)
                     continue;
-                auto &mask = coverage[click.campaign];
+                auto &mask = coverage[campaignOf(click)];
                 bool fresh = !(mask[0] | mask[1] | mask[2] | mask[3]);
                 if (fresh)
-                    touchedClicks.push_back(click.campaign);
+                    touchedClicks.push_back(campaignOf(click));
                 rangeWords(lo, hi, [&](unsigned w, uint64_t newBits) { mask[w] |= newBits; });
                 const auto *old = latest[lo];
-                if (!old || old->ts < click.ts || (old->ts == click.ts && click.id < old->id))
+                if (!old || old->ts < click.ts || (old->ts == click.ts && idOf(click) < idOf(*old)))
                     latest[lo] = &click;
             }
         } else {
             sortSpan(grouped.clicks.begin() + clickBegin, grouped.clicks.begin() + group.clickEnd,
-                     [](const auto &a, const auto &b) {
+                     [&](const auto &a, const auto &b) {
                          // The last click at a tied timestamp must have the smallest ID.
-                         return a.ts != b.ts ? a.ts < b.ts : b.id < a.id;
+                         return a.ts != b.ts ? a.ts < b.ts : idOf(b) < idOf(a);
                      });
         }
         const TimedClick *winnerClick = nullptr;
@@ -556,10 +590,12 @@ template<bool Compact> void aggregateMode(Bucket& bucket, Result& result,size_t 
             int64_t sessionRevenue = 0;
             for (; p < group.purchaseEnd && purchases[p].ts <= last; ++p) {
                 const auto& e = purchases[p];
-                sessionRevenue += e.price;
-                const uint32_t c = e.category;
+                uint32_t price,c;
+                if constexpr(Tight){price=e.payload&0xffffffu;c=e.payload>>24;}
+                else {price=e.price;c=e.category;}
+                sessionRevenue += price;
                 if (categoryRevenue[c] == 0) touched.push_back(c);
-                const int64_t amount = (categoryRevenue[c] += e.price);
+                const int64_t amount = (categoryRevenue[c] += price);
                 if (row.top == absent || amount > categoryRevenue[row.top] ||
                     (amount == categoryRevenue[row.top] && c < row.top))
                     row.top = c;
@@ -576,12 +612,12 @@ template<bool Compact> void aggregateMode(Bucket& bucket, Result& result,size_t 
                     if (latest[nStarts - 1])
                         winnerClick = latest[nStarts - 1];
                     if (winnerClick && winnerClick->ts >= start - 7 * dayMs)
-                        winner = winnerClick->campaign;
+                        winner = campaignOf(*winnerClick);
                 } else {
                     while (nextClick < group.clickEnd && clicks[nextClick].ts <= start)
                         ++nextClick;
                     if (nextClick != clickBegin && clicks[nextClick - 1].ts >= start - 7 * dayMs)
-                        winner = clicks[nextClick - 1].campaign;
+                        winner = campaignOf(clicks[nextClick - 1]);
                 }
             }
             daily->credit(winner, sessionRevenue);
@@ -624,12 +660,12 @@ template<bool Compact> void aggregateMode(Bucket& bucket, Result& result,size_t 
                     upper = lower;
                 while (upper < nStarts && sessions[upper].start - 7 * dayMs <= click.ts)
                     ++upper;
-                auto &state = covered[click.campaign];
+                auto &state = covered[campaignOf(click)];
                 uint32_t left = state.owner == g ? std::max(state.end, lower) : lower;
                 while (left < upper) {
                     const auto &span = spans[sessions[left].dayIndex];
                     const uint32_t end = std::min(upper, span.end);
-                    span.daily->addAssists(click.campaign, end - left);
+                    span.daily->addAssists(campaignOf(click), end - left);
                     left = end;
                 }
                 state = {g, upper};
@@ -647,6 +683,9 @@ template<bool Compact> void aggregateMode(Bucket& bucket, Result& result,size_t 
 
 void aggregate(Bucket& bucket, Result& result, size_t categoryCount, size_t campaignCount, int64_t origin,int64_t end) {
     const CalendarFrame frame=CalendarFrame::from(origin,end);
-    if(frame.usable)aggregateMode<true>(bucket,result,categoryCount,campaignCount,origin,frame);
+    bool eligible=frame.usable && categoryCount<=256 && campaignCount<=2048 &&
+        bucket.clicks.spans.size()<=4096 && std::all_of(bucket.clicks.spans.begin(),bucket.clicks.spans.end(),[](const auto& s){return s.second<=512;});
+    if(eligible)aggregateMode<true,true>(bucket,result,categoryCount,campaignCount,origin,frame);
+    else if(frame.usable)aggregateMode<true>(bucket,result,categoryCount,campaignCount,origin,frame);
     else aggregateMode<false>(bucket,result,categoryCount,campaignCount,origin,frame);
 }
