@@ -757,7 +757,7 @@ inline int64_t ingestTime(std::string_view text) {
     if (ts < ctx.start - 7 * dayMs || ts >= ctx.end) return false;
     const auto campaign = ctx.campaigns.lookup(f[2], line.data() + line.size());
     if (campaign == UINT32_MAX) return false;
-    row = {Key::shopper(f[1]), Key::from(f[0]), ts, campaign};
+    row = {Key::from(f[1]), Key::from(f[0]), ts, campaign};
     return true;
 }
 
@@ -791,7 +791,7 @@ inline bool parseClick(std::string_view line, const Context &ctx, Click &row) {
     auto campaign = ctx.campaigns.lookup({cp, cn}, p + n);
     if (campaign == UINT32_MAX)
         return false;
-    row = {inlineAsciiKey<'u'>(p + e0 + 1 + t1, userLen), inlineAsciiKey<'c'>(p + t0, idLen), ts, campaign};
+    row = {userLen == 9 ? Key::nine<'u'>(p + e0 + 1 + t1) : Key::from({p + e0 + 1 + t1, userLen}), inlineAsciiKey<'c'>(p + t0, idLen), ts, campaign};
     return true;
 }
 struct Source {
@@ -1200,15 +1200,35 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     auto processClicks = [&](size_t part, Reader &reader) {
         const auto& span = source.spans[source.eventSpans + part];
         if (ctx.populateInput) populateChunk(span);
-        chunkLines(span, [&](std::string_view line) {
+        struct PendingClick { Click row; uint64_t hash; };
+        std::array<PendingClick,16> queue;
+        unsigned used=0;
+        const auto store=[&](PendingClick& item) {
+            auto& row=item.row;
+            if (row.person.external() && Key::shopperSlots) {
+                auto text=row.person.borrowed();
+                if(text.size()>9 && text.size()<=48)
+                    row.person=Key::internHashedShopper(text,item.hash);
+            }
+            row.hash32=uint32_t(item.hash>>32);
+            reader.clicks.add(partOf(item.hash),row);
+        };
+        chunkLines(span,[&](std::string_view line) {
             Click row;
-            if (!parseClick(line, ctx, row))
-                return;
-            uint64_t hash = row.person.hash();
-
-            row.hash32 = static_cast<uint32_t>(hash >> 32);
-            reader.clicks.add(partOf(hash), row);
+            if(!parseClick(line,ctx,row)) return;
+            const auto hash=row.person.hash();
+            if(row.person.external() && Key::shopperSlots) {
+                auto text=row.person.borrowed();
+                if(text.size()>9 && text.size()<=48)
+                    __builtin_prefetch(&Key::shopperSlots[hash&Key::shopperMask],0,3);
+            }
+            auto& item=queue[used%queue.size()];
+            if(used>=queue.size()) store(item);
+            item={row,hash};
+            ++used;
         });
+        for(unsigned i=used-std::min<unsigned>(used,queue.size());i<used;++i)
+            store(queue[i%queue.size()]);
     };
 
     const unsigned clickLanes = bytes < (256u << 20)

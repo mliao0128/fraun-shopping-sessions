@@ -30,6 +30,21 @@ std::vector<Batch> batches(const std::vector<SV>& files) {
 
 template <class F> void linkRows(SV file, F action) {
 
+    struct Pending {
+        std::array<SV,2> fields;
+        std::array<uint64_t,2> hashes;
+    };
+    std::array<Pending,16> queue;
+    unsigned used=0;
+    const auto eligible=[](SV s) {return Key::shopperSlots && s.size()>9 && s.size()<=48;};
+    const auto consume=[&](const Pending& item) {
+        const auto resolve=[&](unsigned i) {
+            const auto text=item.fields[i];
+            return eligible(text) ? Key::internHashedShopper(text,item.hashes[i]) : Key::from(text);
+        };
+        const auto left=resolve(0);
+        action(left,resolve(1));
+    };
     while (!file.empty()) {
         std::array<SV, 2> fields;
         size_t end;
@@ -66,10 +81,23 @@ template <class F> void linkRows(SV file, F action) {
             valid = csv(file.substr(0, end), fields);
         }
         if (valid && !fields[0].empty() && !fields[1].empty()) {
-            action(Key::shopper(fields[0]), Key::shopper(fields[1]));
+            {
+                Pending& item=queue[used%queue.size()];
+                if(used>=queue.size()) consume(item);
+                item.fields=fields;
+                for(unsigned i=0;i<2;++i) {
+                    if(!eligible(fields[i])) continue;
+                    const auto hash=std::hash<SV>{}(fields[i]);
+                    item.hashes[i]=hash;
+                    __builtin_prefetch(&Key::shopperSlots[hash&Key::shopperMask],0,3);
+                }
+                ++used;
+            }
         }
         file.remove_prefix(std::min(end + 1, file.size()));
     }
+    for(unsigned i=used-std::min<unsigned>(used,queue.size());i<used;++i)
+        consume(queue[i%queue.size()]);
 }
 
 void endpoints(Batch& batch) {
