@@ -72,15 +72,23 @@ struct DeltaNames {
             }
         }
     }
-    static void narrowDeltas(std::string& out,std::span<const uint8_t> src) {
-        varint(out,128);varint(out,4);varint(out,src.size());varint(out,zigzag(src.front()));
+    template<bool Prefix> static uint8_t lengthOf(int8_t mark) {
+        return static_cast<uint8_t>(std::max(0, Prefix ? int(mark) : -int(mark)));
+    }
+    template<bool Prefix> static __m256i lengthsOf(const int8_t* src) {
+        auto lengths=_mm256_loadu_si256(reinterpret_cast<const __m256i*>(src));
+        if constexpr (!Prefix) lengths=_mm256_sub_epi8(_mm256_setzero_si256(),lengths);
+        return _mm256_max_epi8(_mm256_setzero_si256(),lengths);
+    }
+    template<bool Prefix> static void narrowDeltas(std::string& out,std::span<const int8_t> src) {
+        varint(out,128);varint(out,4);varint(out,src.size());varint(out,zigzag(lengthOf<Prefix>(src.front())));
         for(size_t start=1;start<src.size();start+=128){
             const size_t n=std::min<size_t>(128,src.size()-start);
             if(n==128){
                 __m256i d[4];
                 for(unsigned m=0;m<4;++m){
                     auto* p=src.data()+start+32*m;
-                    d[m]=_mm256_sub_epi8(_mm256_loadu_si256(reinterpret_cast<const __m256i*>(p)),_mm256_loadu_si256(reinterpret_cast<const __m256i*>(p-1)));
+                    d[m]=_mm256_sub_epi8(lengthsOf<Prefix>(p),lengthsOf<Prefix>(p-1));
                 }
                 auto m=_mm256_min_epi8(_mm256_min_epi8(d[0],d[1]),_mm256_min_epi8(d[2],d[3]));
                 auto v=_mm_min_epi8(_mm256_castsi256_si128(m),_mm256_extracti128_si256(m,1));
@@ -99,7 +107,7 @@ struct DeltaNames {
             }else{
                 std::array<int8_t,128> d{};
                 int minimum=INT_MAX;
-                for(size_t k=0;k<n;++k){int value=int(src[start+k])-int(src[start+k-1]);d[k]=int8_t(value);minimum=std::min(minimum,value);}
+                for(size_t k=0;k<n;++k){int value=int(lengthOf<Prefix>(src[start+k]))-int(lengthOf<Prefix>(src[start+k-1]));d[k]=int8_t(value);minimum=std::min(minimum,value);}
                 varint(out,zigzag(minimum));
                 const size_t head=out.size();out.resize(head+4,0);
                 for(size_t k=0;k<n;k+=32){
@@ -110,19 +118,26 @@ struct DeltaNames {
             }
         }
     }
-    std::vector<uint8_t> smallPrefix,smallSuffix;
+    // Repeated rows share the entire preceding spelling. A new spelling
+    // contributes its full suffix. Both lengths therefore fit one signed byte.
+    std::vector<int8_t> marks;
     bool wideLengths=false;
-    size_t pageRows() const {return wideLengths?prefix.size():smallPrefix.size();}
+    size_t pageRows() const {return wideLengths?prefix.size():marks.size();}
     void promoteLengths() {
-        prefix.assign(smallPrefix.begin(),smallPrefix.end());
-        suffix.assign(smallSuffix.begin(),smallSuffix.end());
-        smallPrefix.clear();smallSuffix.clear();wideLengths=true;
+        prefix.resize(marks.size());
+        suffix.resize(marks.size());
+        for(size_t i=0;i<marks.size();++i) {
+            prefix[i]=lengthOf<true>(marks[i]);
+            suffix[i]=lengthOf<false>(marks[i]);
+        }
+        marks.clear();
+        wideLengths=true;
     }
     void finishPage() {
         size_t n=pageRows();if(!n)return;
         encoded.clear();
         if(wideLengths){deltas(encoded,prefix);deltas(encoded,suffix);prefix.clear();suffix.clear();}
-        else {narrowDeltas(encoded,smallPrefix);narrowDeltas(encoded,smallSuffix);smallPrefix.clear();smallSuffix.clear();}
+        else {narrowDeltas<true>(encoded,marks);narrowDeltas<false>(encoded,marks);marks.clear();}
         encoded.append(bytes);pages.push_back({std::move(encoded),uint32_t(n)});
         bytes.clear();wideLengths=false;
     }
@@ -138,8 +153,8 @@ struct DeltaNames {
                 prefix.insert(prefix.end(),take,length);suffix.insert(suffix.end(),take,0);
                 prefix[pos]=0;suffix[pos]=length;
             }else{
-                smallPrefix.insert(smallPrefix.end(),take,uint8_t(length));smallSuffix.insert(smallSuffix.end(),take,0);
-                smallPrefix[pos]=0;smallSuffix[pos]=uint8_t(length);
+                marks.insert(marks.end(),take,static_cast<int8_t>(length));
+                marks[pos]=-static_cast<int8_t>(length);
             }
             count-=take;
         }
