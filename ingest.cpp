@@ -588,9 +588,9 @@ inline EventToken tokenFromText(std::string_view text) {
 }
 // Malformed lines and empty IDs never take part in deduplication. Every other
 // copy does, valid or not: an invalid earliest copy suppresses later ones.
-[[gnu::noinline]] bool genericEvent(std::string_view line, const Context &ctx, ParsedEvent &out) {
-    std::array<std::string_view,7> f;
-    if (!eventFields(line, f) || f[0].empty()) return false;
+inline bool semanticFields(std::string_view line, const std::array<std::string_view,7>& f,
+                           const Context& ctx, ParsedEvent& out) {
+    if (f[0].empty()) return false;
     out.id = tokenFromText(f[0]);
     out.valid = false;
     out.arrival = invalidTime;
@@ -609,11 +609,106 @@ inline EventToken tokenFromText(std::string_view text) {
     } else if (f[4] != "view" && f[4] != "cart") {
         return true;
     }
-    out.user = Key::from(f[1]);
+    out.user = f[1].size()==9 ? Key::nine<'u'>(f[1].data()) : Key::from(f[1]);
     out.row = {ts, price, category};
     out.valid = true;
     return true;
 }
+[[gnu::noinline]] bool genericEvent(std::string_view line, const Context& ctx, ParsedEvent& out) {
+    std::array<std::string_view,7> f;
+    return eventFields(line,f) && semanticFields(line,f,ctx,out);
+}
+[[gnu::target("avx512f,avx512bw,avx512vbmi,avx512vbmi2")]]
+inline bool compressedSpans(const char* p, size_t n, __m512i lower, __m512i upper,
+                            uint64_t lowLive, uint64_t highLive,
+                            std::array<std::string_view,7>& fields) {
+    const auto comma = _mm512_set1_epi8(',');
+    const auto quote = _mm512_set1_epi8('"');
+    const uint64_t lc = lowLive & _mm512_cmpeq_epi8_mask(lower, comma);
+    const uint64_t uc = highLive & _mm512_cmpeq_epi8_mask(upper, comma);
+    const unsigned numLower = std::popcount(lc);
+    if (numLower + std::popcount(uc) != 6) return false;
+
+    alignas(64) static constexpr auto indices = [] {
+        std::array<unsigned char,64> values{};
+        for (unsigned i=0; i<64; ++i) values[i]=static_cast<unsigned char>(i);
+        return values;
+    }();
+    const auto lowIndices = _mm512_load_si512(indices.data());
+    const auto highIndices = _mm512_add_epi8(lowIndices, _mm512_set1_epi8(64));
+    const auto lowEnds = _mm512_maskz_compress_epi8(lc, lowIndices);
+    const auto highEnds = _mm512_maskz_compress_epi8(uc, highIndices);
+    const uint64_t lo = _mm_cvtsi128_si64(_mm512_castsi512_si128(lowEnds));
+    const uint64_t hi = _mm_cvtsi128_si64(_mm512_castsi512_si128(highEnds));
+    const auto ends = _mm_cvtsi64_si128(lo | (hi << (8 * numLower)) | (uint64_t(n) << 48));
+    const auto one = _mm_set1_epi8(1);
+    const auto begins = _mm_add_epi8(_mm_slli_si128(ends,1), _mm_slli_si128(one,1));
+    const auto length = _mm_sub_epi8(ends,begins);
+
+    // Gather both boundary bytes for every field, including empty fields.
+    // The length test prevents an empty or one-byte field counting as wrapped.
+    const auto opening = _mm512_castsi512_si128(_mm512_permutex2var_epi8(
+            lower,_mm512_zextsi128_si512(begins),upper));
+    const auto closing = _mm512_castsi512_si128(_mm512_permutex2var_epi8(
+            lower,_mm512_zextsi128_si512(_mm_sub_epi8(ends,one)),upper));
+    const auto quoted = _mm_and_si128(_mm_cmpgt_epi8(length,one),
+        _mm_and_si128(_mm_cmpeq_epi8(opening,_mm_set1_epi8('"')),
+                      _mm_cmpeq_epi8(closing,_mm_set1_epi8('"'))));
+    const unsigned allQuotes = std::popcount(uint64_t(lowLive & _mm512_cmpeq_epi8_mask(lower,quote))) +
+                               std::popcount(uint64_t(highLive & _mm512_cmpeq_epi8_mask(upper,quote)));
+    if (allQuotes != 2u * std::popcount(unsigned(_mm_movemask_epi8(quoted)) & 127u))
+        return false;
+    const auto trims = _mm_and_si128(quoted,one);
+    uint64_t starts = _mm_cvtsi128_si64(_mm_add_epi8(begins,trims));
+    uint64_t sizes = _mm_cvtsi128_si64(_mm_sub_epi8(length,_mm_add_epi8(trims,trims)));
+    for (auto& field: fields) {
+        field = {p + uint8_t(starts), uint8_t(sizes)};
+        starts >>= 8;
+        sizes >>= 8;
+    }
+    return true;
+}
+
+template<class Accept>
+[[gnu::target("avx512f,avx512bw,avx512vbmi,avx512vbmi2")]]
+void compressedEventLines(const InputChunk& chunk, const Context& ctx,
+                          ParsedEvent& event, Accept&& accept) {
+    const char* p=chunk.file.data()+chunk.begin;
+    const char* finish=chunk.file.data()+chunk.end;
+    const char* limit=chunk.file.data()+chunk.file.size();
+    if (!chunk.begin || p[-1]!='\n') {
+        const auto* e=static_cast<const char*>(std::memchr(p,'\n',finish-p));
+        if (!e) return;
+        p=e+1;
+    }
+    const auto newline=_mm512_set1_epi8('\n');
+    while (p<finish) {
+        size_t searched=0;
+        if (limit-p>=128) {
+            const auto lower=_mm512_loadu_si512(p);
+            const auto upper=_mm512_loadu_si512(p+64);
+            const uint64_t ll=_mm512_cmpeq_epi8_mask(lower,newline);
+            const uint64_t ul=_mm512_cmpeq_epi8_mask(upper,newline);
+            if (ll || ul) {
+                const size_t n=ll ? std::countr_zero(ll) : 64+std::countr_zero(ul);
+                const uint64_t lowLive=ll ? _bzhi_u64(UINT64_MAX,n) : UINT64_MAX;
+                const uint64_t highLive=ll ? 0 : _bzhi_u64(UINT64_MAX,n-64);
+                std::array<std::string_view,7> fields;
+                if (compressedSpans(p,n,lower,upper,lowLive,highLive,fields) &&
+                    semanticFields({p,n},fields,ctx,event)) accept(p);
+                p+=n+1;
+                continue;
+            }
+            searched=128;
+        }
+        const auto* e=static_cast<const char*>(std::memchr(p+searched,'\n',limit-p-searched));
+        if (!e)e=limit;
+        if (genericEvent({p,static_cast<size_t>(e-p)},ctx,event)) accept(p);
+        if (e==limit)break;
+        p=e+1;
+    }
+}
+
 template <unsigned Hint> inline Key inlineAsciiKey(const char *p, unsigned n) {
     if (n == 9)
         return Key::nine<Hint>(p);
@@ -1236,35 +1331,40 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     }
                     storeEvent(event, offset, hash);
                 };
-                // Keep only a bounded group of input spans. Revisions are
-                // compared by their recorded arrival, independently of parse order.
-                std::array<std::string_view, 128> generic;
-                unsigned genericCount = 0;
-                auto drainGeneric = [&] {
-                    for (unsigned j = 0; j < genericCount; ++j) {
-                        auto line = generic[j];
-                        if (genericEvent(line, ctx, event)) accept(line.data());
-                    }
-                    genericCount = 0;
-                };
-                auto emit = [&](PreparedMasks& masks) {
-                    if (masks.head) {
-                        if (parsePrepared(masks, ctx, event)) accept(masks.line.data());
-                        return;
-                    }
-                    generic[genericCount++] = masks.line;
-                    if (genericCount == generic.size()) drainGeneric();
-                };
-                eventLines(span, [&]() -> PreparedMasks & {
-                    auto &m = queue[cursor % ahead];
-                    if (cursor >= ahead)
-                        emit(m);
-                    ++cursor;
-                    return m;
-                });
-                for (unsigned j = cursor - std::min(cursor, ahead); j < cursor; ++j)
-                    emit(queue[j % ahead]);
-                drainGeneric();
+                if (__builtin_cpu_supports("avx512vbmi2") && __builtin_cpu_supports("avx512vbmi") &&
+                    __builtin_cpu_supports("avx512bw")) {
+                    compressedEventLines(span,ctx,event,accept);
+                } else {
+                    // Keep only a bounded group of input spans. Revisions are
+                    // compared by their recorded arrival, independently of parse order.
+                    std::array<std::string_view, 128> generic;
+                    unsigned genericCount = 0;
+                    auto drainGeneric = [&] {
+                        for (unsigned j = 0; j < genericCount; ++j) {
+                            auto line = generic[j];
+                            if (genericEvent(line, ctx, event)) accept(line.data());
+                        }
+                        genericCount = 0;
+                    };
+                    auto emit = [&](PreparedMasks& masks) {
+                        if (masks.head) {
+                            if (parsePrepared(masks, ctx, event)) accept(masks.line.data());
+                            return;
+                        }
+                        generic[genericCount++] = masks.line;
+                        if (genericCount == generic.size()) drainGeneric();
+                    };
+                    eventLines(span, [&]() -> PreparedMasks & {
+                        auto &m = queue[cursor % ahead];
+                        if (cursor >= ahead)
+                            emit(m);
+                        ++cursor;
+                        return m;
+                    });
+                    for (unsigned j = cursor - std::min(cursor, ahead); j < cursor; ++j)
+                        emit(queue[j % ahead]);
+                    drainGeneric();
+                }
                 for (unsigned j = queued - std::min(queued, depth); j < queued; ++j)
                     flush(pending[j % depth]);
             }
