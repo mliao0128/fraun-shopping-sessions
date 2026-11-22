@@ -1,3 +1,7 @@
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+
 #include <sys/mman.h>
 #include "shared.hpp"
 #include "event_fields.hpp"
@@ -249,13 +253,92 @@ public:
     }
 } recycled;
 
+// Requests describe an already mapped anonymous writer range. At most eight
+// 2 MiB hints can wait, plus one currently being populated. Data ownership
+// stays with the original reader throughout and readers never wait for space.
+class LiveSlabAdvice {
+    static constexpr size_t quantum=2u<<20;
+    struct Ticket { char* address; unsigned reader; uint64_t epoch; };
+    std::array<Ticket,8> queue{};
+    std::array<std::atomic<uint64_t>,64> position{};
+    std::mutex lock;
+    std::condition_variable changed;
+    std::thread helper;
+    size_t first=0,size=0,capacity=0;
+    bool closing=false;
+    enum class Mode { demand, sync, background } mode=Mode::demand;
+    std::atomic<bool> supported{true};
+
+    void populate(char* address) {
+#if defined(MADV_POPULATE_WRITE)
+        if (::madvise(address,quantum,MADV_POPULATE_WRITE) && (errno==EINVAL || errno==ENOSYS))
+            supported.store(false,std::memory_order_relaxed);
+#else
+        supported.store(false,std::memory_order_relaxed);
+#endif
+    }
+    void work() {
+        for (;;) {
+            Ticket t{};
+            {
+                std::unique_lock guard(lock);
+                changed.wait(guard,[&]{return size || closing;});
+                if(closing) return;
+                t=queue[first];
+                first=(first+1)%queue.size();
+                --size;
+            }
+            if(supported.load(std::memory_order_relaxed) &&
+               position[t.reader].load(std::memory_order_acquire)==t.epoch)
+                populate(t.address);
+        }
+    }
+public:
+    LiveSlabAdvice(unsigned readers, bool enabled) {
+        if (!enabled) return;
+        const char* value=std::getenv("SHOP_SLAB_MODE");
+        if(value && std::string_view(value)=="demand") return;
+        if(value && std::string_view(value)=="sync") {mode=Mode::sync;return;}
+        capacity=std::min<size_t>(readers,queue.size());
+        try {helper=std::thread([this]{work();});mode=Mode::background;}
+        catch(const std::system_error&) {}
+    }
+    bool enabled() const {return mode!=Mode::demand;}
+    void advance(unsigned reader, uint64_t epoch, char* next) {
+        position[reader].store(epoch,std::memory_order_release);
+        if(!next || !supported.load(std::memory_order_relaxed)) return;
+        if(mode==Mode::sync) {populate(next);return;}
+        std::unique_lock guard(lock);
+        if(size==capacity) return;
+        queue[(first+size)%queue.size()]={next,reader,epoch};
+        ++size;
+        guard.unlock();
+        changed.notify_one();
+    }
+    void finish() {
+        if(!helper.joinable()) return;
+        {std::lock_guard guard(lock);closing=true;}
+        changed.notify_one();
+        helper.join();
+    }
+    ~LiveSlabAdvice() {finish();}
+};
+
 class Slab {
     // Each router draws a batch from the common pool under one lock.
     std::array<void*,32> local;
     size_t left = 0;
     char* next = nullptr;
     char* end = nullptr;
+    char* nextHint=nullptr;
+    LiveSlabAdvice* advice=nullptr;
+    unsigned readerId=0;
+    uint64_t epoch=0;
 public:
+    void enableHints(LiveSlabAdvice& owner,unsigned id) {
+        if(owner.enabled()){advice=&owner;readerId=id;}
+    }
+    void stopHints() {advice=nullptr;nextHint=nullptr;}
     void* take() {
         if (!left) left = recycled.takeBatch(local.data(),local.size());
         if (left) return local[--left];
@@ -267,6 +350,12 @@ public:
             next = reinterpret_cast<char*>((reinterpret_cast<uintptr_t>(raw) + huge - 1) & ~(huge - 1));
             end = next + extentBytes;
             madvise(next, extentBytes, MADV_HUGEPAGE);
+            if(advice) nextHint=next;
+        }
+        if(next==nextHint) {
+            constexpr size_t quantum=2u<<20;
+            nextHint=next+quantum;
+            advice->advance(readerId,++epoch,nextHint<end ? nextHint : nullptr);
         }
         void* block = next;
         next += blockBytes;
@@ -1237,11 +1326,13 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     auto partOf = [&](uint64_t hash) { return static_cast<size_t>((hash >> 1) >> shift); };
 
     const unsigned readerCount = static_cast<unsigned>(std::min<size_t>(source.spans.size(), workers));
+    LiveSlabAdvice advice(readerCount,bytes>=(256u<<20));
     std::vector<std::unique_ptr<Reader>> readers(readerCount);
     std::atomic<size_t> next = 0;
     parallel(readerCount, readerCount, [&](size_t r) {
         readers[r] = std::make_unique<Reader>(parts, idShards);
         Reader& reader = *readers[r];
+        reader.slab.enableHints(advice,r);
         ParsedEvent event;
         Click click;
         for (;;) {
@@ -1335,6 +1426,8 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         reader.ids.finish();
         reader.prepareCancellations(parts);
     });
+    advice.finish();
+    for(auto& reader:readers)reader->slab.stopHints();
     lap("parse");
 
     const size_t clicks = source.spans.size() - source.eventSpans;
