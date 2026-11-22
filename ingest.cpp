@@ -278,14 +278,15 @@ class LiveSlabAdvice {
         nextInput=std::max(nextInput,head);
         if(nextInput>=eventCount || nextInput-head>=lead)return false;
         const auto& s=spans[nextInput++];
-#if defined(MADV_POPULATE_READ)
-        if(s.end-s.begin>=(256u<<10) && ::madvise(const_cast<char*>(s.file.data()+s.begin),
-                  s.end-s.begin,MADV_POPULATE_READ) && (errno==EINVAL || errno==ENOSYS))
-            readSupported=false;
-#endif
+        constexpr size_t stride=256u<<10;
+        const size_t length=s.end-s.begin;
+        if(length>=stride) {
+            // Read within the already mapped span. Unvisited pages use ordinary demand faults.
+            const volatile char* begin=s.file.data()+s.begin;
+            for(size_t offset=0;offset<length;offset+=stride) (void)begin[offset];
+        }
         return true;
     }
-    bool readSupported=true;
     std::thread helper;
     size_t first=0,size=0,capacity=0;
     bool closing=false;
@@ -317,7 +318,7 @@ class LiveSlabAdvice {
             if(hasWrite && supported.load(std::memory_order_relaxed) &&
                position[t.reader].load(std::memory_order_acquire)==t.epoch)
                 populate(t.address);
-            const bool hasInput=readSupported && handleInput();
+            const bool hasInput=handleInput();
             if(!hasWrite && !hasInput)changed.wait(state,std::memory_order_acquire);
         }
     }
