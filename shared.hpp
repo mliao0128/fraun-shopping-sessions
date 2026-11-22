@@ -24,6 +24,8 @@
 // Nine ASCII bytes have 63 payload bits. Pack them in lexical order so
 // equality and tie-breaking avoid input reads. Up to seven raw bytes fit
 // inline with a length tag. Other keys borrow the immutable mapped input.
+inline uint64_t exactCompactSpelling(uint64_t code);
+inline uint64_t compactGraphHash(uint64_t code);
 struct Key {
     using Buffer = std::array<char,9>;
     static constexpr uint64_t shortTag = uint64_t{1} << 63;
@@ -198,6 +200,11 @@ struct Key {
         return {reinterpret_cast<const char*>(&bits), (bits >> 56) & 7};
     }
     std::string_view view(Buffer& buffer) const {
+        if((bits>>56)==0x89){
+            Key original{exactCompactSpelling(bits&UINT64_C(0x00ffffffffffffff))};
+            original.writeNine(buffer.data());
+            return {buffer.data(),9};
+        }
         if (eightAscii()) {
             uint64_t bytes = _pdep_u64(bits, asciiMask);
             std::memcpy(buffer.data(), &bytes, 8);
@@ -208,6 +215,7 @@ struct Key {
         return {buffer.data(),9};
     }
     uint64_t hash() const {
+        if((bits>>56)==0x89)return compactGraphHash(bits&UINT64_C(0x00ffffffffffffff));
         if (interned()) return shopperSlot()->hash;
         if (external()) return spellingHash(borrowed());
         const __uint128_t product = static_cast<__uint128_t>(bits ^ 0xa0761d6478bd642fULL)
@@ -218,6 +226,7 @@ struct Key {
         return bits == o.bits || (external() && o.external() && borrowed()==o.borrowed());
     }
     bool operator<(const Key& o) const {
+        if((bits>>56)==0x89 && (o.bits>>56)==0x89)return bits<o.bits;
         if (nineAscii() && o.nineAscii()) {
             if (((bits ^ o.bits) & headerMask) != 0)
                 return prefix() < o.prefix();
@@ -234,6 +243,18 @@ inline ShopperCodec shopperCodec;
 // bytes. The private 0x89 domain exists only between parsed rows and grouping.
 inline constexpr uint64_t compactKeyTag=UINT64_C(0x8900000000000000);
 inline constexpr uint64_t compactKeyPayload=UINT64_C(0x00ffffffffffffff);
+inline unsigned compactExtraBits=0;
+inline uint32_t compactBucketShift=0,compactRemainder=UINT32_MAX;
+inline uint32_t compactPartition(uint64_t code){return uint32_t(code>>(32-compactExtraBits));}
+inline uint64_t completeCompactCode(size_t partition,uint32_t low){
+    return ((uint64_t(partition)>>compactExtraBits)<<32)|low;
+}
+inline uint64_t exactCompactSpelling(uint64_t code){return shopperCodec.decode(code);}
+inline uint64_t compactGraphHash(uint64_t code){
+    const uint32_t mixed=_mm_crc32_u64(0,code);
+    const uint32_t home=(compactPartition(code)<<compactBucketShift)|(mixed&compactRemainder);
+    return (uint64_t(home)<<32)|mixed;
+}
 inline bool isCompactShopper(Key raw){return (raw.bits>>56)==0x89;}
 inline Key compactShopper(uint64_t code){return Key{compactKeyTag|code};}
 inline Key encodeShopper(Key raw){
@@ -497,7 +518,6 @@ struct Identities {
     }
 };
 
-void indexCompactAliases(const Identities&);
 struct Context {
     bool populateInput = false;
     struct ExecutionSettings {

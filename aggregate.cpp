@@ -121,7 +121,7 @@ void groupRows(const Bucket& bucket, Grouped& out, int64_t origin) {
         }
     });
     bucket.compact.each([&](uint64_t row){
-        const auto code=(uint64_t(bucket.partition)<<32)|uint32_t(row);
+        const auto code=completeCompactCode(bucket.partition,uint32_t(row));
         const Key name=compactShopper(code);
         const auto g=index.add(name,name.hash());
         const uint32_t delta=row>>32;

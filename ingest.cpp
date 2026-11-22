@@ -1157,53 +1157,6 @@ template<class T> size_t compactCancelled(T* rows, size_t count, const uint8_t* 
     }
     return kept;
 }
-unsigned shopperPartitionShift=0;
-struct Destination {uint64_t key;uint32_t bucket;bool compact;};
-struct CompactAliasDirectory {
-    struct Cell {uint32_t source{}, flags{};uint64_t dest{};};
-    struct Shard {std::vector<Cell> cells;};
-    std::vector<Shard> shards;
-    uint64_t aliases{},bytes{},buildCPU{};
-    static size_t start(uint32_t key,size_t mask){return size_t(_mm_crc32_u32(0,key))&mask;}
-    void build(const Identities& graph){
-
-        std::vector<uint32_t> counts(shopperCodec.buckets);
-        shards.clear();shards.resize(shopperCodec.buckets);
-        for(const auto& assignment:graph.slots){
-            uint64_t sourceCode;
-            if(!assignment.raw.empty() && shopperCodec.encode(assignment.raw.bits,sourceCode))++counts[sourceCode>>32];
-        }
-        for(unsigned b=0;b<counts.size();++b)if(counts[b]){
-            auto n=std::bit_ceil(size_t(counts[b])+counts[b]/3+1);
-            shards[b].cells.resize(n);bytes+=n*sizeof(Cell);
-        }
-        for(const auto& a:graph.slots){
-            uint64_t source,target;
-            if(a.raw.empty()||!shopperCodec.encode(a.raw.bits,source))continue;
-            Destination dst;
-            if(shopperCodec.encode(a.name.bits,target))dst={uint32_t(target),uint32_t(target>>32),true};
-            else dst={a.name.bits,uint32_t((a.name.hash()>>1)>>shopperPartitionShift),false};
-            auto& cells=shards[source>>32].cells;auto mask=cells.size()-1;
-            auto i=start(source,mask);
-            while(cells[i].flags){i=(i+1)&mask;}
-            cells[i]={uint32_t(source),(dst.bucket+1)|(dst.compact?UINT32_C(0x80000000):0),dst.key};++aliases;
-        }
-
-    }
-    Destination find(uint32_t b,uint32_t key) const {
-        const auto& cells=shards[b].cells;
-        if(cells.empty())return {key,b,true};
-        auto mask=cells.size()-1,i=start(key,mask);
-        for(;;i=(i+1)&mask){
-            const auto& slot=cells[i];
-            if(!slot.flags)return {key,b,true};
-            if(slot.source==key)
-                return {slot.dest,(slot.flags&0x7fffffff)-1,(slot.flags>>31)!=0};
-        }
-    }
-};
-static CompactAliasDirectory compactAliases;
-
 template<class T, size_t N, class Reject>
 void correct(T* rows, size_t count, size_t bucket, unsigned shift,
              const Identities& identities, Scatter<T,N>& moved, Pieces<T>& kept, Reject reject) {
@@ -1212,29 +1165,11 @@ void correct(T* rows, size_t count, size_t bucket, unsigned shift,
     while (i < count) {
         T& row = rows[i];
         if (!reject(row)) {
-            size_t target;
-            Key canonical;
-            uint64_t hash;
-            if(isCompactShopper(row.person)){
-                const uint32_t low=uint32_t(row.person.bits);
-                auto dst=compactAliases.find(bucket,low);
-                target=dst.bucket;
-                if(dst.compact){
-                    if(target==bucket && uint32_t(dst.key)==low){++i;continue;}
-                    canonical=compactShopper((uint64_t(target)<<32)|uint32_t(dst.key));
-                }else canonical=Key{dst.key};
-                hash=canonical.hash();
-            }else{
-                hash=row.routingHash();
-                canonical=identities.person(row.person,hash);
-                if(canonical.bits==row.person.bits){++i;continue;}
-                canonical=encodeShopper(canonical);
-                if(isCompactShopper(canonical)){
-                    target=(canonical.bits&compactKeyPayload)>>32;
-                    hash=canonical.hash();
-                }else target=(hash>>1)>>shift;
-            }
+            uint64_t hash=row.routingHash();
+            const Key canonical=identities.person(row.person,hash);
+            if(canonical.bits==row.person.bits){++i;continue;}
             row.rename(canonical,hash);
+            const size_t target=(hash>>1)>>shift;
             if (target == bucket) { ++i; continue; }
             moved.add(target,row);
         }
@@ -1288,10 +1223,13 @@ void learnShopperEncoding(const std::vector<std::string_view>& files,size_t byte
     }
     shopperCodec.learn(sample);
     if(shopperCodec.buckets>parts || parts+shopperCodec.buckets>1024)shopperCodec.buckets=0;
-    shopperPartitionShift=63-std::countr_zero(parts);
-}
-void indexCompactAliases(const Identities& graph) {
-    if(shopperCodec.buckets)compactAliases.build(graph);
+    if(!shopperCodec.buckets)return;
+    while((size_t(shopperCodec.buckets)<<1)<=parts){
+        ++compactExtraBits;shopperCodec.buckets*=2;
+    }
+    unsigned partBits=std::countr_zero(parts);
+    compactBucketShift=partBits?32-partBits:0;
+    compactRemainder=UINT32_MAX>>partBits;
 }
 
 void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
@@ -1356,7 +1294,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     if (event.valid) {
                         const bool encoded=isCompactShopper(event.user);
                         const uint64_t code=event.user.bits&compactKeyPayload;
-                        auto bucket=uint32_t(encoded?code>>32:partOf(rawHash));
+                        auto bucket=uint32_t(encoded?compactPartition(code):partOf(rawHash));
                         const auto delta=uint64_t(event.row.ts)-uint64_t(ctx.start);
                         uint32_t index;
                         if(encoded && !event.row.price && delta<(uint64_t{1}<<31)) {
@@ -1464,7 +1402,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     row.person=Key::internHashedShopper(text,item.hash);
             }
             row.hash32=uint32_t(item.hash>>32);
-            const size_t destination=isCompactShopper(row.person) ? (row.person.bits&compactKeyPayload)>>32 : partOf(item.hash);
+            const size_t destination=partOf(item.hash);
             reader.clicks.add(destination,row);
         };
         chunkLines(span,[&](std::string_view line) {
@@ -1543,18 +1481,18 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                         cancelOffset+=n;
                         for(size_t i=0;i<alive;){
                             uint64_t row=rows[i];
-                            auto dst=compactAliases.find(p,uint32_t(row));
-                            if(dst.compact){
-                                uint64_t renamed=(row&UINT64_C(0xffffffff00000000))|uint32_t(dst.key);
-                                if(dst.bucket==p){
-                                    if(renamed!=row)rows[i]=renamed;
-                                    ++i;continue;
-                                }
-                                router.compact.add(dst.bucket,renamed);
-                            } else {
-                                Key person{dst.key};
+                            const Key raw=compactShopper(completeCompactCode(p,uint32_t(row)));
+                            uint64_t hash=raw.hash();
+                            const Key canonical=ctx.identities.person(raw,hash);
+                            if(canonical.bits==raw.bits){++i;continue;}
+                            size_t destination=partOf(hash);
+                            if(isCompactShopper(canonical)){
+                                uint64_t renamed=(row&UINT64_C(0xffffffff00000000))|uint32_t(canonical.bits);
+                                if(p==destination){rows[i++]=renamed;continue;}
+                                router.compact.add(destination,renamed);
+                            }else{
                                 int64_t ts=ctx.start+int64_t(row>>32);
-                                router.events.add(dst.bucket,Event::pack(person,ctx.start,{ts,0,0},person.hash()));
+                                router.events.add(destination,Event::pack(canonical,ctx.start,{ts,0,0},hash));
                             }
                             if(--alive!=i)rows[i]=rows[alive];
                         }

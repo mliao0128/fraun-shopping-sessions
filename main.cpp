@@ -224,7 +224,6 @@ int main(int argc, char** argv) try {
     std::thread linker([&] {
         try {
             linkPeople(links, ctx, std::min(workers, ctx.settings.linkWorkers));
-            indexCompactAliases(ctx.identities);
         } catch (...) {
             linkError = std::current_exception();
         }

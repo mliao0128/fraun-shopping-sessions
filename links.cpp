@@ -40,7 +40,7 @@ template <class F> void linkRows(SV file, F action) {
     const auto consume=[&](const Pending& item) {
         const auto resolve=[&](unsigned i) {
             const auto text=item.fields[i];
-            return eligible(text) ? Key::internHashedShopper(text,item.hashes[i]) : Key::from(text);
+            return eligible(text) ? Key::internHashedShopper(text,item.hashes[i]) : encodeShopper(Key::from(text));
         };
         const auto left=resolve(0);
         action(left,resolve(1));
@@ -139,7 +139,7 @@ void endpoints(Batch& batch) {
         }
         if (valid && !fields[0].empty() && !fields[1].empty()) {
             for (SV f : fields) {
-                Key k = Key::shopper(f);
+                Key k = encodeShopper(Key::shopper(f));
                 const auto shard = static_cast<uint8_t>(Identities::shard(k.hash()));
                 batch.parts[shard].push_back(k);
                 batch.order.push_back(shard);
