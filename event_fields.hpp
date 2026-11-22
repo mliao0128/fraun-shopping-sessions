@@ -5,6 +5,7 @@
 // the third field, so it introduces no new quote boundary.
 inline bool eventFields(std::string_view s, std::array<std::string_view,7>& f) {
     const size_t n = s.size();
+    if (n > 96 && n <= 128) return csvPacked<7,true,true>(s,f);
     if (n <= 64 || n > 96) return csv(s,f);
     const char* p = s.data();
     auto head = classify32(p);

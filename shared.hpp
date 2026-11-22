@@ -199,7 +199,7 @@ inline CsvMask classify32(const char* p) {
             static_cast<uint32_t>(_mm256_movemask_epi8(_mm256_cmpeq_epi8(bytes, _mm256_set1_epi8('"'))))};
 }
 
-template<size_t N, bool Long>
+template<size_t N, bool Long, bool Wide = false>
 bool csvPacked(std::string_view line, std::array<std::string_view,N>& fields) {
     const size_t size = line.size();
     const char* p = line.data();
@@ -210,8 +210,14 @@ bool csvPacked(std::string_view line, std::array<std::string_view,N>& fields) {
         auto middle = classify32(p + 32);
         commas = first.comma | (uint64_t(middle.comma) << 32);
         quotes = first.quote | (uint64_t(middle.quote) << 32);
-        upperCommas = last.comma >> (96-size);
-        upperQuotes = last.quote >> (96-size);
+        if constexpr (Wide) {
+            auto third = classify32(p + 64);
+            upperCommas = third.comma | (uint64_t(last.comma) << (size - 96));
+            upperQuotes = third.quote | (uint64_t(last.quote) << (size - 96));
+        } else {
+            upperCommas = last.comma >> (96-size);
+            upperQuotes = last.quote >> (96-size);
+        }
     } else {
         commas = first.comma | (uint64_t(last.comma) << (size-32));
         quotes = first.quote | (uint64_t(last.quote) << (size-32));
