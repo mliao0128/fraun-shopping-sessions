@@ -534,6 +534,35 @@ inline bool isoTimes(const char* event, const char* arrival, const Context& ctx,
     return arrivalMs - dayMs <= eventMs;
 }
 
+// Equal first 14 bytes prove the event date, hour and first colon match the
+// guaranteed UTC arrival. Every instant in that hour meets the lateness limit.
+inline bool commonUtcHour(const char* e, const char* a) {
+    const auto x=_mm_loadu_si128(reinterpret_cast<const __m128i*>(e));
+    const auto y=_mm_loadu_si128(reinterpret_cast<const __m128i*>(a));
+    return (_mm_movemask_epi8(_mm_cmpeq_epi8(x,y)) & 0x3fff) == 0x3fff;
+}
+inline bool sharedHourTimes(const char* e,const char* a,const Context& ctx,int64_t& eventMs,int64_t& arrivalMs) {
+    // Each 8-byte slice ends at the UTC zone, with minute and second at 2:3 and 5:6.
+    const auto tail=_mm_unpacklo_epi64(_mm_loadl_epi64(reinterpret_cast<const __m128i*>(e+12)),
+                                        _mm_loadl_epi64(reinterpret_cast<const __m128i*>(a+12)));
+    const auto pattern=_mm_setr_epi8(0,0,'0','0',':','0','0','Z',0,0,'0','0',':','0','0','Z');
+    const auto digits=_mm_sub_epi8(tail,pattern);
+    const auto limits=_mm_setr_epi8(-1,-1,5,9,0,5,9,0,-1,-1,-1,-1,-1,-1,-1,-1);
+    if (!_mm_testz_si128(_mm_subs_epu8(digits,limits),_mm_set1_epi8(-1))) return false;
+
+    const int64_t midnightMs=midnight(a);
+    if (midnightMs==invalidTime) return false;
+    const int64_t base=midnightMs + int64_t(pairValue(a+11))*3600000;
+    const auto values=_mm_shuffle_epi8(digits,_mm_setr_epi8(2,3,5,6,10,11,13,14,-1,-1,-1,-1,-1,-1,-1,-1));
+    const auto pairs=_mm_maddubs_epi16(values,_mm_set1_epi16(0x010a));
+    const auto seconds=_mm_madd_epi16(pairs,_mm_setr_epi16(60,1,60,1,0,0,0,0));
+    eventMs=base+int64_t(_mm_cvtsi128_si32(seconds))*1000;
+    if (eventMs<ctx.start || eventMs>=ctx.end) return false;
+    arrivalMs=base+int64_t(_mm_extract_epi32(seconds,1))*1000;
+    return true;
+}
+
+
 [[gnu::always_inline]] inline bool eventTimes(std::string_view event, std::string_view arrival,
                                               const Context &ctx, int64_t &ts, int64_t &ingest) {
     const char* e = event.data();
@@ -556,8 +585,10 @@ inline bool isoTimes(const char* event, const char* arrival, const Context& ctx,
         return ingest - dayMs <= ts;
     }
     if (arrival.size() == 20 && (event.size() == 20 || event.size() == 25) && e[4]=='-') {
-        if (event.size() == 20)
+        if (event.size() == 20) {
+            if (commonUtcHour(e,a)) return sharedHourTimes(e,a,ctx,ts,ingest);
             return isoTimes<false>(e, a, ctx, ts, ingest);
+        }
         return isoTimes<true>(e, a, ctx, ts, ingest);
     }
     ts = timestamp(event);
