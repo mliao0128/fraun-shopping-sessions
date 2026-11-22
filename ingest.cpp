@@ -481,7 +481,7 @@ struct Router {
 };
 
 struct ParsedEvent {
-    Key id;
+    EventToken id;
     bool valid = false;
     int64_t arrival;
     Key user;
@@ -587,12 +587,29 @@ inline bool isoTimes(const char* event, const char* arrival, const Context& ctx,
 // IDs are opaque CSV values. This lossless compact Key uses all the bytes,
 // including case and leading zeroes, or borrows the exact mapped string.
 inline Key eventID(std::string_view text) { return Key::from(text); }
+inline EventToken tokenFromText(std::string_view text) {
+    if (text.size() == 9) {
+        uint64_t first, last;
+        std::memcpy(&first, text.data(), 8);
+        std::memcpy(&last, text.data() + 1, 8);
+        if (!((first | last) & ~Key::asciiMask)) {
+            // Of 63 ASCII bits, keep bytes 0..3 and the low three bits
+            // of byte 4. CRC32C has full rank on the other 32 bits.
+            // Together the two words identify the original nine bytes exactly.
+            constexpr uint64_t kept = UINT64_C(0x000000077f7f7f7f);
+            const uint64_t prefix = _pext_u64(first, kept);
+            const uint32_t crc = _mm_crc32_u64(uint8_t(first), last);
+            return {(prefix << 32) | crc};
+        }
+    }
+    return encodeEventToken(eventID(text));
+}
 // Malformed lines and empty IDs never take part in deduplication. Every other
 // copy does, valid or not: an invalid earliest copy suppresses later ones.
 [[gnu::noinline]] bool genericEvent(std::string_view line, const Context &ctx, ParsedEvent &out) {
     std::array<std::string_view,7> f;
     if (!eventFields(line, f) || f[0].empty()) return false;
-    out.id = eventID(f[0]);
+    out.id = tokenFromText(f[0]);
     out.valid = false;
     out.arrival = invalidTime;
     if (f[1].empty() || f[5].empty()) return true;
@@ -772,7 +789,7 @@ inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, Parse
         return false;
     if (!h.idLen)
         return false;
-    out.id = eventID({p + h.id, h.idLen});
+    out.id = tokenFromText({p + h.id, h.idLen});
     out.valid = false;
     out.arrival = invalidTime;
     if (!t.productLen || !h.userLen)
@@ -1224,7 +1241,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 std::array<PreparedMasks, ahead> queue;
                 unsigned cursor = 0;
                 auto storeEvent = [&](const ParsedEvent& event, uint64_t offset, uint64_t rawHash) {
-                    auto token = encodeEventToken(event.id);
+                    auto token = event.id;
                     const uint32_t hash = filterHash(token);
                     const size_t idShard = uint64_t{hash} >> idShift;
                     if (token.external()) token = reader.rememberOpaque(token,hash);
