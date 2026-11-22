@@ -280,7 +280,7 @@ template<class T> constexpr size_t rowsPerBlock = blockBytes / sizeof(T);
 // per-partition buffer and leave as whole cache lines with non-temporal
 // stores, so the destination is never read and the open set stays in L2.
 template<class T, size_t Group> class Scatter {
-    static_assert(std::is_trivially_copyable_v<T> && blockBytes % sizeof(T) == 0);
+    static_assert(std::is_trivially_copyable_v<T> && rowsPerBlock<T> * sizeof(T) <= blockBytes);
     static_assert((Group * sizeof(T)) % 64 == 0 && rowsPerBlock<T> % Group == 0);
     struct alignas(64) Buffer { T rows[Group]; };
     Slab& slab;
@@ -388,6 +388,9 @@ struct IdRecord {
     EventToken id;
     uint64_t info;
 };
+struct NameRecord { uint32_t code, receiptLow, receiptHigh; };
+template<> constexpr size_t rowsPerBlock<NameRecord> = (blockBytes/sizeof(NameRecord)/16)*16;
+static_assert(sizeof(NameRecord)==12);
 struct Extended { int64_t arrival; uint32_t bucket,index; };
 static_assert(sizeof(IdRecord) == 16);
 
@@ -396,6 +399,7 @@ struct Reader {
     Scatter<Event, 16> events;
     Scatter<Click, 8> clicks;
     Scatter<IdRecord, 16> ids;
+    Scatter<NameRecord,16> names;
     std::vector<Extended> slow;
     static constexpr uint32_t witnessLimit = 1u << 28;
     bool rawOverflow = false;
@@ -434,7 +438,7 @@ struct Reader {
         }
         return token.witness() ? EventToken{originalBits(token.witnessIndex())} : token;
     }
-    Reader(size_t parts, size_t idShards) : events(slab, parts), clicks(slab, parts), ids(slab, idShards) {}
+    Reader(size_t parts, size_t idShards,size_t nameOwners=0) : events(slab, parts), clicks(slab, parts), ids(slab, idShards), names(slab,nameOwners) {}
 };
 
 uint64_t special(uint64_t value, uint32_t tag) {
@@ -569,7 +573,54 @@ inline bool isoTimes(const char* event, const char* arrival, const Context& ctx,
 // IDs are opaque CSV values. This lossless compact Key uses all the bytes,
 // including case and leading zeroes, or borrows the exact mapped string.
 inline Key eventID(std::string_view text) { return Key::from(text); }
+// A fully matched nine-byte family has a separately owned two-character suffix.
+// The other six digits identify the name exactly inside that owner.
+constexpr uint64_t numericTag=UINT64_C(0x8f00000000000000);
+constexpr unsigned familyOwners=36*36;
+static int familyPrefix=-1;
+inline EventToken familyName(const char* p) {
+    const auto raw=_mm_loadl_epi64(reinterpret_cast<const __m128i*>(p+1));
+    const auto digits=_mm_sub_epi8(raw,_mm_set1_epi8('0'));
+    const auto letters=_mm_sub_epi8(raw,_mm_set1_epi8('a'));
+    const auto dOk=_mm_cmpeq_epi8(_mm_subs_epu8(digits,_mm_set1_epi8(9)),_mm_setzero_si128());
+    const auto aOk=_mm_cmpeq_epi8(_mm_subs_epu8(letters,_mm_set1_epi8(25)),_mm_setzero_si128());
+    if((unsigned(_mm_movemask_epi8(_mm_or_si128(dOk,aOk)))&255u)!=255u) return {};
+    const auto values=_mm_blendv_epi8(digits,_mm_add_epi8(letters,_mm_set1_epi8(10)),aOk);
+    const auto pairs=_mm_maddubs_epi16(values,_mm_set1_epi16(0x0124));
+    const auto leading=_mm_madd_epi16(pairs,_mm_set1_epi32((1<<16)|1296));
+    const uint32_t last=uint32_t(_mm_extract_epi32(pairs,1));
+    const auto code=uint32_t(_mm_cvtsi128_si32(leading))*1296u+uint16_t(last);
+    return {numericTag | (uint64_t(last>>16)<<32) | code};
+}
+
+int chooseFamily(const std::vector<std::string_view>& files) {
+    std::array<uint32_t,256> frequency{};
+    uint32_t seen=0;
+    for(auto file:files) {
+        size_t newline=file.find('\n');
+        if(newline==file.npos) continue;
+        size_t start=newline+1;
+        for(unsigned j=0;j<16 && start<file.size();++j) {
+            newline=file.find('\n',start);
+            if(newline==file.npos) newline=file.size();
+            auto line=file.substr(start,newline-start);start=newline+1;
+            std::array<std::string_view,7> fields;
+            if(eventFields(line,fields) && !fields[0].empty()) {
+                ++seen;
+                if(fields[0].size()==9 && familyName(fields[0].data()).bits)
+                    ++frequency[static_cast<unsigned char>(fields[0][0])];
+            }
+        }
+        if(seen>=2048)break;
+    }
+    const auto max=std::max_element(frequency.begin(),frequency.end());
+    return seen>=96 && *max>seen/2 ? int(max-frequency.begin()) : -1;
+}
 inline EventToken tokenFromText(std::string_view text) {
+    if(text.size()==9 && static_cast<unsigned char>(text[0])==familyPrefix) {
+        const auto name=familyName(text.data());
+        if(name.bits) return name;
+    }
     if (text.size() == 9) {
         uint64_t first, last;
         std::memcpy(&first, text.data(), 8);
@@ -1087,6 +1138,64 @@ void deduplicate(size_t shard, int64_t origin, const Source &source,
         }
     }
 }
+
+void reduceNames(size_t shard,int64_t origin,const Source& source,std::vector<std::unique_ptr<Reader>>& readers) {
+    struct Block {const NameRecord* rows; Reader* owner; size_t count;};
+    struct Slot {uint32_t key,ref;};
+    static thread_local std::vector<Block> blocks;
+    static thread_local std::vector<Slot> slots;
+    blocks.clear();
+    size_t n=0;
+    for(auto& reader:readers)
+        reader->names.pieces(shard,[&](const NameRecord* rows,size_t size) {
+            blocks.push_back({rows,reader.get(),size});n+=size;
+        });
+    if(n<2) return;
+    auto update=[&](uint64_t current,Reader& curOwner,uint64_t prior,Reader& oldOwner) {
+        const bool earlier=(uint32_t(current)|uint32_t(prior))<sourceTag
+            ? (current>>32)<(prior>>32)
+            : arrival(current,curOwner,source,origin)<arrival(prior,oldOwner,source,origin);
+        if(earlier) invalidate(prior,oldOwner);else invalidate(current,curOwner);
+        return earlier;
+    };
+    constexpr unsigned rowBits=std::bit_width(rowsPerBlock<NameRecord>-1);
+    constexpr uint32_t rowMask=(1u<<rowBits)-1;
+    const auto receipt=[](const NameRecord& row){return (uint64_t(row.receiptHigh)<<32)|row.receiptLow;};
+    if(blocks.size()>(uint64_t{1}<<(32-rowBits))) {
+        std::unordered_map<uint32_t,std::pair<uint64_t,Reader*>> exact;
+        for(const auto& b:blocks) for(size_t j=0;j<b.count;++j) {
+            const auto& row=b.rows[j];uint64_t now=receipt(row);
+            auto [it,inserted]=exact.try_emplace(row.code,now,b.owner);
+            if(!inserted && update(now,*b.owner,it->second.first,*it->second.second))it->second={now,b.owner};
+        }
+        return;
+    }
+    slots.assign(std::max<size_t>(8,std::bit_ceil(n+n/2+1)),Slot{});
+    const auto mask=slots.size()-1;
+    constexpr unsigned batch=32;
+    for(size_t b=0;b<blocks.size();++b) {
+        const auto& block=blocks[b];
+        for(unsigned first=0;first<block.count;first+=batch) {
+            const unsigned count=std::min<size_t>(batch,block.count-first);
+            uint32_t homes[batch];
+            for(unsigned i=0;i<count;++i) {
+                homes[i]=_mm_crc32_u32(0,block.rows[first+i].code);
+                __builtin_prefetch(&slots[homes[i]&mask],1,2);
+            }
+            for(unsigned i=0;i<count;++i) {
+                const auto& row=block.rows[first+i];
+                const uint32_t key=row.code+1;
+                const uint32_t at=(uint32_t(b)<<rowBits)|(first+i);
+                size_t pos=homes[i]&mask;
+                while(slots[pos].key && slots[pos].key!=key)pos=(pos+1)&mask;
+                auto& entry=slots[pos];
+                if(!entry.key) { entry={key,at};continue; }
+                const auto& old=blocks[entry.ref>>rowBits];
+                if(update(receipt(row),*block.owner,receipt(old.rows[entry.ref&rowMask]),*old.owner))entry.ref=at;
+            }
+        }
+    }
+}
 template<class T, size_t N, class Reject>
 void correct(T* rows, size_t count, size_t bucket, unsigned shift,
              const Identities& identities, Scatter<T,N>& moved, Pieces<T>& kept, Reject reject) {
@@ -1168,7 +1277,11 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                                                      INT64_MAX - INT32_MAX);
     const unsigned shift = 63 - std::countr_zero(parts);
     // Use more ID partitions than user partitions so a worker's duplicate bitmap fits in cache.
-    const size_t idShards = std::clamp<size_t>(std::bit_ceil(bytes >> 21), 1, size_t{1} << ctx.settings.idBits);
+    familyPrefix=chooseFamily(eventFiles);
+    const size_t nameOwners=familyPrefix>=0?familyOwners:0;
+    const size_t stockShards=std::clamp<size_t>(std::bit_ceil(bytes >> 21),1,size_t{1}<<ctx.settings.idBits);
+    const size_t idShards=nameOwners?std::max<size_t>(1,stockShards/8):stockShards;
+    const size_t allOwners=idShards+nameOwners;
     const unsigned idShift = 32 - std::countr_zero(idShards);
     auto partOf = [&](uint64_t hash) { return static_cast<size_t>((hash >> 1) >> shift); };
 
@@ -1176,7 +1289,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     std::vector<std::unique_ptr<Reader>> readers(readerCount);
     std::atomic<size_t> next = 0;
     parallel(readerCount, readerCount, [&](size_t r) {
-        readers[r] = std::make_unique<Reader>(parts, idShards);
+        readers[r] = std::make_unique<Reader>(parts, idShards,nameOwners);
         Reader& reader = *readers[r];
         ParsedEvent event;
         Click click;
@@ -1193,9 +1306,6 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 unsigned cursor = 0;
                 auto storeEvent = [&](const ParsedEvent& event, uint64_t offset, uint64_t rawHash) {
                     auto token = event.id;
-                    const uint32_t hash = filterHash(token);
-                    const size_t idShard = uint64_t{hash} >> idShift;
-                    if (token.external()) token = reader.rememberOpaque(token,hash);
                     uint64_t info;
                     if (event.valid) {
                         const auto bucket = static_cast<uint32_t>(partOf(rawHash));
@@ -1207,7 +1317,15 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                         info = event.arrival != invalidTime && relative <= UINT32_MAX
                              ? (relative << 32) | invalidArrivalTag : special(offset,sourceTag);
                     }
-                    reader.ids.add(idShard, IdRecord{token, info});
+                    if((token.bits>>56)==(numericTag>>56)) {
+                        const auto owner=(token.bits>>32)&0x7ff;
+                        reader.names.add(owner,{uint32_t(token.bits),uint32_t(info),uint32_t(info>>32)});
+                    } else {
+                        const uint32_t hash=filterHash(token);
+                        const size_t idShard=uint64_t{hash}>>idShift;
+                        if(token.external())token=reader.rememberOpaque(token,hash);
+                        reader.ids.add(idShard,{token,info});
+                    }
                 };
                 // Only events with a long shopper need a potentially cold table probe.
                 // Leave their entries in a short reader-local queue while continuing to
@@ -1270,16 +1388,20 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
             }
         }
         reader.events.finish();
-        reader.ids.finish();
+        reader.ids.finish(); reader.names.finish();
     });
     lap("parse");
 
     const size_t clicks = source.spans.size() - source.eventSpans;
     auto processShard = [&](size_t shard) {
-        deduplicate(shard, arrivalOrigin, source, readers);
         std::vector<void*> spent;
-        for (auto &reader : readers) {
-            reader->ids.release(shard, spent);
+        if(shard<idShards) {
+            deduplicate(shard,arrivalOrigin,source,readers);
+            for(auto& r:readers)r->ids.release(shard,spent);
+        } else {
+            const size_t h=shard-idShards;
+            reduceNames(h,arrivalOrigin,source,readers);
+            for(auto& r:readers)r->names.release(h,spent);
         }
         recycled.give(spent);
     };
@@ -1333,12 +1455,12 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
         // First return one ID block chain per worker to prime the shared recycler.
         if (w < clickLanes && readerCount > 1) {
             const size_t i = nextShard.fetch_add(1, std::memory_order_relaxed);
-            if (i < idShards) processShard(i);
+            if (i < allOwners) processShard(i);
             drainClicks();
         }
         for (;;) {
             const size_t i = nextShard.fetch_add(1, std::memory_order_relaxed);
-            if (i >= idShards) break;
+            if (i >= allOwners) break;
             processShard(i);
         }
         drainClicks();
