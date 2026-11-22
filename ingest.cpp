@@ -653,28 +653,40 @@ template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
             return;
         p = sep + 1;
     }
-    const auto newline = _mm256_set1_epi8('\n');
     auto byteMask = [](__m256i v, char c) -> uint32_t {
         return _mm256_movemask_epi8(_mm256_cmpeq_epi8(v, _mm256_set1_epi8(c)));
     };
     while (p < finish) {
         if (limit - p > 2048)
             __builtin_prefetch(p + 2048, 0, 3);
-        if (limit - p >= 92) {
-            auto h = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p));
-            auto m = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p + 30));
-            auto z = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p + 60));
-            auto early = _mm256_or_si256(_mm256_cmpeq_epi8(h, newline), _mm256_cmpeq_epi8(m, newline));
-            uint32_t last = byteMask(z, '\n');
-            if (!(_mm256_movemask_epi8(early) & 0x3fffffffu) && last && !(last & 3)) {
-                unsigned l = std::countr_zero(last), n = 60 + l;
-                CsvMask mh{byteMask(h, ',') & 0x3fffffffu, byteMask(h, '"') & 0x3fffffffu};
-                CsvMask mm{byteMask(m, ','), byteMask(m, '"')};
-                auto tailMask = [&](uint32_t middle, char c) {
-                    uint64_t bits = (middle & 0x3fffffffu) | (uint64_t(byteMask(z, c)) << 30);
-                    return static_cast<uint32_t>(bits >> l) & 0x3fffffffu;
+        if (limit - p >= 96) {
+#ifdef __AVX512BW__
+            const auto prefix = _mm512_loadu_si512(p);
+            auto prefixMask = [&](char c) -> uint64_t {
+                return _mm512_cmpeq_epi8_mask(prefix, _mm512_set1_epi8(c));
+            };
+#else
+            const auto first = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p));
+            const auto second = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p + 32));
+            auto prefixMask = [&](char c) -> uint64_t {
+                return byteMask(first, c) | (uint64_t(byteMask(second, c)) << 32);
+            };
+#endif
+            const auto suffix = _mm256_loadu_si256(reinterpret_cast<const __m256i *>(p + 64));
+            const uint64_t prefixLines = prefixMask('\n');
+            const uint32_t suffixLines = byteMask(suffix, '\n');
+            const unsigned n = prefixLines ? std::countr_zero(prefixLines) : 64 + std::countr_zero(suffixLines);
+            if (n >= 62 && n <= 91) {
+                const uint64_t commas = prefixMask(',');
+                const uint64_t quotes = prefixMask('"');
+                constexpr uint32_t first30 = (1u << 30) - 1;
+                CsvMask mh{uint32_t(commas) & first30, uint32_t(quotes) & first30};
+                CsvMask mm{uint32_t(commas >> 30), uint32_t(quotes >> 30)};
+                auto tailMask = [&](uint64_t mask, char c) {
+                    const uint64_t bits = (mask >> 30) | (uint64_t(byteMask(suffix, c)) << (64 - 30));
+                    return uint32_t(bits >> (n - 60)) & first30;
                 };
-                CsvMask mt{tailMask(mm.comma, ','), tailMask(mm.quote, '"')};
+                CsvMask mt{tailMask(commas, ','), tailMask(quotes, '"')};
                 PreparedMasks &row = visit();
                 row.line = {p, n};
                 saveMasks(row, mh, mm, mt);
