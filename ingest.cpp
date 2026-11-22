@@ -464,6 +464,7 @@ struct Router {
 
 struct ParsedEvent {
     EventToken id;
+    uint32_t idHash;
     bool valid = false;
     int64_t arrival;
     Key user;
@@ -586,12 +587,26 @@ inline EventToken tokenFromText(std::string_view text) {
     }
     return encodeEventToken(eventID(text));
 }
+// Finish the identity record while its CSV spelling is still at the decoder.
+inline void prepareIdentity(std::string_view text, Reader& reader, ParsedEvent& out) {
+    EventToken token = tokenFromText(text);
+    uint32_t hash = static_cast<uint32_t>(token.bits);
+    if (token.external()) {
+        const uint64_t whole = Key::spellingHash(text);
+        hash = static_cast<uint32_t>(whole ^ (whole >> 32));
+        token = reader.rememberOpaque(token, hash);
+    }
+    out.id = token;
+    out.idHash = hash;
+}
+static_assert(sizeof(ParsedEvent) == 48);
+
 // Malformed lines and empty IDs never take part in deduplication. Every other
 // copy does, valid or not: an invalid earliest copy suppresses later ones.
-[[gnu::noinline]] bool genericEvent(std::string_view line, const Context &ctx, ParsedEvent &out) {
+[[gnu::noinline]] bool genericEvent(std::string_view line, const Context &ctx, ParsedEvent &out, Reader& reader) {
     std::array<std::string_view,7> f;
     if (!eventFields(line, f) || f[0].empty()) return false;
-    out.id = tokenFromText(f[0]);
+    prepareIdentity(f[0], reader, out);
     out.valid = false;
     out.arrival = invalidTime;
     if (f[1].empty() || f[5].empty()) return true;
@@ -748,30 +763,30 @@ template <class F> void eventLines(const InputChunk &chunk, F &&visit) {
         p = end + 1;
     }
 }
-inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, ParsedEvent &out) {
+inline bool parsePrepared(const PreparedMasks &packed, const Context &ctx, ParsedEvent &out, Reader& reader) {
     auto s = packed.line;
     const size_t n = s.size();
     const char *p = s.data();
     if (!packed.head)
-        return genericEvent(s, ctx, out);
+        return genericEvent(s, ctx, out, reader);
     auto &h = *packed.head;
     auto &t = *packed.tail;
     auto ht = packed.ht, tt = packed.tt;
     CsvMask mh{uint32_t(ht), uint32_t(ht >> 32)}, mt{uint32_t(tt), uint32_t(tt >> 32)},
         mm{packed.commas, packed.quotes};
     if ((h.tag != ht || !ht) && !decodeHead(mh, ht, h))
-        return genericEvent(s, ctx, out);
+        return genericEvent(s, ctx, out, reader);
     if ((t.tag != tt || !tt) && !decodeTail(mt, tt, t))
-        return genericEvent(s, ctx, out);
+        return genericEvent(s, ctx, out, reader);
     const unsigned width = n - 60;
     uint32_t mc = _bzhi_u32(mm.comma, width), mq = _bzhi_u32(mm.quote, width);
     if (!std::has_single_bit(mc) || (mc & ((1u << (width - 1)) | 1u)))
-        return genericEvent(s, ctx, out);
+        return genericEvent(s, ctx, out, reader);
     if (mq != ((mc >> 1) * h.quoted | (mc << 1) * t.quoted))
         return false;
     if (!h.idLen)
         return false;
-    out.id = tokenFromText({p + h.id, h.idLen});
+    prepareIdentity({p + h.id, h.idLen}, reader, out);
     out.valid = false;
     out.arrival = invalidTime;
     if (!t.productLen || !h.userLen)
@@ -1192,10 +1207,8 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 std::array<PreparedMasks, ahead> queue;
                 unsigned cursor = 0;
                 auto storeEvent = [&](const ParsedEvent& event, uint64_t offset, uint64_t rawHash) {
-                    auto token = event.id;
-                    const uint32_t hash = filterHash(token);
-                    const size_t idShard = uint64_t{hash} >> idShift;
-                    if (token.external()) token = reader.rememberOpaque(token,hash);
+                    const EventToken token = event.id;
+                    const size_t idShard = uint64_t{event.idHash} >> idShift;
                     uint64_t info;
                     if (event.valid) {
                         const auto bucket = static_cast<uint32_t>(partOf(rawHash));
@@ -1243,13 +1256,13 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 auto drainGeneric = [&] {
                     for (unsigned j = 0; j < genericCount; ++j) {
                         auto line = generic[j];
-                        if (genericEvent(line, ctx, event)) accept(line.data());
+                        if (genericEvent(line, ctx, event, reader)) accept(line.data());
                     }
                     genericCount = 0;
                 };
                 auto emit = [&](PreparedMasks& masks) {
                     if (masks.head) {
-                        if (parsePrepared(masks, ctx, event)) accept(masks.line.data());
+                        if (parsePrepared(masks, ctx, event, reader)) accept(masks.line.data());
                         return;
                     }
                     generic[genericCount++] = masks.line;
