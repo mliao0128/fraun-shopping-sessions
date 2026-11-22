@@ -486,6 +486,7 @@ struct Identities {
 
 struct Context {
     bool populateInput = false;
+    std::unordered_map<const char*, std::filesystem::path> coldFiles;
     struct ExecutionSettings {
         unsigned userBits, idBits, chunkBits, linkWorkers, clickLanes;
     };

@@ -111,8 +111,11 @@ struct Mapping {
 struct Inputs {
     std::optional<bool> readAhead;
     std::vector<std::unique_ptr<Mapping>> maps;
+    std::unordered_map<const char*, fs::path> coldFiles;
     SV file(const fs::path& path) {
         auto& m = maps.emplace_back(std::make_unique<Mapping>(path, readAhead));
+        if (readAhead.value_or(false) && m->size >= (256u << 10))
+            coldFiles.emplace(m->data, path);
         return m->size ? SV(m->data, m->size) : SV{};
     }
     std::vector<SV> folder(const fs::path& path) {
@@ -240,6 +243,7 @@ int main(int argc, char** argv) try {
 
     auto clicks = inputs.folder(data / "clicks");
     ctx.populateInput = inputs.readAhead.value_or(false);
+    ctx.coldFiles = std::move(inputs.coldFiles);
 
     // More buckets balance large people across workers. Keep small datasets
     // compact, since each active bucket accumulates its own campaign totals.

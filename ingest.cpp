@@ -1,4 +1,8 @@
 #include <sys/mman.h>
+#include <sys/sendfile.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <cerrno>
 #include "shared.hpp"
 #include "event_fields.hpp"
 
@@ -138,7 +142,28 @@ std::vector<InputChunk> chunks(const std::vector<std::string_view>& files, unsig
 
 // Input chunks start at page-aligned offsets in file mappings. Request
 // translations for the reader's own range immediately before scanning it.
-inline void populateChunk(const InputChunk& c) {
+void populateChunk(const InputChunk& c, const Context& ctx) {
+    if (c.end - c.begin < (256u << 10)) return;
+    const auto name = ctx.coldFiles.find(c.file.data());
+    if (name != ctx.coldFiles.end()) {
+        struct Sink {
+            int fd = open("/dev/null", O_WRONLY | O_CLOEXEC);
+            ~Sink() { if (fd >= 0) close(fd); }
+        };
+        thread_local Sink sink;
+        const int source = sink.fd < 0 ? -1 : open(name->second.c_str(), O_RDONLY | O_CLOEXEC | O_NONBLOCK);
+        if (source >= 0) {
+            off_t offset = static_cast<off_t>(c.begin);
+            while (static_cast<size_t>(offset) < c.end) {
+                const ssize_t n = sendfile(sink.fd, source, &offset, c.end - static_cast<size_t>(offset));
+                if (n < 0 && errno == EINTR) continue;
+                if (n <= 0) break;
+            }
+            close(source);
+        }
+    }
+    // Only the original immutable mapping supplies query bytes. The normal
+    // population works even when a kernel or filesystem declines sendfile.
 #ifdef MADV_POPULATE_READ
     if (c.end - c.begin >= (256u << 10))
         (void)madvise(const_cast<char*>(c.file.data() + c.begin), c.end - c.begin, MADV_POPULATE_READ);
@@ -1168,7 +1193,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
             if (i >= source.eventSpans)
                 break;
             const InputChunk& span = source.spans[i];
-            if (ctx.populateInput) populateChunk(span);
+            if (ctx.populateInput) populateChunk(span, ctx);
             if (i < source.eventSpans) {
                 const uint64_t base = spanStart[i] - reinterpret_cast<uintptr_t>(span.file.data());
                 constexpr unsigned ahead = 1;
@@ -1249,7 +1274,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
     };
     auto processClicks = [&](size_t part, Reader &reader) {
         const auto& span = source.spans[source.eventSpans + part];
-        if (ctx.populateInput) populateChunk(span);
+        if (ctx.populateInput) populateChunk(span, ctx);
         struct PendingClick { Click row; uint64_t hash; };
         std::array<PendingClick,16> queue;
         unsigned used=0;
