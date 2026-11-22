@@ -593,19 +593,24 @@ static constexpr auto bytePairs = [] {
     return pairs;
 }();
 
-static std::array<uint16_t,65536> pairOwners;
+// The common six-byte suffix has 36^6 possible strings. It is divisible
+// by 4096, so even the largest accepted dictionary needs only 32 bits
+// for each pair's base, in units of 4096.
+constexpr uint64_t suffixDomain = UINT64_C(36)*36*36*36*36*36;
+static_assert(suffixDomain % 4096 == 0 && (suffixDomain/4096)*familyOwners < UINT32_MAX);
+static std::array<uint32_t,65536> pairBases;
 static unsigned activeOwners = 0;
-constexpr uint16_t noOwner = UINT16_MAX;
+constexpr uint32_t noOwner = UINT32_MAX;
 
 inline EventToken familyName(const char* p) {
     uint64_t raw;
     std::memcpy(&raw,p+1,sizeof(raw));
-    const unsigned owner=pairOwners[uint16_t(raw)];
+    const uint32_t base=pairBases[uint16_t(raw)];
     const unsigned a=bytePairs[uint16_t(raw>>16)];
     const unsigned b=bytePairs[uint16_t(raw>>32)];
     const unsigned c=bytePairs[uint16_t(raw>>48)];
-    if ((owner|a|b|c)&0x8000) return {};
-    return {numericTag | (uint64_t(owner)<<32) | ((a*1296u+b)*1296u+c)};
+    if (base==noOwner || ((a|b|c)&0x8000)) return {};
+    return {numericTag | ((uint64_t(base)<<12) + (a*1296u+b)*1296u+c)};
 }
 
 int chooseFamily(const std::vector<std::string_view>& files) {
@@ -616,7 +621,7 @@ int chooseFamily(const std::vector<std::string_view>& files) {
     };
     std::array<Sample,256> samples{};
     size_t seen=0;
-    pairOwners.fill(noOwner);
+    pairBases.fill(noOwner);
     activeOwners=0;
     for(auto file:files) {
         size_t newline=file.find('\n');
@@ -645,9 +650,11 @@ int chooseFamily(const std::vector<std::string_view>& files) {
     }
     const auto best=std::max_element(samples.begin(),samples.end(),[](const auto& a,const auto& b){return a.rows<b.rows;});
     if(seen<96 || best->rows<=seen/2 || best->first.count()*best->second.count()>familyOwners) return -1;
+    uint32_t index=0;
     for(unsigned i=0;i<256;++i) if(best->first[i])
         for(unsigned j=0;j<256;++j) if(best->second[j])
-            pairOwners[i|(j<<8)]=activeOwners++;
+            pairBases[i|(j<<8)]=index++*(suffixDomain/4096);
+    activeOwners=(uint64_t(index)*suffixDomain+UINT32_MAX)>>32;
     return int(best-samples.begin());
 }
 inline EventToken tokenFromText(std::string_view text) {
@@ -1194,6 +1201,7 @@ void reduceNames(size_t shard,int64_t origin,const Source& source,std::vector<st
     };
     constexpr unsigned rowBits=std::bit_width(rowsPerBlock<NameRecord>-1);
     constexpr uint32_t rowMask=(1u<<rowBits)-1;
+    static_assert(rowsPerBlock<NameRecord> < (size_t(1)<<rowBits));
     const auto receipt=[](const NameRecord& row){return (uint64_t(row.receiptHigh)<<32)|row.receiptLow;};
     if(blocks.size()>(uint64_t{1}<<(32-rowBits))) {
         std::unordered_map<uint32_t,std::pair<uint64_t,Reader*>> exact;
@@ -1218,14 +1226,15 @@ void reduceNames(size_t shard,int64_t origin,const Source& source,std::vector<st
             }
             for(unsigned i=0;i<count;++i) {
                 const auto& row=block.rows[first+i];
-                const uint32_t key=row.code+1;
+                const uint32_t key=row.code;
                 const uint32_t at=(uint32_t(b)<<rowBits)|(first+i);
                 size_t pos=homes[i]&mask;
-                while(slots[pos].key && slots[pos].key!=key)pos=(pos+1)&mask;
+                while(slots[pos].ref && slots[pos].key!=key)pos=(pos+1)&mask;
                 auto& entry=slots[pos];
-                if(!entry.key) { entry={key,at};continue; }
-                const auto& old=blocks[entry.ref>>rowBits];
-                if(update(receipt(row),*block.owner,receipt(old.rows[entry.ref&rowMask]),*old.owner))entry.ref=at;
+                if(!entry.ref) { entry={key,at+1};continue; }
+                const uint32_t prior=entry.ref-1;
+                const auto& old=blocks[prior>>rowBits];
+                if(update(receipt(row),*block.owner,receipt(old.rows[prior&rowMask]),*old.owner))entry.ref=at+1;
             }
         }
     }
