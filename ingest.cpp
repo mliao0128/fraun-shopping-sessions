@@ -1359,7 +1359,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                     item.event.user = Key::internHashedShopper(item.event.user.borrowed(), item.hash);
                     storeEvent(item.event, item.offset, item.hash);
                 };
-                auto accept = [&](const char *line) {
+                auto accept = [&](const ParsedEvent& event,const char *line) {
                     const uint64_t offset = base + reinterpret_cast<uintptr_t>(line);
                     const uint64_t hash = event.valid ? event.user.hash() : 0;
                     if (event.valid && event.user.external() && Key::shopperSlots) {
@@ -1382,26 +1382,23 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 auto drainGeneric = [&] {
                     for (unsigned j = 0; j < genericCount; ++j) {
                         auto line = generic[j];
-                        if (genericEvent(line, ctx, event, reader)) accept(line.data());
+                        if (genericEvent(line, ctx, event, reader)) accept(event,line.data());
                     }
                     genericCount = 0;
                 };
                 std::array<UtcVisit,4> visits;
                 unsigned visitCount=0;
-                auto completeVisit=[&](const ParsedEvent& out,const char* line) {
-                    event=out;
-                    accept(line);
-                };
+
                 auto defer=[&](const UtcVisit& row) {
                     visits[visitCount++]=row;
                     if(visitCount==visits.size()) {
-                        consumeFour(visits,visitCount,ctx,reader,completeVisit);
+                        consumeFour(visits,visitCount,ctx,reader,accept);
                         visitCount=0;
                     }
                 };
                 auto emit = [&](PreparedMasks& masks) {
                     if (masks.head) {
-                        if (parsePrepared(masks, ctx, event, reader, defer)) accept(masks.line.data());
+                        if (parsePrepared(masks, ctx, event, reader, defer)) accept(event,masks.line.data());
                         return;
                     }
                     generic[genericCount++] = masks.line;
@@ -1417,7 +1414,7 @@ void ingest(const Context& ctx, const std::vector<std::string_view>& eventFiles,
                 for (unsigned j = cursor - std::min(cursor, ahead); j < cursor; ++j)
                     emit(queue[j % ahead]);
                 drainGeneric();
-                consumeFour(visits,visitCount,ctx,reader,completeVisit);
+                consumeFour(visits,visitCount,ctx,reader,accept);
                 for (unsigned j = queued - std::min(queued, depth); j < queued; ++j)
                     flush(pending[j % depth]);
             }
