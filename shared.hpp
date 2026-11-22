@@ -208,8 +208,10 @@ struct Key {
         return {buffer.data(),9};
     }
     uint64_t hash() const {
-        if (interned()) return shopperSlot()->hash;
-        if (external()) return spellingHash(borrowed());
+        if (external()) {
+            if (interned()) return shopperSlot()->hash;
+            return spellingHash(borrowed());
+        }
         const __uint128_t product = static_cast<__uint128_t>(bits ^ 0xa0761d6478bd642fULL)
                                     * (bits ^ 0xe7037ed1a0b428dbULL);
         return static_cast<uint64_t>(product) ^ static_cast<uint64_t>(product >> 64);
