@@ -541,6 +541,21 @@ inline bool commonUtcHour(const char* e, const char* a) {
     const auto y=_mm_loadu_si128(reinterpret_cast<const __m128i*>(a));
     return (_mm_movemask_epi8(_mm_cmpeq_epi8(x,y)) & 0x3fff) == 0x3fff;
 }
+// All fields come from the guaranteed-valid UTC arrival. Cache the base
+// before day one, keyed by the complete year/month spelling.
+inline int64_t monthBeforeDayOne(const char* arrival) {
+    struct Entry {uint64_t prefix{};int64_t base=invalidTime;};
+    static thread_local std::array<Entry,32> months{};
+    uint64_t prefix;
+    std::memcpy(&prefix,arrival,sizeof(prefix));
+    const unsigned slot=((uint8_t(arrival[5])&1)<<4) | (uint8_t(arrival[6])&15);
+    auto& e=months[slot];
+    if (e.prefix!=prefix) {
+        const int64_t day=midnight(arrival);
+        e={prefix,day==invalidTime ? invalidTime : day-int64_t(pairValue(arrival+8))*dayMs};
+    }
+    return e.base;
+}
 inline bool sharedHourTimes(const char* e,const char* a,const Context& ctx,int64_t& eventMs,int64_t& arrivalMs) {
     // Each 8-byte slice ends at the UTC zone, with minute and second at 2:3 and 5:6.
     const auto tail=_mm_unpacklo_epi64(_mm_loadl_epi64(reinterpret_cast<const __m128i*>(e+12)),
@@ -550,12 +565,15 @@ inline bool sharedHourTimes(const char* e,const char* a,const Context& ctx,int64
     const auto limits=_mm_setr_epi8(-1,-1,5,9,0,5,9,0,-1,-1,-1,-1,-1,-1,-1,-1);
     if (!_mm_testz_si128(_mm_subs_epu8(digits,limits),_mm_set1_epi8(-1))) return false;
 
-    const int64_t midnightMs=midnight(a);
-    if (midnightMs==invalidTime) return false;
-    const int64_t base=midnightMs + int64_t(pairValue(a+11))*3600000;
-    const auto values=_mm_shuffle_epi8(digits,_mm_setr_epi8(2,3,5,6,10,11,13,14,-1,-1,-1,-1,-1,-1,-1,-1));
+    const int64_t month=monthBeforeDayOne(a);
+    if (month==invalidTime) return false;
+    const auto mmss=_mm_shuffle_epi8(digits,_mm_setr_epi8(2,3,5,6,10,11,13,14,-1,-1,-1,-1,-1,-1,-1,-1));
+    const auto dayHour=_mm_sub_epi8(_mm_loadl_epi64(reinterpret_cast<const __m128i*>(a+8)),_mm_set1_epi8('0'));
+    const auto dayHourDigits=_mm_shuffle_epi8(dayHour,_mm_setr_epi8(0,1,3,4,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1));
+    const auto values=_mm_unpacklo_epi64(mmss,dayHourDigits);
     const auto pairs=_mm_maddubs_epi16(values,_mm_set1_epi16(0x010a));
-    const auto seconds=_mm_madd_epi16(pairs,_mm_setr_epi16(60,1,60,1,0,0,0,0));
+    const auto seconds=_mm_madd_epi16(pairs,_mm_setr_epi16(60,1,60,1,24,1,0,0));
+    const int64_t base=month+int64_t(_mm_extract_epi32(seconds,2))*3600000;
     eventMs=base+int64_t(_mm_cvtsi128_si32(seconds))*1000;
     if (eventMs<ctx.start || eventMs>=ctx.end) return false;
     arrivalMs=base+int64_t(_mm_extract_epi32(seconds,1))*1000;
